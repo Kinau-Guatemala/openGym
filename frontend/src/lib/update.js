@@ -11,7 +11,9 @@
 
 import { MOBILE } from './mobile.js'
 
-const REPO = 'DuarteSantos8/openGym'
+// The Kinau fork's releases: its APK is its own app (gt.kinau.opengym), signed with its own key,
+// so upstream's APK could not install over it anyway.
+const REPO = 'Kinau-Guatemala/openGym'
 const LATEST_URL = `https://api.github.com/repos/${REPO}/releases/latest`
 export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`
 

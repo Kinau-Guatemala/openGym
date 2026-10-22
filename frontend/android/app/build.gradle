@@ -4,7 +4,9 @@ android {
     namespace "ch.duartesantos.opengym"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "ch.duartesantos.opengym"
+        // The Kinau fork is its own app: it installs alongside upstream's ch.duartesantos.opengym. The
+        // namespace (and the Java package) stays upstream's; the two are independent.
+        applicationId "gt.kinau.opengym"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 26

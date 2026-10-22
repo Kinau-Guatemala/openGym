@@ -43,7 +43,7 @@ describe('checkForUpdate', () => {
   it('asks GitHub for the latest published release (never a draft or a beta)', async () => {
     mockFetch({ tag_name: 'v' + __APP_VERSION__, assets: [] })
     await checkForUpdate()
-    expect(globalThis.fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/DuarteSantos8/openGym/releases/latest')
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/Kinau-Guatemala/openGym/releases/latest')
   })
 
   it('reports no update when the latest release matches the current version', async () => {
@@ -82,8 +82,8 @@ describe('checkForUpdate', () => {
   const REAL_RELEASE = {
     tag_name: 'v1.4.0',
     assets: [
-      { name: 'openGym-1.4.0.apk', browser_download_url: 'https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk' },
-      { name: 'openGym-1.4.0.apk.sha256', browser_download_url: 'https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256' },
+      { name: 'openGym-1.4.0.apk', browser_download_url: 'https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk' },
+      { name: 'openGym-1.4.0.apk.sha256', browser_download_url: 'https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256' },
     ],
   }
 
@@ -91,8 +91,8 @@ describe('checkForUpdate', () => {
     mockFetch(REAL_RELEASE)
     const result = await checkForUpdate()
     expect(result.latestVersion).toBe('1.4.0')
-    expect(result.apkUrl).toBe('https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk')
-    expect(result.hashUrl).toBe('https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256')
+    expect(result.apkUrl).toBe('https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk')
+    expect(result.hashUrl).toBe('https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256')
   })
 
   it('does not take the checksum for the APK when it is listed first', async () => {
