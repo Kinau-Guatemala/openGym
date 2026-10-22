@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   cla:
+    # The signatures and the CLA belong to the upstream project; a fork has neither.
+    if: github.repository == 'DuarteSantos8/openGym'
     runs-on: ubuntu-latest
     steps:
       # Comments on plain issues (the pinned CLA issue #554) are not pull requests: the action
