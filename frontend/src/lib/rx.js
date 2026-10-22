@@ -26,12 +26,16 @@ export function rxPrinted(movement, S) {
 /** The movement's Rx load for S.body, in S.unit: `{ w, unit }`, or null when none is printed. */
 export function rxFor(movement, S) {
   const pick = rxPrinted(movement, S)
-  if (!pick) return null
-  const w = pick.w
-  const from = pick.unit, to = S?.unit === 'lb' ? 'lb' : 'kg'
-  if (from === to) return { w, unit: to }
+  return pick ? { w: rxIn(pick, S?.unit), unit: S?.unit === 'lb' ? 'lb' : 'kg' } : null
+}
+
+/** A printed Rx `{ w, unit }` as a load in `unit`: exact in its own unit, else on the plate grid. */
+export function rxIn(rx, unit) {
+  const w = Number(rx?.w) || 0
+  const from = unitOf(rx?.unit), to = unit === 'lb' ? 'lb' : 'kg'
+  if (from === to) return w
   const v = to === 'lb' ? w * LB_PER_KG : w / LB_PER_KG
-  return { w: Math.round(v / GRID[to]) * GRID[to], unit: to }
+  return Math.round(v / GRID[to]) * GRID[to]
 }
 
 /** The dose for S.body: doseFemale when the image printed a split and the profile is female. */
