@@ -22,7 +22,7 @@ describe('skills', () => {
         entries: [{ id: '3891', wodBlock: 'full/b2', sets: [reps(3)] }],
         wod: { blocks: [{ ref: 'full/b2', rx: false }] } },
     ], NOW)
-    expect(of(out, 't2b')).toEqual({ key: 't2b', name: 'Toes-to-bar', ids: ['3891'], first: '2026-08-01', maxReps: 6, perSide: false, volume: 13, rxDone: 1 })
+    expect(of(out, 't2b')).toEqual({ key: 't2b', name: 'Toes-to-bar', ids: ['3891'], exId: '3891', first: '2026-08-01', maxReps: 6, perSide: false, volume: 13, rxDone: 1 })
     expect(of(out, 'du')).toMatchObject({ first: null, maxReps: 0, volume: 0, rxDone: 0 })
   })
 

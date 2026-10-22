@@ -27,16 +27,18 @@ const DAY = 86400000
 const reps = s => Math.max(0, Number(s?.r) || 0)
 
 /**
- * Per skill: `{ key, name, ids, first, maxReps, perSide, volume, rxDone }`. `first` is the date
- * it was first logged (null when never), `maxReps` the most reps in one row (per side for a
- * per-side row, `perSide` then true), `volume` the reps of the last 4 weeks, `rxDone` the WOD
- * blocks marked Rx it was done in as programmed.
+ * Per skill: `{ key, name, ids, exId, first, maxReps, perSide, volume, rxDone }`. `exId` is the
+ * id it was last logged as, `first` the date it was first logged (both null when never),
+ * `maxReps` the most reps in one row (per side for a per-side row, `perSide` then true),
+ * `volume` the reps of the last 4 weeks, `rxDone` the WOD blocks marked Rx it was done in as
+ * programmed.
  */
 export function skillStats(workouts, now = Date.now(), skills = SKILLS) {
   const from = isoOf(new Date(now - 28 * DAY))
   return skills.map(sk => {
     const ids = new Set(sk.ids)
-    const out = { key: sk.key, name: sk.name, ids: sk.ids, first: null, maxReps: 0, perSide: false, volume: 0, rxDone: 0 }
+    let last = ''
+    const out = { key: sk.key, name: sk.name, ids: sk.ids, exId: null, first: null, maxReps: 0, perSide: false, volume: 0, rxDone: 0 }
     for (const w of list(workouts)) {
       for (const e of list(w?.entries)) {
         if (!ids.has(e?.id)) continue
@@ -52,6 +54,7 @@ export function skillStats(workouts, now = Date.now(), skills = SKILLS) {
         }
         if (!did) continue
         if (!out.first || w.d < out.first) out.first = w.d
+        if (w.d >= last) { last = w.d; out.exId = e.id }
         if (!e.swappedFrom && list(w.wod?.blocks).some(b => b.ref === e.wodBlock && b.rx)) out.rxDone++
       }
     }
