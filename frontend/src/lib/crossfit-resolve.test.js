@@ -18,7 +18,7 @@ const FIXTURE = [
   ['12 High sumo pull 95/65', 'high sumo pull', '1199'],
   ['6 Sushy Rolls', 'sushy rolls', null],
   ['12 S2OH 95/65', 's2oh', '1200'],
-  ['6 BMU', 'bmu', '0631'],
+  ['6 BMU', 'bmu', '5194'],
   ['12 Hang Clean & Jerks 95/65', 'hang clean & jerks', '5122'],
   ['7 DB Clean', 'db clean', '0295'],
   ['7 DB Hang Snatch R', 'db hang snatch', '10044'],
@@ -72,7 +72,7 @@ const FIXTURE = [
   ['15 T2B', 't2b', '3891'],
   ['10 C&J 135/95', 'c&j', '5122'],
   ['15 Pull ups', 'pull ups', '0652'],
-  ['15 BMU', 'bmu', '0631'],
+  ['15 BMU', 'bmu', '5194'],
   ['M1 7 DB´s DL', 'db´s dl', '0300'],
   ['7 DB´s H. Cleans', 'db´s h. cleans', '4449'],
   ['7 DB´s Bend over Row', 'db´s bend over row', '0293'],
@@ -167,7 +167,7 @@ const FIXTURE = [
   ['8 Squats', 'squats', '3948'],
   ['2 Snatch', 'snatch', '1533'],
   ['15 Cal Row', 'row', '1161'],
-  ['7 BMU', 'bmu', '0631'],
+  ['7 BMU', 'bmu', '5194'],
   ['5 Snatch 155/105', 'snatch', '1533'],
   ['40 DU', 'du', '3885'],
   ['M2 9 DB´s Cleans', 'db´s cleans', '0295'],
@@ -296,7 +296,7 @@ const FIXTURE = [
   ['1 Snatch', 'snatch', '1533'],
   ['21 Burpees', 'burpees', '1160'],
   ['18 Snatch 95/65', 'snatch', '1533'],
-  ['9 BMU', 'bmu', '0631'],
+  ['9 BMU', 'bmu', '5194'],
   ['20 Wall Balls', 'wall balls', '2458'],
   ['10 DB´s Cleans', 'db´s cleans', '0295'],
   ['10 Pulse Squats', 'pulse squats', '3535'],
@@ -458,5 +458,10 @@ describe('crossfit aliases table', () => {
       expect(norm(key), key).toBe(key)
       expect(EXIDX[id]?.id, key).toBe(id)
     }
+  })
+
+  it('tells a bar muscle-up from a ring one', () => {
+    expect(resolveMovement({ rawName: 'BMU' }).exId).toBe('5194')
+    expect(resolveMovement({ rawName: 'RMU' }).exId).toBe('0631')
   })
 })

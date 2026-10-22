@@ -49,7 +49,7 @@ export const SHIPPED_ALIASES = {
   'kb goblet squat': '0534', 'kb sit up to shoulder press': '5072',
 
   // Gymnastics and body weight
-  't2b': '3891', 'knee to chest': '9819', 'k2c': '9819', 'bmu': '0631',
+  't2b': '3891', 'knee to chest': '9819', 'k2c': '9819', 'bmu': '5194', 'rmu': '0631',
   'pull up': '0652', 'pull up estricto': '0652', 'pull up estrcito': '0652',
   'chin up': '1326', 'chin up estricto': '1326',
   'push up': '0662', 'push us': '0662', 'hpu': '3947', 'diamond push up': '0283', 'dymond push up': '0283',
