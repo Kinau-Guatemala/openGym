@@ -79,7 +79,7 @@ import { bestWeightForEntry } from './history.js'
 import { convertStateUnit, convertBodyWeight } from './units.js'
 import { sanitizeAccent } from './accent.js'
 import { readDayNote as readNote } from './day-notes.js'
-import { pruneWods } from './wods.js'
+import { pruneWods, wodOf, aliasesOf } from './wods.js'
 
 const clone = o => JSON.parse(JSON.stringify(o))
 const list = v => (Array.isArray(v) ? v : [])
@@ -1132,7 +1132,10 @@ export function localExtras(local, server) {
   const setup = ['gymCards', 'equipProfiles'].reduce((n, f) => n + list(local?.[f]).filter(x => x && x.id != null && !ids(f).has(x.id)).length, 0) +
     list(local?.measurements).filter(e => e && e.d != null && !measured.has(e.d)).length +
     Object.entries(isMap(local?.dayNotes) ? local.dayNotes : {}).filter(([k, v]) => readNote(v) && !readNote(server?.dayNotes?.[k])).length +
-    keysNew('week') + keysNew('dayPlan') + keysNew('exNotes')
+    keysNew('week') + keysNew('dayPlan') + keysNew('exNotes') +
+    // CrossFit programs and movement picks, so a guest who only saved programs is asked too.
+    Object.keys(isMap(local?.wods) ? local.wods : {}).filter(k => wodOf(local, k) && !wodOf(server, k)).length +
+    Object.entries(aliasesOf(local)).filter(([k, id]) => aliasesOf(server)[k] !== id).length
   return {
     workouts: list(local?.workouts).filter(w => !have.has(workoutKey(w))).length,
     bodyweight: list(local?.bodyweight).filter(e => e && e.d != null && (!days.has(e.d) || differs(e, days.get(e.d)))).length,

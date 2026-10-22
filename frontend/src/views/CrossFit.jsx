@@ -1,0 +1,447 @@
+// CrossFit: the programs a box posts (S.wods, lib/wods.js), one per date it is for.
+//
+//   #/crossfit             upcoming and recent programs
+//   #/crossfit/new         a new program: empty, or a parsed draft handed over in the route's state
+//                          ({ draft, date, image }, T05's Share/upload); ?date= picks the day
+//   #/crossfit/edit/<date> the program saved for that date
+//
+// The editor works on a draft (lib/wod-draft.js) and writes nothing until Save. A movement's
+// exercise chip opens the exercise picker; the pick is remembered for that printed name
+// (S.exAliases), so the same name resolves by itself in every later program.
+import { useRef, useState } from 'react'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useStore } from '../store/useStore.js'
+import { useUI } from '../store/useUI.js'
+import { exOr } from '../lib/exercises.js'
+import { t, exerciseNameFor } from '../lib/i18n.js'
+import { fmtDate, fmtNum, isoOf, todayISO } from '../lib/format.js'
+import { wodOf, aliasesOf } from '../lib/wods.js'
+import { norm, rawNameOf, resolveMovement } from '../lib/crossfit-resolve.js'
+import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
+import { applyPick, includeOf, movementFromText, nextId, prepareDraft } from '../lib/wod-draft.js'
+import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
+import { exercisePicker, confirmSheet } from '../sheets.jsx'
+import Icon from '../components/Icon.jsx'
+import { Button, NumberField, Row, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
+
+const ui = () => useUI.getState()
+const toast = m => ui().toast(m)
+
+const FORMATS = ['amrap', 'emom', 'fortime', 'rounds', 'interval', 'strength', 'other']
+const formatLabel = f => ({
+  amrap: 'AMRAP', emom: 'EMOM', fortime: t('For time'), rounds: t('Rounds'),
+  interval: t('Intervals'), strength: t('Strength'), other: t('Other'),
+})[f] || t('Other')
+const DOSE_KINDS = ['reps', 'cal', 'm', 'sec']
+const doseLabel = k => ({ reps: t('Reps'), cal: t('Calories'), m: t('Meters'), sec: t('Seconds') })[k]
+
+// An icon inside a chip, sitting on the text line (the exercise picker's chips do the same).
+const CHIP_ICON = { fontSize: 12, display: 'inline-block', marginInlineEnd: 4, verticalAlign: '-1px' }
+const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return isoOf(d) }
+const ISO = /^\d{4}-\d{2}-\d{2}$/
+export const trackNames = w => (w?.tracks || []).map(tr => tr.label).filter(Boolean).join(' · ')
+
+// Back the way you came when there is a way, else to the list.
+const goBack = nav => ((window.history.state?.idx || 0) > 0 ? nav(-1) : nav('/crossfit', { replace: true }))
+
+/* ============================ the list ============================ */
+
+export default function CrossFit() {
+  const nav = useNavigate()
+  const S = useStore(s => s.S)
+  const today = todayISO()
+  const dates = Object.keys(S.wods || {}).filter(d => wodOf(S, d))
+  const upcoming = dates.filter(d => d >= today).sort()
+  const recent = dates.filter(d => d < today).sort().reverse()
+  const row = d => {
+    const w = wodOf(S, d)
+    return <div key={d} className="item" {...tappable(() => nav('/crossfit/edit/' + d))}>
+      <span className="lrow-i" style={{ background: d === today ? 'var(--orange)' : 'var(--surface-3)' }}><Icon name="flame" /></span>
+      <div className="grow" style={{ minWidth: 0 }}>
+        <div className="tt">{w.title || fmtDate(d, true)}</div>
+        <div className="ss">{[w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</div>
+      </div>
+      <Icon name="chevronRight" className="chev" />
+    </div>
+  }
+  return <div className="narrow">
+    <div className="hdr">
+      <button className="iconbtn" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
+      <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('CrossFit')}</h1>
+        <div className="sub">{t('The programs your box posts, one per day.')}</div></div>
+    </div>
+    <div className="row" style={{ gap: 8, marginBottom: 18 }}>
+      <Button variant="primary" icon="plus" onClick={() => nav('/crossfit/new')}>{t('New program')}</Button>
+      {/* T05: the image upload (and the Android Share target) parses the box's image and lands
+          on #/crossfit/new with the draft. Not wired yet. */}
+      <Button icon="camera" disabled data-placeholder="t05-upload">{t('Upload image')}</Button>
+    </div>
+    {!dates.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
+    {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(row)}</div></>}
+    {recent.length > 0 && <><h4 className="sec">{t('Recent')}</h4><div className="list">{recent.map(row)}</div></>}
+  </div>
+}
+
+/* ============================ the editor ============================ */
+
+// A brand-new hand-entered program starts with the main track, ready for its first block.
+const emptyProgram = () => ({ title: '', tracks: [{ id: 'full', label: 'Full Equipment', kind: 'main', blocks: [] }] })
+
+export function CrossFitEdit() {
+  const nav = useNavigate()
+  const loc = useLocation()
+  const { date: editDate } = useParams()
+  const S = useStore(s => s.S)
+  const store = useStore.getState
+  const handed = loc.state?.draft || null
+  const [date, setDate] = useState(() => editDate || loc.state?.date || new URLSearchParams(loc.search).get('date') || tomorrow())
+  const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.exAliases))
+  const [tab, setTab] = useState(0)
+  const [dirty, setDirty] = useState(!!handed)
+  if (editDate && !wodOf(S, editDate) && !dirty) return <Navigate to="/crossfit" replace />
+
+  // Every change goes through here: a copy, changed, so the sheets' callbacks never hold a stale one.
+  const edit = fn => { setDirty(true); setDraft(d => { const n = structuredClone(d); fn(n); return n }) }
+  const ti = Math.min(tab, Math.max(0, draft.tracks.length - 1))
+  const track = draft.tracks[ti]
+
+  const leave = () => {
+    if (!dirty) { goBack(nav); return }
+    confirmSheet({ title: t('Discard changes?'), message: t('This program has changes you have not saved.'), confirmText: t('Discard'), danger: true, onConfirm: () => goBack(nav) })
+  }
+  const save = () => {
+    if (!ISO.test(date)) { toast(t('Pick a date')); return }
+    if (!draft.tracks.length) { toast(t('Add a track first')); return }
+    const write = () => {
+      store().setWod(date, { ...draft, title: draft.title.trim() })
+      if (editDate && editDate !== date) store().clearWod(editDate)
+      toast(t('Program saved'))
+      goBack(nav)
+    }
+    if (date !== editDate && wodOf(store().S, date)) confirmSheet({
+      title: t('Replace the program?'), message: t('{0} already has a program. Saving replaces it.', fmtDate(date, true)),
+      confirmText: t('Replace'), danger: true, onConfirm: write,
+    })
+    else write()
+  }
+  const remove = () => confirmSheet({
+    title: t('Delete this program?'), message: t('The program for {0} goes away on every device.', fmtDate(editDate, true)),
+    confirmText: t('Delete'), danger: true,
+    // away first: the cleared date would otherwise send this screen to the list on its own
+    onConfirm: () => { goBack(nav); store().clearWod(editDate); toast(t('Program deleted')) },
+  })
+
+  // The picker for one movement or alternative. The pick is remembered for its printed name and
+  // applied to every movement of that name in this program; one with no name keeps it to itself.
+  const pickExercise = (where, item) => {
+    const picker = exercisePicker(ex => {
+      picker.close()
+      const key = norm(item.rawName)
+      if (key) {
+        store().setAlias(key, ex.id)
+        setDirty(true)
+        setDraft(d => applyPick(d, key, ex.id))
+      } else edit(d => { at(d, where).exId = ex.id })
+    }, { title: t('Pick exercise'), like: item.exId || undefined })
+  }
+
+  const addTrack = () => {
+    edit(d => { d.tracks.push({ id: nextId(d.tracks, 't'), label: '', kind: d.tracks.some(x => x.kind === 'main') ? 'extra' : 'main', blocks: [] }) })
+    setTab(draft.tracks.length)
+  }
+  const removeTrack = () => confirmSheet({
+    title: t('Delete this track?'), message: t('Its blocks and movements go with it.'), confirmText: t('Delete'), danger: true,
+    onConfirm: () => { edit(d => { d.tracks.splice(ti, 1) }); setTab(Math.max(0, ti - 1)) },
+  })
+  const addBlock = () => {
+    const b = { id: nextId(track.blocks, 'b'), label: '', warmup: false, format: 'other', capMin: null, rounds: null, scheme: null, benchmark: null, movements: [] }
+    blockSheet(b, saved => edit(d => { d.tracks[ti].blocks.push(saved) }))
+  }
+
+  return <div className="narrow">
+    <div className="hdr">
+      <button className="iconbtn" onClick={leave} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
+        <h1>{editDate ? t('Edit program') : t('New program')}</h1>
+        <div className="sub">{ISO.test(date) ? fmtDate(date, true) : ''}</div>
+      </div>
+    </div>
+
+    {loc.state?.image && <details className="card" style={{ padding: 12 }}>
+      <summary className="small muted">{t('Posted image')}</summary>
+      <img src={loc.state.image} alt={t('Posted image')} style={{ width: '100%', borderRadius: 10, marginTop: 8 }} />
+    </details>}
+
+    <div className="card">
+      <div className="measure-form">
+        <label className="measure-field"><span>{t('Date')}</span>
+          <input className="field" type="date" value={date} onChange={e => { setDate(e.target.value); setDirty(true) }} style={{ background: 'var(--surface-2)' }} /></label>
+        <label className="measure-field"><span>{t('Title')}</span>
+          <TextField value={draft.title} maxLength={80} placeholder={t('Optional')} style={{ background: 'var(--surface-2)' }}
+            onChange={e => { const v = e.target.value; edit(d => { d.title = v }) }} /></label>
+      </div>
+    </div>
+
+    <div className="chips" style={{ margin: '0 0 10px' }}>
+      {draft.tracks.map((tr, i) => <button key={tr.id} className={'chip nocap' + (i === ti ? ' on' : '')} onClick={() => setTab(i)}>{tr.label || t('Track {0}', i + 1)}</button>)}
+      <button className="chip nocap" onClick={addTrack} aria-label={t('Add track')}><Icon name="plus" style={CHIP_ICON} />{t('Track')}</button>
+    </div>
+
+    {track && <>
+      <div className="card">
+        <div className="row" style={{ gap: 8 }}>
+          <TextField value={track.label} maxLength={40} placeholder={t('Track name')} aria-label={t('Track name')} style={{ background: 'var(--surface-2)' }}
+            onChange={e => { const v = e.target.value; edit(d => { d.tracks[ti].label = v }) }} />
+          <button className="iconbtn" onClick={removeTrack} aria-label={t('Delete this track?')}><Icon name="trash" /></button>
+        </div>
+        <div style={{ height: 10 }} />
+        <Segmented value={track.kind} onChange={v => edit(d => { d.tracks[ti].kind = v })}
+          options={[{ value: 'main', label: t('Main workout') }, { value: 'extra', label: t('Extra') }]} />
+      </div>
+
+      {track.blocks.map((b, bi) => <BlockCard key={b.id} S={S} track={track} block={b}
+        onEdit={() => blockSheet(b, saved => edit(d => { d.tracks[ti].blocks[bi] = saved }), () => edit(d => { d.tracks[ti].blocks.splice(bi, 1) }))}
+        onInclude={v => edit(d => { d.tracks[ti].blocks[bi].include = v })}
+        onMovement={mi => movementSheet(b.movements[mi], saved => edit(d => { d.tracks[ti].blocks[bi].movements[mi] = saved }), () => edit(d => { d.tracks[ti].blocks[bi].movements.splice(mi, 1) }))}
+        onAddMovement={() => movementSheet(null, saved => edit(d => {
+          const ms = d.tracks[ti].blocks[bi].movements
+          ms.push({ ...saved, id: nextId(ms, 'm') })
+        }))}
+        onPick={(mi, ai, item) => pickExercise({ ti, bi, mi, ai }, item)} />)}
+      <Button icon="plus" onClick={addBlock}>{t('Add block')}</Button>
+    </>}
+
+    <div style={{ height: 18 }} />
+    <Button variant="primary" onClick={save}>{t('Save program')}</Button>
+    {editDate && <><div style={{ height: 8 }} /><Button variant="danger" icon="trash" onClick={remove}>{t('Delete program')}</Button></>}
+    <div style={{ height: 24 }} />
+  </div>
+}
+
+// The movement (or its alternative) a picker path points at, inside a draft copy.
+const at = (d, { ti, bi, mi, ai }) => {
+  const m = d.tracks[ti].blocks[bi].movements[mi]
+  return ai == null ? m : m.alts[ai]
+}
+
+function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMovement, onPick }) {
+  const on = includeOf(track, block, S)
+  const meta = [
+    formatLabel(block.format),
+    block.capMin ? t('{0} min', block.capMin) : null,
+    block.rounds ? t('{0} rounds', block.rounds) : null,
+    block.scheme || null,
+    block.benchmark || null,
+  ].filter(Boolean).join(' · ')
+  return <div className="card" style={on ? undefined : { opacity: 0.62 }}>
+    <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} {...tappable(onEdit)}>
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ fontWeight: 600, fontSize: 17 }}>{block.label || formatLabel(block.format)}</div>
+          {block.warmup && <span className="tag" style={{ whiteSpace: 'nowrap' }}>{t('Warm-up')}</span>}
+          <Icon name="pencil" className="dim" style={{ fontSize: 13 }} />
+        </div>
+        <div className="small muted">{meta}</div>
+      </div>
+      <label className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        {t('Include')}
+        <Switch aria-label={t('Include')} checked={on} onChange={onInclude} />
+      </label>
+    </div>
+    {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} onEdit={() => onMovement(mi)}
+      onPick={(ai, item) => onPick(mi, ai, item)} />)}
+    <div style={{ marginTop: 6 }}>
+      <Button size="sm" variant="ghost" icon="plus" onClick={onAddMovement}>{t('Add movement')}</Button>
+    </div>
+  </div>
+}
+
+// The exercise a movement resolved to, as a chip that opens the picker.
+function ExChip({ item, onClick }) {
+  // On a card a chip needs the next surface up to show at all.
+  return <button className="chip nocap" onClick={onClick}
+    style={item.exId ? { background: 'var(--surface-2)' } : { background: 'var(--surface-2)', color: 'var(--orange)', boxShadow: 'inset 0 0 0 1px var(--orange)' }}>
+    <Icon name={item.exId ? 'swap' : 'magnifier'} style={CHIP_ICON} />
+    {item.exId ? exerciseNameFor(exOr(item.exId)) : (item.rawName || t('Pick exercise'))}
+  </button>
+}
+
+function MovementRow({ S, m, onEdit, onPick }) {
+  const rx = rxFor(m, S)
+  const dose = fmtDose(doseFor(m, S))
+  const line = [dose + (dose && m.perSide ? ' ' + t('each side') : ''), rx ? `${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
+  return <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 10, paddingTop: 10 }}>
+    <div {...tappable(onEdit)} style={{ cursor: 'pointer' }}>
+      <div className="row" style={{ gap: 6 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>{m.raw || m.rawName}</div>
+        <Icon name="pencil" className="dim" style={{ fontSize: 13 }} />
+      </div>
+      {line && <div className="small muted" style={{ marginTop: 2 }}>{line}{rx && <span className="dim"> · Rx</span>}</div>}
+    </div>
+    <div className="chips" style={{ margin: '8px 0 0', flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', alignItems: 'center' }}>
+      <ExChip item={m} onClick={() => onPick(null, m)} />
+      {(m.alts || []).map((a, ai) => <span key={ai} className="row" style={{ gap: 6 }}>
+        <span className="small dim">{t('or')}</span><ExChip item={a} onClick={() => onPick(ai, a)} />
+      </span>)}
+    </div>
+  </div>
+}
+
+/* ============================ sheets ============================ */
+
+const numOrNull = v => (Number(v) > 0 ? Number(v) : null)
+
+function BlockSheet({ block, onSave, onDelete, close }) {
+  const [b, setB] = useState(() => ({ ...block }))
+  const labelRef = useRef(null)
+  const onLabelFocus = useSheetKeyboard(labelRef)
+  const set = (k, v) => setB(x => ({ ...x, [k]: v }))
+  const done = () => {
+    onSave({ ...b, label: b.label.trim(), scheme: (b.scheme || '').trim() || null, benchmark: (b.benchmark || '').trim() || null,
+      capMin: numOrNull(b.capMin), rounds: numOrNull(b.rounds) })
+    close()
+  }
+  return <>
+    <h3>{onDelete ? t('Edit block') : t('Add block')}</h3>
+    <label className="measure-date"><span>{t('Label')}</span>
+      <input ref={labelRef} className="field" value={b.label} maxLength={60} placeholder={t('e.g. WOD, EMOM 10, Warm up')} onFocus={onLabelFocus} onChange={e => set('label', e.target.value)} /></label>
+    <div className="chips" style={{ margin: '0 0 14px' }}>
+      {FORMATS.map(f => <button key={f} className={'chip nocap' + (b.format === f ? ' on' : '')} onClick={() => set('format', f)}>{formatLabel(f)}</button>)}
+    </div>
+    <div className="measure-form">
+      <label className="measure-field"><span>{t('Time cap (min)')}</span>
+        <span className="measure-input"><NumberField decimal={false} nullable value={b.capMin} onChange={v => set('capMin', v)} /></span></label>
+      <label className="measure-field"><span>{t('Rounds')}</span>
+        <span className="measure-input"><NumberField decimal={false} nullable value={b.rounds} onChange={v => set('rounds', v)} /></span></label>
+      <label className="measure-field"><span>{t('Rep scheme')}</span>
+        <input className="field" value={b.scheme || ''} placeholder="21-15-9" onChange={e => set('scheme', e.target.value)} /></label>
+      <label className="measure-field"><span>{t('Benchmark')}</span>
+        <input className="field" value={b.benchmark || ''} placeholder="Fran" onChange={e => set('benchmark', e.target.value)} /></label>
+    </div>
+    <div className="lrow" style={{ padding: '12px 0' }}>
+      <span className="lrow-m"><span className="lrow-t">{t('Warm-up')}</span>
+        <span className="lrow-s">{t('Left out of the log in a main track unless you include it.')}</span></span>
+      <Switch aria-label={t('Warm-up')} checked={!!b.warmup} onChange={v => set('warmup', v)} />
+    </div>
+    <Button variant="primary" onClick={done}>{t('Done')}</Button>
+    {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" icon="trash" onClick={() => { close(); onDelete() }}>{t('Delete block')}</Button></>}
+  </>
+}
+const blockSheet = (block, onSave, onDelete) => ui().openSheet(close => <BlockSheet block={block} onSave={onSave} onDelete={onDelete} close={close} />)
+
+const kindOf = dose => DOSE_KINDS.find(k => Number(dose?.[k]) > 0) || 'reps'
+
+// One movement: the printed line, its dose (and the women's, when the box prints a split), the
+// Rx load per sex in the printed unit, per side, and the alternatives' names.
+function MovementSheet({ movement, onSave, onDelete, close }) {
+  const S = useStore(s => s.S)
+  const m0 = movement || { raw: '', rawName: '', exId: null, dose: {}, perSide: false, rx: null, alts: [] }
+  const [raw, setRaw] = useState(m0.raw || m0.rawName || '')
+  const [kind, setKind] = useState(kindOf(m0.dose))
+  const [dose, setDose] = useState(Number(m0.dose?.[kindOf(m0.dose)]) || null)
+  const [doseMax, setDoseMax] = useState(Number(m0.dose?.repsMax) || null)
+  const [doseF, setDoseF] = useState(Number(m0.doseFemale?.[kindOf(m0.dose)]) || null)
+  const [perSide, setPerSide] = useState(!!m0.perSide)
+  const [rxM, setRxM] = useState(Number(m0.rx?.male?.w) || null)
+  const [rxF, setRxF] = useState(Number(m0.rx?.female?.w) || null)
+  const [rxUnit, setRxUnit] = useState(String(m0.rx?.male?.unit || m0.rx?.female?.unit || 'lb').toLowerCase() === 'kg' ? 'kg' : 'lb')
+  const [alts, setAlts] = useState(() => (m0.alts || []).map(a => ({ ...a })))
+  const [altText, setAltText] = useState('')
+  const rawRef = useRef(null)
+  const onRawFocus = useSheetKeyboard(rawRef)
+
+  const done = () => {
+    const text = raw.trim()
+    if (!text) { toast(t('Type the movement')); return }
+    const changed = text !== (m0.raw || m0.rawName || '')
+    // A new line is a new name to resolve: the parser's English name no longer describes it.
+    const base = !movement ? movementFromText(text, null, S.exAliases)
+      : changed ? { ...m0, raw: text, rawName: rawNameOf(text), name: undefined, exId: resolveMovement({ rawName: rawNameOf(text) }, S.exAliases).exId }
+      : m0
+    const d = dose ? { [kind]: dose, ...(kind === 'reps' && doseMax > dose ? { repsMax: doseMax } : {}) } : {}
+    const out = { ...base, dose: d, perSide,
+      rx: rxM || rxF ? { male: rxM ? { w: rxM, unit: rxUnit } : null, female: rxF ? { w: rxF, unit: rxUnit } : null } : null,
+      alts }
+    if (doseF && dose) out.doseFemale = { [kind]: doseF }; else delete out.doseFemale
+    if (out.name === undefined) delete out.name
+    onSave(out)
+    close()
+  }
+  const addAlt = () => {
+    const rawName = rawNameOf(altText.trim()) || altText.trim().toLowerCase()
+    if (!rawName) return
+    setAlts(a => [...a, { rawName, exId: resolveMovement({ rawName }, S.exAliases).exId, dose: {} }])
+    setAltText('')
+  }
+  const field = (label, value, onChange, unit, decimal = true) => <label className="measure-field"><span>{label}</span>
+    <span className="measure-input"><NumberField decimal={decimal} nullable value={value} onChange={onChange} />{unit && <i>{unit}</i>}</span></label>
+
+  return <>
+    <h3>{movement ? t('Edit movement') : t('Add movement')}</h3>
+    <label className="measure-date"><span>{t('As printed')}</span>
+      <input ref={rawRef} className="field" value={raw} maxLength={120} placeholder={t('e.g. 5 Hang Cleans 185/135')} onFocus={onRawFocus} onChange={e => setRaw(e.target.value)} /></label>
+
+    <div className="small muted" style={{ margin: '0 2px 6px' }}>{t('Dose')}</div>
+    <div className="chips" style={{ margin: '0 0 10px' }}>
+      {DOSE_KINDS.map(k => <button key={k} className={'chip nocap' + (kind === k ? ' on' : '')} onClick={() => setKind(k)}>{doseLabel(k)}</button>)}
+    </div>
+    <div className="measure-form">
+      {field(doseLabel(kind), dose, setDose, null, kind === 'm')}
+      {kind === 'reps' && field(t('Up to'), doseMax, setDoseMax, null, false)}
+      {field(t('Women (if different)'), doseF, setDoseF, null, kind === 'm')}
+    </div>
+    <div className="lrow" style={{ padding: '12px 0' }}>
+      <span className="lrow-m"><span className="lrow-t">{t('Each side')}</span></span>
+      <Switch aria-label={t('Each side')} checked={perSide} onChange={setPerSide} />
+    </div>
+
+    <div className="row between" style={{ margin: '4px 2px 6px' }}>
+      <span className="small muted">{t('Rx load')}</span>
+      <Segmented value={rxUnit} onChange={setRxUnit} options={[{ value: 'lb', label: 'lb' }, { value: 'kg', label: 'kg' }]} />
+    </div>
+    <div className="measure-form">
+      {field(t('Men'), rxM, setRxM, rxUnit)}
+      {field(t('Women'), rxF, setRxF, rxUnit)}
+    </div>
+
+    <div className="small muted" style={{ margin: '16px 2px 6px' }}>{t('Alternatives')}</div>
+    {alts.length > 0 && <div className="chips" style={{ flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', marginBottom: 10 }}>
+      {alts.map((a, i) => <button key={i} className="chip nocap" aria-label={t('Remove {0}', a.rawName)}
+        onClick={() => setAlts(x => x.filter((_, j) => j !== i))}>{a.rawName} <Icon name="xmark" style={CHIP_ICON} /></button>)}
+    </div>}
+    <div className="row" style={{ gap: 8, marginBottom: 16 }}>
+      <TextField value={altText} maxLength={60} placeholder={t('e.g. Ski')} onChange={e => setAltText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addAlt() }} />
+      <Button icon="plus" onClick={addAlt} disabled={!altText.trim()} style={{ flex: '0 0 auto', width: 'auto' }}>{t('Add')}</Button>
+    </div>
+
+    <Button variant="primary" onClick={done}>{t('Done')}</Button>
+    {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" icon="trash" onClick={() => { close(); onDelete() }}>{t('Delete movement')}</Button></>}
+  </>
+}
+const movementSheet = (movement, onSave, onDelete) => ui().openSheet(close => <MovementSheet movement={movement} onSave={onSave} onDelete={onDelete} close={close} />)
+
+/* ============================ Settings → CrossFit ============================ */
+
+const HYP_TARGETS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 24]
+
+export function CrossFitSettings({ S, update }) {
+  const picks = Object.entries(aliasesOf(S)).sort(([a], [b]) => a.localeCompare(b))
+  return <>
+    <Section title={t('Programs')}>
+      <Row icon="flame" iconTint="var(--orange)" title={t('Count warm-ups')}
+        subtitle={t('Warm-up blocks in a main track start included. Extra tracks always count theirs.')}>
+        <Switch aria-label={t('Count warm-ups')} checked={!!S.wodWarmup} onChange={v => update(s => { s.wodWarmup = v })} />
+      </Row>
+      <SelectRow icon="target" iconTint="var(--green)" title={t('Hard sets per muscle per week')}
+        value={HYP_TARGETS.includes(S.hypTarget) ? S.hypTarget : 10} onChange={v => update(s => { s.hypTarget = v })}
+        options={HYP_TARGETS.map(n => ({ value: n, label: String(n) }))} />
+    </Section>
+    <Section title={t('Exercise picks')} footer={picks.length
+      ? t('A movement printed under one of these names gets that exercise. Remove one to pick again next time.')
+      : t('None yet. Picking an exercise for a movement in a program adds it here.')}>
+      {picks.map(([key, exId]) => <Row key={key} title={key} subtitle={exerciseNameFor(exOr(exId))}>
+        <button className="iconbtn" aria-label={t('Remove {0}', key)} onClick={() => useStore.getState().clearAlias(key)}><Icon name="xmark" /></button>
+      </Row>)}
+    </Section>
+  </>
+}

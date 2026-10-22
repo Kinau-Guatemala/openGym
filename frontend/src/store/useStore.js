@@ -244,6 +244,9 @@ export const DEF = {
   wods: {}, exAliases: {},
   // The weekly hard-set target per muscle the gap report holds each muscle against.
   hypTarget: 10,
+  // Whether a main track's warm-up block counts as work by default (the program editor's include
+  // toggle starts from it, lib/wod-draft.js includeOf). Extra tracks' warm-ups always count.
+  wodWarmup: false,
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 

@@ -243,6 +243,13 @@ describe('sign-in adoption helpers', () => {
     expect(localExtras(server, server)).toEqual({ workouts: 0, bodyweight: 0, customEx: 0 })
     expect(localExtras(null, server)).toEqual({ workouts: 0, bodyweight: 0, customEx: 0 })
   })
+  it('localExtras counts CrossFit programs and picks the server lacks', () => {
+    const wods = { '2026-10-22': { title: 'A', tracks: [], _ts: 5 }, '2026-10-23': { _ts: 6 } }
+    const exAliases = { copa: { exId: '42', _ts: 5 }, row: { _ts: 6 } }
+    expect(localExtras({ wods, exAliases }, server)).toEqual({ workouts: 0, bodyweight: 0, customEx: 0, setup: 2 })
+    // the same program and pick already on the server ask nothing
+    expect(localExtras({ wods, exAliases }, { wods, exAliases })).toEqual({ workouts: 0, bodyweight: 0, customEx: 0 })
+  })
   it('mergeStates with prefer keeps the preferred side\'s settings and plan although the other is newer', () => {
     const m = mergeStates(server, local, { prefer: 'a' })
     expect(m.unit).toBe('lb'); expect(m.restSec).toBe(60); expect(m.week).toEqual({ 1: ['r1'] })
