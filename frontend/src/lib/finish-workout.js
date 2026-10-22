@@ -1,7 +1,10 @@
 // The persisted boundary for a finished session. Keep this pure so compatibility tests can
 // exercise the exact shape the UI writes without mounting React or mutating store state.
-import { bestWeightForEntry, cleanupSg } from './history.js'
+import { bestWeightForEntry, cleanupSg, workoutVolume } from './history.js'
 import { hasCompletedWork, isSideSet } from './workout-model.js'
+import { completeBackfill } from './backfill.js'
+import { stampWorkout } from './sync-merge.js'
+import { rebuildPrHistory } from './workout-date.js'
 
 // planSec is live-session bookkeeping: a hold displaced before it finished puts its plan aside so
 // the row still knows what it is asking for (Workout.startTimed). A finished session keeps only
@@ -126,4 +129,19 @@ export function buildCompletedWorkout(active, { end = Date.now(), prs = [], snap
     ...(allNoProg ? { excludeFromProgression: true } : {}),
     ...(sessionNote ? { note: sessionNote } : {}),
   }
+}
+
+// Files a finished session logged into the past (`active.backfill`, built into `w` above) into
+// `s.workouts`, in place. Held against the history before it, the way an edit of a saved one is
+// (rebuildPrHistory): it gains a badge it leads with, and a later session it outdoes loses its
+// own. The confirmed weights are left alone, and so is s.active. Its start and end are in the
+// past; the stamp says when it was logged, which is what a merge after a reset elsewhere asks of
+// it (lib/sync-merge.js sinceReset). Returns the record as filed, badges and all.
+export function fileBackfill(s, active, w) {
+  w.vol = workoutVolume(w)
+  stampWorkout(w)
+  const replaced = active.backfill.replaceId ? s.workouts.find(x => x.id === active.backfill.replaceId) : null
+  const touched = [...new Set([...(replaced?.entries || []), ...w.entries].map(e => e?.id).filter(id => id != null))]
+  s.workouts = rebuildPrHistory(completeBackfill(s.workouts, active, w), touched, w)
+  return s.workouts.find(x => x === w || (w.id != null && x.id === w.id)) || w
 }
