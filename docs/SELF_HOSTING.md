@@ -445,6 +445,7 @@ NGINX_PORT=80              # port the web container listens on, inside the conta
 BACKEND=api                # name of the API service that /api is proxied to
 PORT=3000                  # port the API listens on; web proxies to the same value
 RESOLVER=127.0.0.11        # DNS nginx resolves BACKEND with — Docker's, unless you are not on Docker
+RESOLVER_IPV6=off          # on = also look BACKEND up over AAAA (IPv6-only private networks, e.g. Railway)
 BASE_PATH=                 # subpath openGym is served under, e.g. /gym — see below; empty = site root
 SESSION_DAYS=90            # how long a sign-in lasts
 ```
@@ -459,7 +460,8 @@ recreated API container does not leave it proxying to a dead IP, and `127.0.0.11
 Docker answers those lookups. Nothing listens there on another runtime, and an unreachable
 resolver does not fail fast — every `/api` request hangs until it times out. On Kubernetes set
 it to the cluster DNS service address (`kubectl -n kube-system get svc kube-dns`, commonly
-`10.96.0.10`); under Podman, to whatever its network provides.
+`10.96.0.10`); under Podman, to whatever its network provides. Where `BACKEND` resolves to an
+IPv6 address only, set `RESOLVER_IPV6=on`, and write an IPv6 `RESOLVER` in brackets (`[fd12::10]`).
 
 `SESSION_DAYS` is how long a browser sign-in and a phone pairing last, counted from when they
 were issued; lowering it never cuts an existing session short. A browser renews its session by
