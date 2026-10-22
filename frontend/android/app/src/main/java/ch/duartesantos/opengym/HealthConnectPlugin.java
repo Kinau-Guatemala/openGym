@@ -7,10 +7,17 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.contract.ActivityResultContract;
 import androidx.health.connect.client.HealthConnectClient;
 import androidx.health.connect.client.PermissionController;
+import androidx.health.connect.client.aggregate.AggregationResult;
+import androidx.health.connect.client.records.DistanceRecord;
 import androidx.health.connect.client.records.ExerciseSessionRecord;
 import androidx.health.connect.client.records.Record;
 import androidx.health.connect.client.records.WeightRecord;
 import androidx.health.connect.client.records.metadata.Metadata;
+import androidx.health.connect.client.request.AggregateRequest;
+import androidx.health.connect.client.request.ReadRecordsRequest;
+import androidx.health.connect.client.response.ReadRecordsResponse;
+import androidx.health.connect.client.time.TimeRangeFilter;
+import androidx.health.connect.client.units.Length;
 import androidx.health.connect.client.units.Mass;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -37,9 +44,11 @@ import org.json.JSONObject;
 
 /**
  * Writes finished workouts and weigh-ins to Health Connect (#200), the phone's own store for
- * health data, so other apps can read them. Write-only and off until the user turns it on in
- * Settings: no permission is asked for before that. What to write is worked out in JS
- * (lib/health-connect.js); this side only turns those plain objects into records.
+ * health data, so other apps can read them, and reads back the runs, walks, hikes and rides other
+ * apps recorded there. Off until the user turns it on in Settings: no permission is asked for
+ * before that. What to write, and what to make of what was read, is worked out in JS
+ * (lib/health-connect.js, lib/health-import.js); this side only turns plain objects into records
+ * and records into plain objects.
  *
  * Every record carries openGym's own id as its clientRecordId, so writing it again replaces it,
  * and "remove" finds exactly the records openGym wrote. The version is the time of the write:
@@ -54,10 +63,11 @@ import org.json.JSONObject;
  *
  * Usage from JS (lib/health-sync.js):
  *   const HC = registerPlugin('HealthConnect');
- *   await HC.status();              // { status: 'available' | 'update' | 'missing' | 'unsupported', granted }
- *   await HC.requestPermissions();  // { granted }
+ *   await HC.status();              // { status: 'available' | 'update' | 'missing' | 'unsupported', granted, read }
+ *   await HC.requestPermissions();  // { granted, read }
  *   await HC.write({ sessions: [...], weights: [...] });
  *   await HC.remove({ sessions: [ids], weights: [ids] });
+ *   await HC.readSessions({ since }); // { sessions: [{ id, start, end, type, distanceM, clientRecordId, packageName }] }
  *   await HC.openSettings();        // Health Connect's data screen, or its store page
  */
 @CapacitorPlugin(name = "HealthConnect")
@@ -67,6 +77,8 @@ public class HealthConnectPlugin extends Plugin {
     // The literal permission names, as declared in AndroidManifest.xml.
     private static final String WRITE_EXERCISE = "android.permission.health.WRITE_EXERCISE";
     private static final String WRITE_WEIGHT = "android.permission.health.WRITE_WEIGHT";
+    private static final String READ_EXERCISE = "android.permission.health.READ_EXERCISE";
+    private static final String READ_DISTANCE = "android.permission.health.READ_DISTANCE";
     // Health Connect takes at most this many records in one insert.
     private static final int CHUNK = 500;
 
@@ -77,10 +89,25 @@ public class HealthConnectPlugin extends Plugin {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P;
     }
 
-    private static Set<String> permissions() {
+    // `granted` answers for writing only, as it always has: a user who allowed writing and not
+    // reading keeps writing. Reading is asked for in the same dialog and answered as `read`.
+    private static Set<String> writePermissions() {
         Set<String> p = new HashSet<>();
         p.add(WRITE_EXERCISE);
         p.add(WRITE_WEIGHT);
+        return p;
+    }
+
+    private static Set<String> readPermissions() {
+        Set<String> p = new HashSet<>();
+        p.add(READ_EXERCISE);
+        p.add(READ_DISTANCE);
+        return p;
+    }
+
+    private static Set<String> permissions() {
+        Set<String> p = writePermissions();
+        p.addAll(readPermissions());
         return p;
     }
 
@@ -111,14 +138,17 @@ public class HealthConnectPlugin extends Plugin {
             JSObject r = new JSObject();
             r.put("status", status);
             r.put("granted", false);
+            r.put("read", false);
             call.resolve(r);
             return;
         }
         worker.execute(() -> {
             try {
+                Set<String> has = granted();
                 JSObject r = new JSObject();
                 r.put("status", status);
-                r.put("granted", granted().containsAll(permissions()));
+                r.put("granted", has.containsAll(writePermissions()));
+                r.put("read", has.containsAll(readPermissions()));
                 call.resolve(r);
             } catch (Exception e) {
                 call.reject(e.getMessage(), "failed");
@@ -143,11 +173,14 @@ public class HealthConnectPlugin extends Plugin {
         ActivityResultContract<Set<String>, Set<String>> contract = PermissionController.createRequestPermissionResultContract(PROVIDER);
         Set<String> got = contract.parseResult(result.getResultCode(), result.getData());
         // The dialog answers only for this time; ask Health Connect what stands now, since the
-        // user may also have granted one of the two and not the other.
+        // user may also have granted some of them and not the others.
         worker.execute(() -> {
             try {
+                Set<String> has = new HashSet<>(granted());
+                if (got != null) has.addAll(got);
                 JSObject r = new JSObject();
-                r.put("granted", (got != null && got.containsAll(permissions())) || granted().containsAll(permissions()));
+                r.put("granted", has.containsAll(writePermissions()));
+                r.put("read", has.containsAll(readPermissions()));
                 call.resolve(r);
             } catch (Exception e) {
                 call.reject(e.getMessage(), "failed");
@@ -201,6 +234,85 @@ public class HealthConnectPlugin extends Plugin {
                 call.reject(e.getMessage(), "failed");
             }
         });
+    }
+
+    // The runs, walks, hikes and rides that ended after `since` (ms), from every app, openGym
+    // included: what to skip is lib/health-import.js's call. Each with the distance Health Connect
+    // holds for its time from the same app, or null when there is none (or it may not be read).
+    @PluginMethod
+    public void readSessions(PluginCall call) {
+        if (!"available".equals(sdkStatus())) {
+            call.reject("Health Connect is not available", "unavailable");
+            return;
+        }
+        long since = call.getLong("since", System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000);
+        worker.execute(() -> {
+            try {
+                JSArray out = new JSArray();
+                String page = null;
+                do {
+                    ReadRecordsRequest<ExerciseSessionRecord> request = new ReadRecordsRequest<>(
+                            JvmClassMappingKt.getKotlinClass(ExerciseSessionRecord.class),
+                            TimeRangeFilter.after(Instant.ofEpochMilli(since)),
+                            Collections.emptySet(), true, 1000, page);
+                    @SuppressWarnings("unchecked")
+                    ReadRecordsResponse<ExerciseSessionRecord> response = (ReadRecordsResponse<ExerciseSessionRecord>)
+                            BuildersKt.runBlocking(EmptyCoroutineContext.INSTANCE, (scope, cont) -> client().readRecords(request, cont));
+                    for (ExerciseSessionRecord s : response.getRecords()) {
+                        String type = typeName(s.getExerciseType());
+                        if (type == null) continue;
+                        Metadata m = s.getMetadata();
+                        JSObject o = new JSObject();
+                        o.put("id", m.getId());
+                        o.put("start", s.getStartTime().toEpochMilli());
+                        o.put("end", s.getEndTime().toEpochMilli());
+                        o.put("type", type);
+                        o.put("distanceM", distance(s));
+                        o.put("clientRecordId", m.getClientRecordId());
+                        o.put("packageName", m.getDataOrigin().getPackageName());
+                        out.put(o);
+                    }
+                    page = response.getPageToken();
+                } while (page != null && !page.isEmpty());
+                JSObject r = new JSObject();
+                r.put("sessions", out);
+                call.resolve(r);
+            } catch (SecurityException e) {
+                call.reject(e.getMessage(), "permission");
+            } catch (Exception e) {
+                call.reject(e.getMessage(), "failed");
+            }
+        });
+    }
+
+    // Metres over the session's time, from the app that recorded it only: a phone and a watch
+    // both counting the same run would otherwise add up to twice the distance.
+    private Object distance(ExerciseSessionRecord s) {
+        try {
+            AggregateRequest request = new AggregateRequest(
+                    Collections.singleton(DistanceRecord.DISTANCE_TOTAL),
+                    TimeRangeFilter.between(s.getStartTime(), s.getEndTime()),
+                    Collections.singleton(s.getMetadata().getDataOrigin()));
+            AggregationResult result = (AggregationResult)
+                    BuildersKt.runBlocking(EmptyCoroutineContext.INSTANCE, (scope, cont) -> client().aggregate(request, cont));
+            Length total = result.get(DistanceRecord.DISTANCE_TOTAL);
+            return total == null ? JSONObject.NULL : total.getMeters();
+        } catch (Exception e) {
+            // READ_DISTANCE refused, or nothing to add up: the session still comes in, without a speed.
+            return JSONObject.NULL;
+        }
+    }
+
+    // The session types read back, by the names lib/health-import.js files them under; null for
+    // any other (strength, swimming…), which is left in Health Connect.
+    private static String typeName(int type) {
+        if (type == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING) return "running";
+        if (type == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL) return "running_treadmill";
+        if (type == ExerciseSessionRecord.EXERCISE_TYPE_WALKING) return "walking";
+        if (type == ExerciseSessionRecord.EXERCISE_TYPE_HIKING) return "hiking";
+        if (type == ExerciseSessionRecord.EXERCISE_TYPE_BIKING) return "biking";
+        if (type == ExerciseSessionRecord.EXERCISE_TYPE_BIKING_STATIONARY) return "biking_stationary";
+        return null;
     }
 
     // Health Connect's own screen for the data apps wrote, where the user can look at and delete

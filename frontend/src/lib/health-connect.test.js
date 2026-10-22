@@ -83,6 +83,10 @@ describe('healthRecords', () => {
     expect(r.sessions.map(s => s.id)).toEqual(['opengym-w-w1'])
     expect(r.weights.map(s => s.id)).toEqual(['opengym-bw-2026-09-17'])
   })
+  it('leaves out runs imported from Health Connect, which are there already', () => {
+    const S = { unit: 'kg', workouts: [workout([strength]), workout([treadmill], { id: 'hc-abc', src: 'hc' })] }
+    expect(healthRecords(S, { nameOf }).sessions.map(s => s.id)).toEqual(['opengym-w-w1'])
+  })
   it('copes with a state that has neither', () => {
     expect(healthRecords({}, { nameOf })).toEqual({ sessions: [], weights: [] })
   })

@@ -129,6 +129,14 @@ describe('Settings — Health Connect', () => {
     expect(mocks.enableHealth).toHaveBeenCalledTimes(1)
   })
 
+  it('offers to allow reading runs when only that was refused', async () => {
+    mocks.health = { on: true, written: {}, error: null, readError: 'permission' }
+    await mount()
+    expect(row('Permission withdrawn')).toBeUndefined()
+    await act(async () => { row('Reading runs not allowed').click() })
+    expect(mocks.enableHealth).toHaveBeenCalledTimes(1)
+  })
+
   it('points to installing Health Connect where it is an app of its own', async () => {
     mocks.status = { status: 'missing', granted: false }
     await mount()

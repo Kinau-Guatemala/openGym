@@ -80,11 +80,14 @@ function localMorning(iso) {
   return new Date(y, m - 1, d, 8, 0, 0, 0).getTime()
 }
 
-/** Everything the state has to give Health Connect: { sessions, weights }. */
+/**
+ * Everything the state has to give Health Connect: { sessions, weights }. A run imported from
+ * Health Connect (src 'hc', lib/health-import.js) is already there, and is not written again.
+ */
 export function healthRecords(S, { nameOf, speedUnit }) {
   const unit = S?.unit === 'lb' ? 'lb' : 'kg'
   return {
-    sessions: (S?.workouts || []).map(w => sessionRecord(w, { unit, nameOf, speedUnit })).filter(Boolean),
+    sessions: (S?.workouts || []).filter(w => w?.src !== 'hc').map(w => sessionRecord(w, { unit, nameOf, speedUnit })).filter(Boolean),
     weights: (S?.bodyweight || []).map(b => weightRecord(b, unit)).filter(Boolean),
   }
 }
