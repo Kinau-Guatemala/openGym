@@ -29,7 +29,7 @@ export const SHIPPED_ALIASES = {
 
   // Dumbbell (DB, DB´s)
   'db bench press': '0289', 'db elevated bench press': '0314',
-  'db skull cruche': '0351', 'copa': '0430', 'db tricep kick back': '0333',
+  'db skull cruch': '0351', 'copa': '0430', 'db tricep kick back': '0333',
   'db bicep curl': '0294', 'db martillo': '0313', 'martillo': '0313',
   'db strict press': '0426', 'db sea saw press': '3972', 'db arnold press': '2137', 'db push press': '1700',
   'db front fly': '0310', 'db lateral fly': '0334', 'db lateral fly to front fly': '0335',
@@ -57,7 +57,7 @@ export const SHIPPED_ALIASES = {
   'burpee': '1160', 'burpee bjo': '8704', 'bjo': '3887', 'bj': '3650', 'du': '3885',
   'squat': '3948', 'airsquat': '3948', 'air squat': '3948', 'jump squat': '0514', 'pulse squat': '3535',
   'lunge': '0612', 'reverse lunge': '1581', 'step up': '0801',
-  'sit up': '0736', 'crunche': '0274', 'tuck crunche': '0871', 'leg raise': '1163', 'strict leg raise': '0472',
+  'sit up': '0736', 'crunch': '0274', 'tuck crunch': '0871', 'leg raise': '1163', 'strict leg raise': '0472',
   'russian twist': '0687', 'plank': '0463', 'hollow': '1246', 'm climber': '0630',
   'inch worm': '1471', 'pop jack': '7556', 'wall climb': '5234',
   'wall ball': '2458',

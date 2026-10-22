@@ -21,7 +21,10 @@
 import { CATALOGUE, scoredSearch } from './exercises.js'
 import { SHIPPED_ALIASES } from './crossfit-aliases.js'
 
-const singular = w => (w.length >= 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w)
+// "crunches" → "crunch", "presses" → "press", "boxes" → "box"; "cleans" → "clean", "lunges" → "lunge".
+// The result never ends in a single s, so norm(norm(x)) === norm(x). ("zz", not "z": "sizes" is "size".)
+const singular = w => (/(?:ch|sh|x|zz|ss)es$/.test(w) ? w.slice(0, -2)
+  : w.length >= 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w)
 
 export const norm = text => String(text || '')
   .normalize('NFD').replace(/[̀-ͯ]/g, '')

@@ -406,6 +406,23 @@ describe('crossfit resolve: user aliases', () => {
     expect(norm('C&J')).toBe('c and j')
   })
 
+  it('reads -es plurals in the singular, and plain -s plurals still', () => {
+    expect(norm('Crunches')).toBe(norm('crunch'))
+    expect(norm('Tuck Crunches')).toBe('tuck crunch')
+    expect(norm('push presses')).toBe(norm('push press'))
+    expect(norm('push press')).toBe('push press')
+    expect(norm('boxes')).toBe('box')
+    expect(norm('Hang Cleans')).toBe('hang clean')
+    expect(norm('lunges')).toBe('lunge')
+    expect(norm('leg raises')).toBe('leg raise')
+    expect(norm('pull ups')).toBe('pull up')
+  })
+
+  it('is idempotent', () => {
+    const names = [...FIXTURE.map(([raw, rawName]) => [raw, rawName]).flat(), 'boxes', 'push presses', 'glasses', 'buzzes', 'sizes', "DB´ s", 'C&J']
+    for (const s of names) expect(norm(norm(s)), s).toBe(norm(s))
+  })
+
   it('a pick for a name the table already knows wins over the table', () => {
     expect(resolveMovement({ rawName: 'copas' }, { copa: { exId: '1741', _ts: 1 } })).toEqual({ exId: '1741', via: 'user' })
   })
