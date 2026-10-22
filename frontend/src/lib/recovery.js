@@ -1,7 +1,7 @@
 import { EXIDX, isAssisted } from './exercises.js'
 import { workoutAt } from './history.js'
 import { MUSCLES, musclesOf } from './muscles.js'
-import { isWarmupRow, dropsOf, isSideSet } from './workout-model.js'
+import { isWarmupRow, dropsOf, isSideSet, modeForSet } from './workout-model.js'
 import { estimate1RM, REP_CAP } from './onerm.js'
 import { rirOf, HARD_RIR } from './effort.js'
 
@@ -244,13 +244,29 @@ export function estimateSetRir(set, anchorKg, unit) {
   return { rir, source: 'estimated' }
 }
 
+// Minutes of cardio per counted set, and the most sets one cardio row can count.
+export const FATIGUE_CARDIO_MIN_PER_SET = 10
+export const FATIGUE_CARDIO_MAX_SETS = 6
+
+/** Sets one row counts for: clamp(min / 10, 1, 6) for a cardio-mode row, 1 otherwise. */
+export function cardioSetsOf(row, entry) {
+  if (modeForSet(row, entry?.target || {}) !== 'cardio') return 1
+  const min = numeric(row?.min)
+  if (!(min > 0)) return 1
+  return Math.min(FATIGUE_CARDIO_MAX_SETS, Math.max(1, min / FATIGUE_CARDIO_MIN_PER_SET))
+}
+
 // One session's per-muscle stimulus in quality-weighted effective sets. Every
 // completed set counts (warm-ups included: mechanical work is mechanical work, but a
 // row flagged as warm-up without a logged effort is far from failure by definition and
 // costs the floor weight even when no anchor exists yet to estimate it from);
 // drop-set drops count as extra sets; rest-pause `clusters` are NOT extra because
 // the row's own set already totals every burst (see applyIntensifierPlan/history.js).
-// Cardio/timed rows count as sets too. Each set is scaled by its RIR weight -
+// Cardio/timed rows count as sets too; a cardio-mode row (keyed on the row's own mode,
+// so a WOD ski erg row counts even though the catalogue files it under triceps) counts
+// clamp(min / 10, 1, 6) sets, so a 45-min run scores the same whether it was logged by
+// hand, from a WOD or imported from Health Connect, and a row of 10 min or less keeps
+// exactly the old single set. Each set is scaled by its RIR weight -
 // logged effort first, Epley-inverse estimate against the anchor second, full
 // credit when intensity is unknowable (rings, load-less imports). Anchors come
 // from the 90-day window ending at this session, never from its future.
@@ -259,9 +275,9 @@ function sessionEffSets(workout, anchors, opts = {}) {
   const score = (row, set, entry, weights, requireDone = true) => {
     if (requireDone && row?.done !== true) return
     const resolved = resolveSetRir(row, set, entry, workout, anchors, opts)
-    const count = resolved?.source !== 'logged' && isWarmupRow(set)
+    const count = (resolved?.source !== 'logged' && isWarmupRow(set)
       ? FATIGUE_RIR_FLOOR_WEIGHT
-      : rirWeightFor(resolved?.rir)
+      : rirWeightFor(resolved?.rir)) * cardioSetsOf(row, entry)
     for (const [slug, weight] of Object.entries(weights)) {
       if (Object.prototype.hasOwnProperty.call(MUSCLES_BY_SLUG, slug)) sums[slug] += count * weight
     }
