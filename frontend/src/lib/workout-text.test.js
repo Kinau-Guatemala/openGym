@@ -116,4 +116,9 @@ describe('workoutText exercise names per language', () => {
     _setLangState('en', {}, null, null)
     expect(nameLine()).toBe('Barbell Bench Press')
   })
+
+  it('writes a WOD calorie row as calories and minutes', () => {
+    const wod = { id: 'wod-2026-09-03', d: '2026-09-03', start: 0, end: 600000, name: 'WOD', entries: [{ id: 'row', sets: [{ mode: 'cardio', cal: 60, min: 3, done: true }] }] }
+    expect(workoutText(wod, { unit: 'kg', nameOf: () => 'row' })).toContain('\n60 cal · 3 min')
+  })
 })

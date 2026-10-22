@@ -14,14 +14,21 @@ import { LB_PER_KG } from './units.js'
 const GRID = { kg: 2.5, lb: 5 }
 const unitOf = u => (String(u || '').toLowerCase() === 'kg' ? 'kg' : 'lb')
 
-/** The movement's Rx load for S.body, in S.unit: `{ w, unit }`, or null when none is printed. */
-export function rxFor(movement, S) {
+/** The movement's Rx load for S.body as printed: `{ w, unit }`, or null when none is printed. */
+export function rxPrinted(movement, S) {
   const rx = movement?.rx
   if (!rx || typeof rx !== 'object') return null
   const pick = S?.body === 'female' ? (rx.female || rx.male) : rx.male
   const w = Number(pick?.w)
-  if (!(w > 0)) return null
-  const from = unitOf(pick.unit), to = S?.unit === 'lb' ? 'lb' : 'kg'
+  return w > 0 ? { w, unit: unitOf(pick.unit) } : null
+}
+
+/** The movement's Rx load for S.body, in S.unit: `{ w, unit }`, or null when none is printed. */
+export function rxFor(movement, S) {
+  const pick = rxPrinted(movement, S)
+  if (!pick) return null
+  const w = pick.w
+  const from = pick.unit, to = S?.unit === 'lb' ? 'lb' : 'kg'
   if (from === to) return { w, unit: to }
   const v = to === 'lb' ? w * LB_PER_KG : w / LB_PER_KG
   return { w: Math.round(v / GRID[to]) * GRID[to], unit: to }
