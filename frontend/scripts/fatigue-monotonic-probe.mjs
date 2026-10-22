@@ -4,14 +4,16 @@ const HOUR = 60 * 60 * 1000
 const DAY = 24 * HOUR
 const BASE = Date.UTC(2026, 0, 31, 12)
 const ID = '1254'
+const RUN = '0685'
 
-const workout = (start, weight, count = 8) => ({
+// `runMin`: a cardio row of that many minutes on top (duration-weighted, up to 6 sets).
+const workout = (start, weight, count = 8, runMin = 0) => ({
   d: new Date(start).toISOString(),
   start,
   entries: [{
     id: ID,
     sets: Array.from({ length: count }, () => ({ done: true, w: weight, r: 8 })),
-  }],
+  }, ...(runMin ? [{ id: RUN, sets: [{ done: true, min: runMin, speed: 10 }] }] : [])],
 })
 
 // Deterministic LCG: failures reproduce exactly without an external property-testing dependency.
@@ -30,18 +32,23 @@ for (let historyIndex = 0; historyIndex < 100; historyIndex += 1) {
     const ageHours = Math.floor(random() * 120 * 24)
     const weight = 40 + Math.floor(random() * 141)
     const count = 1 + Math.floor(random() * 12)
-    return workout(BASE - ageHours * HOUR, weight, count)
+    // Half the sessions carry a run, from 5 minutes (one set) to 2 hours (past the 6-set cap).
+    const runMin = random() < 0.5 ? 5 + Math.floor(random() * 116) : 0
+    return workout(BASE - ageHours * HOUR, weight, count, runMin)
   })
 
-  let previous = fatigueOf(history, BASE).chest
+  // Every muscle, not only chest: the runs load the legs.
+  let previous = fatigueOf(history, BASE)
   for (let hour = 1; hour <= 1080; hour += 1) {
-    const current = fatigueOf(history, BASE + hour * HOUR).chest
-    const increase = current - previous
-    largestIncrease = Math.max(largestIncrease, increase)
-    if (increase > 1e-12) {
-      throw new Error(
-        `fatigue increased in history ${historyIndex} at hour ${hour}: ${previous} -> ${current}`,
-      )
+    const current = fatigueOf(history, BASE + hour * HOUR)
+    for (const [slug, value] of Object.entries(current)) {
+      const increase = value - previous[slug]
+      largestIncrease = Math.max(largestIncrease, increase)
+      if (increase > 1e-12) {
+        throw new Error(
+          `${slug} fatigue increased in history ${historyIndex} at hour ${hour}: ${previous[slug]} -> ${value}`,
+        )
+      }
     }
     previous = current
     comparisons += 1
@@ -78,10 +85,10 @@ for (const oldImport of [workout(BASE - 90 * DAY, 140, 10), workout(BASE - 90 * 
 
 const deletionHistory = [
   workout(BASE - FATIGUE_SCAN_MS - DAY, 100, 15),
-  workout(BASE - 3 * DAY, 100, 8),
+  workout(BASE - 3 * DAY, 100, 8, 45),
   workout(BASE - 2 * DAY, 100, 8),
-  workout(BASE - DAY, 60, 4),
-  workout(BASE, 120, 10),
+  workout(BASE - DAY, 60, 4, 90),
+  workout(BASE, 120, 10, 30),
 ]
 const beforePinnedDeletion = fatigueOf(deletionHistory, BASE)
 // Pinned latest-deletion case: removing the newest session never increases fatigue.

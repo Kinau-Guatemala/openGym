@@ -367,11 +367,13 @@ export function resolveSetRir(row, set, entry, workout, anchors, opts = {}) {
 // before it.
 function fatigueStimuli(workouts, current, opts = {}) {
   const scanCutoff = current - FATIGUE_SCAN_MS
-  // The pool covers every window a scored session can read: its anchor reaches 90d
-  // back from its own timestamp, and the oldest scored session is 30d old, so the
-  // pool spans 120d. Narrower would let sessions age out of anchors as `now' advances
-  // and fatigue would rise during rest.
-  const poolCutoff = current - (FATIGUE_SCAN_MS + FATIGUE_RIR_WINDOW_MS)
+  // The pool covers every window a scored session can read: the oldest scored session
+  // is 30d old, its acute:chronic gain sums the effective sets of sessions up to 28d
+  // before it, and each of those is weighed against its own anchor reaching 90d further
+  // back, so the pool spans 148d. Narrower would let sessions age out of anchors as
+  // `now' advances and fatigue would rise during rest (120d did: a 30.5d-old session
+  // inside a scored session's chronic window lost its 120d-old anchor).
+  const poolCutoff = current - (FATIGUE_SCAN_MS + FATIGUE_CHRONIC_WINDOW_MS + FATIGUE_RIR_WINDOW_MS)
   const pool = (workouts || [])
     .map((workout, index) => ({ workout, index, timestamp: workoutTimestamp(workout) }))
     .filter(item => Number.isFinite(item.timestamp) && item.timestamp > poolCutoff)

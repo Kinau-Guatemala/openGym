@@ -109,7 +109,7 @@ history-dependent, so deleting a mid-history workout may re-score later sessions
 rest never increases fatigue, out-of-pool imports stay irrelevant, and deleting
 the *chronologically latest* session never increases anything. A subtle
 correctness point the probe caught twice during development: the info pool must
-span scan + anchor window (120d), otherwise sessions age out of anchors as `now`
+span scan + chronic + anchor window (148d; 120d until the T09 probe found a 30.5d session losing its anchor), otherwise sessions age out of anchors as `now`
 advances and rest would raise fatigue; and "latest" means max timestamp, not
 array order.
 
@@ -133,7 +133,7 @@ packs, pt-BR fingerprint refreshed. Measured on the reporter's history (30d):
 exactly as trained: heavy top sets plus light ramp volume.
 
 - `frontend/src/lib/recovery.js` — phase 1: sets stimulus + per-muscle HL; phase 2:
-  RIR weighting, 90-day anchors (kg-canonical), acute:chronic gain, 120d info pool.
+  RIR weighting, 90-day anchors (kg-canonical), acute:chronic gain, 148d info pool.
 - `frontend/src/lib/recovery.test.js`, `recovery-view.test.js`,
   `src/views/Stats.recovery.test.jsx` — re-pinned expectations (same
   structure, sets-based numbers) + RIR/deload/deletion-contract tests.
