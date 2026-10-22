@@ -53,7 +53,27 @@ export function writeState(dir, uid, S) {
   fs.writeFileSync(path.join(dir, 'state-' + uid + '.json'), JSON.stringify(S));
 }
 
-/** A profile that has consented and has some history — the usual starting point. */
+/* The day sampleState's history is written for. A review reads the last twelve weeks back from
+ * today, so fixtures dated July 2026 fell out of the window on their own once the calendar moved
+ * on, and ten coach tests started failing without a line of code changing.
+ *
+ * pinToday() moves the process's idea of "now" to that day and lets it keep running from there:
+ * Date.now() and `new Date()` read the real clock plus a fixed offset, so elapsed time, polling
+ * loops and timeouts behave exactly as before. Only the date the code under test sees is pinned. */
+export const SAMPLE_TODAY = '2026-07-25';
+export function pinToday(iso = SAMPLE_TODAY) {
+  const RealDate = globalThis.Date.__real || globalThis.Date;
+  const offset = RealDate.parse(iso + 'T12:00:00Z') - RealDate.now();
+  class PinnedDate extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [RealDate.now() + offset])); }
+    static now() { return RealDate.now() + offset; }
+  }
+  PinnedDate.__real = RealDate;
+  globalThis.Date = PinnedDate;
+}
+
+/** A profile that has consented and has some history — the usual starting point. Its dates are
+ *  relative to SAMPLE_TODAY: a test that reads a review window from it calls pinToday() first. */
 export function sampleState(over = {}) {
   return {
     unit: 'kg', lang: 'en', effort: 'rpe', targetW: 80,

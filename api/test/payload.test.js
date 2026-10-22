@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tempData, sampleState } from './helpers.mjs';
+import { pinToday, tempData, sampleState } from './helpers.mjs';
 
 tempData();
+pinToday();   // sampleState's history is dated for SAMPLE_TODAY (helpers.mjs)
 const payload = await import('../coach/core/payload.js');
 const { handleFor, HANDLE_LENGTH } = await import('../coach/handle.js');
 

@@ -4,9 +4,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { tempData } from './helpers.mjs';
+import { pinToday, tempData } from './helpers.mjs';
 
 tempData();
+pinToday();   // sampleState's history is dated for SAMPLE_TODAY (helpers.mjs)
 const cfg = await import('../coach/config.js');
 const { coachRoutes } = await import('../coach/routes.js');
 
