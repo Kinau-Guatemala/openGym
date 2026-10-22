@@ -12,10 +12,11 @@ import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
 import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
 import { loadOfWeeklyPlan, loadOfWorkouts, muscleBalanceWindow, rankOf, MUSCLES, MUSCLE_NAME, musclesOf } from '../lib/muscles.js'
-import { fatigueOf, strengthOf, STRENGTH_FLOOR, LB_TO_KG } from '../lib/recovery.js'
+import { fatigueOf, strengthOf, STRENGTH_FLOOR } from '../lib/recovery.js'
 import { strengthExerciseRowsForMuscle } from '../lib/strength-exercises.js'
 import { fatigueStateOf } from '../lib/recovery-view.js'
 import { muscleGap } from '../lib/muscle-gap.js'
+import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { e1rmSeries, best1RM, formulaOf } from '../lib/onerm.js'
 import { currentDbLoad, workoutAs } from '../lib/dumbbells.js'
 import { maxRepsSeries } from '../lib/pyramid.js'
@@ -138,16 +139,6 @@ function useGap(S, now) {
 function fatigueLabel(value) {
   const state = fatigueStateOf(value)
   return t(state === 'ready' ? 'Ready' : state === 'recovering' ? 'Recovering' : 'Fatigued')
-}
-
-// The user's own last registered bodyweight, in kg: the body-mass part of a bodyweight
-// exercise's load for fatigue and for estimated effort, so both read the same set the same way.
-function profileBodyweightKg(S) {
-  const entries = S.bodyweight || []
-  if (!entries.length) return null
-  const last = entries.slice().sort((a, b) => String(a.d).localeCompare(String(b.d))).at(-1)
-  if (!last || !(last.w > 0)) return null
-  return S.unit === 'lb' ? last.w * LB_TO_KG : last.w
 }
 
 function MuscleBalance({ S }) {

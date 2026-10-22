@@ -27,6 +27,7 @@ import { exercisePicker, confirmSheet } from '../sheets.jsx'
 import { DEMO } from '../lib/demo.js'
 import { muscleGap } from '../lib/muscle-gap.js'
 import { MUSCLE_NAME } from '../lib/muscles.js'
+import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod } from '../lib/coach-api.js'
 import { INTAKE_ROUTE, beginIntake, currentIntake, downscale, failureOf, fromDataUrl, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
@@ -121,7 +122,7 @@ export default function CrossFit() {
 // the weekly target; the Stats card has the rest.
 function GapLine({ S, onOpen }) {
   if (!S.workouts?.length) return null
-  const below = muscleGap(S.workouts, Date.now(), { target: S.hypTarget ?? 10, unit: S.unit }).filter(r => r.deficit > 0).slice(0, 3)
+  const below = muscleGap(S.workouts, Date.now(), { target: S.hypTarget ?? 10, unit: S.unit, bodyweightKg: profileBodyweightKg(S) }).filter(r => r.deficit > 0).slice(0, 3)
   return <div className="muted small" style={{ marginBottom: 14, cursor: 'pointer' }} {...tappable(onOpen)}>
     {below.length
       ? t('Below the weekly target: {0}', below.map(r => `${t(MUSCLE_NAME[r.muscle])} ${fmtNum(Math.round(r.setsPerWeek * 10) / 10)}/${fmtNum(r.target)}`).join(' · '))
