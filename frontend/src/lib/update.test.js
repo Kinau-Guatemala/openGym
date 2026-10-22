@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { checkForUpdate, sha256, resetUpdateCheck, fetchChecksum } from './update.js'
+import { checkForUpdate, sha256, resetUpdateCheck, fetchChecksum, compareSemver } from './update.js'
 
 // __APP_VERSION__ is defined at build time by vite.config.js (reads package.json).
 // In the test environment vitest applies the same define, so it's available here.
@@ -226,5 +226,32 @@ describe('semver comparison (via checkForUpdate behavior)', () => {
     // minus one on the minor when possible.
     mockRelease('v' + [MAJ, Math.max(0, MIN - 1), 0].join('.'))
     expect((await checkForUpdate()).hasUpdate).toBe(false)
+  })
+})
+
+describe('compareSemver: fork builds (-<word>.N) count on top of their base', () => {
+  it('orders 1.4.1 < 1.4.1-kinau.1 < 1.4.1-kinau.2 < 1.4.2', () => {
+    const order = ['1.4.1', '1.4.1-kinau.1', '1.4.1-kinau.2', '1.4.2']
+    for (let i = 0; i < order.length - 1; i++) {
+      expect(compareSemver(order[i + 1], order[i])).toBe(1)
+      expect(compareSemver(order[i], order[i + 1])).toBe(-1)
+    }
+  })
+
+  it('lets a plain upstream release win over an older base with many fork builds', () => {
+    expect(compareSemver('1.4.2', '1.4.1-kinau.5')).toBe(1)
+    expect(compareSemver('v1.4.10-kinau.1', '1.4.9-kinau.7')).toBe(1)
+  })
+
+  it('reads the tag and the app version alike, with or without v and build metadata', () => {
+    expect(compareSemver('v1.4.1-kinau.2', '1.4.1-kinau.2+abc')).toBe(0)
+  })
+
+  it('never throws on malformed input, reading what it cannot parse as 0', () => {
+    for (const v of ['', 'garbage', 'v', '1..2', '1.4.1-', '1.4.1-kinau', '-kinau.1', null, undefined]) {
+      expect(() => compareSemver(v, '1.4.1')).not.toThrow()
+    }
+    expect(compareSemver('1.4.1-kinau', '1.4.1')).toBe(0)
+    expect(compareSemver('garbage', '0.0.0')).toBe(0)
   })
 })

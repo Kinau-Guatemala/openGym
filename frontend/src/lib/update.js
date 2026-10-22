@@ -27,11 +27,21 @@ export const RELEASES_PAGE = `https://github.com/${REPO}/releases/latest`
  * unnoticed. Semver says the metadata plays no part in precedence, so "1.3.7+anything" and
  * "1.3.7" are the same version here. Dropped on both operands, so it holds whichever side
  * carries it.
+ *
+ * A "-<word>.N" suffix counts as the Nth fork build on top of its base, so
+ * 1.4.1 < 1.4.1-kinau.1 < 1.4.1-kinau.2 < 1.4.2. Anything unreadable counts as 0, never throws.
+ * ponytail: fork-only ordering, the reverse of semver's pre-release precedence; drop it if the
+ * fork ever tags plain versions or ships betas through releases/latest.
  */
-function compareSemver(a, b) {
-  const pa = a.replace(/^v/, '').split('+')[0].split('.').map(Number)
-  const pb = b.replace(/^v/, '').split('+')[0].split('.').map(Number)
-  for (let i = 0; i < 3; i++) {
+export function compareSemver(a, b) {
+  const parse = v => {
+    const [core, suffix = ''] = String(v ?? '').replace(/^v/, '').split('+')[0].split(/-(.*)/)
+    const n = core.split('.').slice(0, 3).map(x => parseInt(x, 10) || 0)
+    return [n[0] || 0, n[1] || 0, n[2] || 0, parseInt(suffix.match(/\.(\d+)$/)?.[1], 10) || 0]
+  }
+  const pa = parse(a)
+  const pb = parse(b)
+  for (let i = 0; i < 4; i++) {
     const diff = (pa[i] || 0) - (pb[i] || 0)
     if (diff > 0) return 1
     if (diff < 0) return -1

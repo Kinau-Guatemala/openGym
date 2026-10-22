@@ -74,6 +74,10 @@ jobs:
           cd frontend
           npm ci
           npm test
+          # The app reports, and the updater compares, the tag's version (1.4.1-kinau.2), not
+          # package.json's upstream one; without it every fork build would call itself 1.4.1.
+          # Checkout-only: no commit, no tag.
+          npm version "${TAG#v}" --no-git-tag-version --allow-same-version --ignore-scripts
           npm run build:mobile
           cd android
           ./gradlew --no-daemon assembleRelease
