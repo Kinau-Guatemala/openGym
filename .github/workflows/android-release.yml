@@ -1,4 +1,6 @@
-# The Kinau fork's signed APK (gt.kinau.opengym), attached to a GitHub release on every v* tag.
+# The Kinau fork's signed APK (gt.kinau.opengym), attached to a GitHub release on every fork tag,
+# vX.Y.Z-kinau.N. Upstream's own tags (v1.4.2, …) reach the fork whenever tags are synced and must
+# never be signed with the Kinau key: that would offer every phone a different app as an update.
 # The in-app updater (frontend/src/lib/update.js) reads Kinau-Guatemala/openGym's latest release
 # and takes its .apk and .apk.sha256 assets, so both are uploaded here. Mirrors upstream's
 # build:apk job in .gitlab-ci.yml: build:mobile, assembleRelease, zipalign, apksigner.
@@ -27,7 +29,7 @@ name: Android release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*-kinau.*']
 
 permissions:
   contents: write
@@ -43,7 +45,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      # The tag filter is a glob; this is the exact scheme the updater orders (update.js).
+      - name: Check the tag
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-kinau\.[0-9]+$'; then
+            echo "::error::$GITHUB_REF_NAME is not a fork release tag (vX.Y.Z-kinau.N)."
+            exit 1
+          fi
+
+      # No token left in .git/config for npm, Gradle or their plugins to read.
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -56,9 +69,25 @@ jobs:
           java-version: 21
           cache: gradle
 
-      - name: Build and sign the APK
+      # No secrets in this step: it runs dependency install scripts, the test suite, Vite and
+      # Gradle plugins, any of which could read its environment.
+      - name: Build the unsigned APK
+        run: |
+          set -eu
+          cd frontend
+          npm ci
+          npm test
+          # The app reports, and the updater compares, the tag's version (1.4.1-kinau.2), not
+          # package.json's upstream one; without it every fork build would call itself 1.4.1.
+          # Checkout-only: no commit, no tag.
+          npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version --ignore-scripts
+          npm run build:mobile
+          cd android
+          ./gradlew --no-daemon assembleRelease
+
+      # The key only ever meets zipalign and apksigner from the SDK.
+      - name: Sign the APK
         env:
-          TAG: ${{ github.ref_name }}
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -67,48 +96,36 @@ jobs:
           set -eu
           # A release must never quietly ship an APK nobody can install.
           if [ -z "$ANDROID_KEYSTORE_B64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
-            echo "::error::$TAG is a release tag but the signing secrets are not set (see this workflow's header)."
+            echo "::error::$GITHUB_REF_NAME is a release tag but the signing secrets are not set (see this workflow's header)."
             exit 1
           fi
           export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
-          cd frontend
-          npm ci
-          npm test
-          # The app reports, and the updater compares, the tag's version (1.4.1-kinau.2), not
-          # package.json's upstream one; without it every fork build would call itself 1.4.1.
-          # Checkout-only: no commit, no tag.
-          npm version "${TAG#v}" --no-git-tag-version --allow-same-version --ignore-scripts
-          npm run build:mobile
-          cd android
-          ./gradlew --no-daemon assembleRelease
-          UNSIGNED=app/build/outputs/apk/release/app-release-unsigned.apk
-          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-          APK="$GITHUB_WORKSPACE/openGym-${TAG#v}.apk"
           KS="$RUNNER_TEMP/release.jks"
+          trap 'rm -f "$KS"' EXIT
           printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > "$KS"
-          "$BT/zipalign" -f -p 4 "$UNSIGNED" aligned.apk
+          UNSIGNED=frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          APK="openGym-${GITHUB_REF_NAME#v}.apk"
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
           "$BT/apksigner" sign \
             --ks "$KS" \
             --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
             --ks-key-alias "$ANDROID_KEY_ALIAS" \
             --key-pass env:ANDROID_KEY_PASSWORD \
-            --out "$APK" aligned.apk
-          rm -f "$KS"
+            --out "$APK" "$RUNNER_TEMP/aligned.apk"
           "$BT/apksigner" verify --print-certs "$APK"
-          cd "$GITHUB_WORKSPACE"
           # The updater refuses an APK without its published digest.
-          sha256sum "$(basename "$APK")" > "$APK.sha256"
+          sha256sum "$APK" > "$APK.sha256"
           cat "$APK.sha256"
 
       - name: Attach to the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
         run: |
           set -eu
-          files="openGym-${TAG#v}.apk openGym-${TAG#v}.apk.sha256"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" $files --clobber
+          files="openGym-${GITHUB_REF_NAME#v}.apk openGym-${GITHUB_REF_NAME#v}.apk.sha256"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" $files --clobber
           else
-            gh release create "$TAG" $files --verify-tag --title "$TAG" --generate-notes
+            gh release create "$GITHUB_REF_NAME" $files --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
           fi
