@@ -2332,4 +2332,17 @@ export default {
   'Give the Coach the go-ahead': 'Engedély megadása a Coachnak',
   'Read the image again': 'Kép újraolvasása',
   'Your image was read. Review it': 'A képed beolvasva. Nézd át',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'WOD rögzítése',
+  'Log workout': 'Edzés rögzítése',
+  'Save log': 'Rögzítés mentése',
+  'Already logged. Saving replaces it.': 'Már rögzítve. A mentés lecseréli.',
+  'Score': 'Eredmény',
+  'Extra reps': 'Extra ismétlés',
+  'Weight': 'Súly',
+  'Done as prescribed, no scaling.': 'Előírás szerint, skálázás nélkül.',
+  'Substitute': 'Csere',
+  'Reps each side': 'Ismétlés oldalanként',
+  'Nothing to log: pick a track and an exercise for each movement': 'Nincs mit rögzíteni: válassz egy pályát és minden mozdulathoz egy gyakorlatot',
 }

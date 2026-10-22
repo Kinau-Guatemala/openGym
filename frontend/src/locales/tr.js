@@ -2329,4 +2329,17 @@ export default {
   'Give the Coach the go-ahead': 'Koç’a onay ver',
   'Read the image again': 'Görseli yeniden oku',
   'Your image was read. Review it': 'Görselin okundu. Gözden geçir',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'WOD kaydet',
+  'Log workout': 'Antrenmanı kaydet',
+  'Save log': 'Kaydı sakla',
+  'Already logged. Saving replaces it.': 'Zaten kaydedildi. Kaydetmek onu değiştirir.',
+  'Score': 'Skor',
+  'Extra reps': 'Ek tekrar',
+  'Weight': 'Ağırlık',
+  'Done as prescribed, no scaling.': 'Reçete edildiği gibi, ölçeklemeden.',
+  'Substitute': 'Değiştir',
+  'Reps each side': 'Taraf başına tekrar',
+  'Nothing to log: pick a track and an exercise for each movement': 'Kaydedecek bir şey yok: bir parkur ve her hareket için bir egzersiz seç',
 }

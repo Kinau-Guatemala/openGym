@@ -2322,4 +2322,17 @@ export default {
   'Give the Coach the go-ahead': '同意教練使用',
   'Read the image again': '重新讀取圖片',
   'Your image was read. Review it': '圖片已讀取，請查看',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': '記錄 WOD',
+  'Log workout': '記錄訓練',
+  'Save log': '儲存記錄',
+  'Already logged. Saving replaces it.': '已記錄。儲存會取代它。',
+  'Score': '成績',
+  'Extra reps': '額外次數',
+  'Weight': '重量',
+  'Done as prescribed, no scaling.': '按規定完成，未降級。',
+  'Substitute': '替換',
+  'Reps each side': '每側次數',
+  'Nothing to log: pick a track and an exercise for each movement': '沒有可記錄的內容：選擇一個軌道並為每個動作選一個練習',
 }

@@ -2340,4 +2340,17 @@ export default {
   'Give the Coach the go-ahead': 'อนุญาตให้โค้ช',
   'Read the image again': 'อ่านรูปภาพอีกครั้ง',
   'Your image was read. Review it': 'อ่านรูปภาพของคุณแล้ว ตรวจสอบเลย',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'บันทึก WOD',
+  'Log workout': 'บันทึกการออกกำลังกาย',
+  'Save log': 'บันทึกรายการ',
+  'Already logged. Saving replaces it.': 'บันทึกไว้แล้ว การบันทึกจะแทนที่',
+  'Score': 'คะแนน',
+  'Extra reps': 'ครั้งเพิ่มเติม',
+  'Weight': 'น้ำหนัก',
+  'Done as prescribed, no scaling.': 'ทำตามที่กำหนด ไม่ปรับลด',
+  'Substitute': 'เปลี่ยนท่า',
+  'Reps each side': 'ครั้งต่อข้าง',
+  'Nothing to log: pick a track and an exercise for each movement': 'ไม่มีอะไรให้บันทึก: เลือกแทร็กและท่าสำหรับแต่ละการเคลื่อนไหว',
 }

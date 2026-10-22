@@ -2329,4 +2329,17 @@ export default {
   'Give the Coach the go-ahead': 'कोच को अनुमति दें',
   'Read the image again': 'छवि फिर से पढ़ें',
   'Your image was read. Review it': 'आपकी छवि पढ़ ली गई। इसकी समीक्षा करें',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'WOD दर्ज करें',
+  'Log workout': 'वर्कआउट दर्ज करें',
+  'Save log': 'रिकॉर्ड सहेजें',
+  'Already logged. Saving replaces it.': 'पहले से दर्ज है। सहेजने से यह बदल जाएगा।',
+  'Score': 'स्कोर',
+  'Extra reps': 'अतिरिक्त रेप्स',
+  'Weight': 'वज़न',
+  'Done as prescribed, no scaling.': 'जैसा निर्धारित था, बिना स्केल किए।',
+  'Substitute': 'बदलें',
+  'Reps each side': 'हर तरफ़ रेप्स',
+  'Nothing to log: pick a track and an exercise for each movement': 'दर्ज करने को कुछ नहीं: एक ट्रैक और हर मूवमेंट के लिए एक व्यायाम चुनें',
 }

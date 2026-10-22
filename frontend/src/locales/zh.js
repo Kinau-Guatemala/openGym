@@ -2329,4 +2329,17 @@ export default {
   'Give the Coach the go-ahead': '同意教练使用',
   'Read the image again': '重新读取图片',
   'Your image was read. Review it': '图片已读取，请查看',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': '记录 WOD',
+  'Log workout': '记录训练',
+  'Save log': '保存记录',
+  'Already logged. Saving replaces it.': '已记录。保存将替换它。',
+  'Score': '成绩',
+  'Extra reps': '额外次数',
+  'Weight': '重量',
+  'Done as prescribed, no scaling.': '按规定完成，未降级。',
+  'Substitute': '替换',
+  'Reps each side': '每侧次数',
+  'Nothing to log: pick a track and an exercise for each movement': '没有可记录的内容：选择一个轨道并为每个动作选一个练习',
 }
