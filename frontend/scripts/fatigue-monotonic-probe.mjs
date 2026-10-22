@@ -5,15 +5,22 @@ const DAY = 24 * HOUR
 const BASE = Date.UTC(2026, 0, 31, 12)
 const ID = '1254'
 const RUN = '0685'
+const PUSHUP = '0662'
 
 // `runMin`: a cardio row of that many minutes on top (duration-weighted, up to 6 sets).
-const workout = (start, weight, count = 8, runMin = 0) => ({
+// `wod`: a logged WOD's metcon rows on top (lib/wod-log.js), each with the `wodRir` fallback:
+// loaded rows the anchor can still estimate, and push-ups too many reps to estimate.
+const workout = (start, weight, count = 8, runMin = 0, wod = 0) => ({
   d: new Date(start).toISOString(),
   start,
   entries: [{
     id: ID,
     sets: Array.from({ length: count }, () => ({ done: true, w: weight, r: 8 })),
-  }, ...(runMin ? [{ id: RUN, sets: [{ done: true, min: runMin, speed: 10 }] }] : [])],
+  }, ...(runMin ? [{ id: RUN, sets: [{ done: true, min: runMin, speed: 10 }] }] : []),
+  ...(wod ? [
+    { id: ID, noProg: true, sets: Array.from({ length: wod }, () => ({ done: true, w: weight * 0.6, r: 5, wodRir: 5 })) },
+    { id: PUSHUP, noProg: true, sets: Array.from({ length: wod }, () => ({ done: true, w: 0, r: 20, wodRir: 5 })) },
+  ] : [])],
 })
 
 // Deterministic LCG: failures reproduce exactly without an external property-testing dependency.
@@ -34,7 +41,9 @@ for (let historyIndex = 0; historyIndex < 100; historyIndex += 1) {
     const count = 1 + Math.floor(random() * 12)
     // Half the sessions carry a run, from 5 minutes (one set) to 2 hours (past the 6-set cap).
     const runMin = random() < 0.5 ? 5 + Math.floor(random() * 116) : 0
-    return workout(BASE - ageHours * HOUR, weight, count, runMin)
+    // A third carry a WOD's metcon rows, 1 to 10 rounds.
+    const wod = random() < 1 / 3 ? 1 + Math.floor(random() * 10) : 0
+    return workout(BASE - ageHours * HOUR, weight, count, runMin, wod)
   })
 
   // Every muscle, not only chest: the runs load the legs.
@@ -87,8 +96,8 @@ const deletionHistory = [
   workout(BASE - FATIGUE_SCAN_MS - DAY, 100, 15),
   workout(BASE - 3 * DAY, 100, 8, 45),
   workout(BASE - 2 * DAY, 100, 8),
-  workout(BASE - DAY, 60, 4, 90),
-  workout(BASE, 120, 10, 30),
+  workout(BASE - DAY, 60, 4, 90, 6),
+  workout(BASE, 120, 10, 30, 4),
 ]
 const beforePinnedDeletion = fatigueOf(deletionHistory, BASE)
 // Pinned latest-deletion case: removing the newest session never increases fatigue.
