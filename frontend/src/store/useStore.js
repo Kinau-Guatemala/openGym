@@ -27,7 +27,9 @@ import { DEFAULT_TEMPLATE_ID } from '../lib/structuralBalanceTemplates.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 import { sanitizeAccent } from '../lib/accent.js'
-import { pruneWods, validWod, withWod, withAlias } from '../lib/wods.js'
+import { pruneWods, validWod, withWod, withAlias, wodOf } from '../lib/wods.js'
+import { buildWodWorkout } from '../lib/wod-log.js'
+import { fileBackfill } from '../lib/finish-workout.js'
 
 const KEY = 'gym_state_v1'
 // Where the saved copy stands with the server: the revision it descends from, and its own `_ts`
@@ -1385,6 +1387,20 @@ export const useStore = create((set, get) => {
       if (typeof key !== 'string' || !key) return false
       get().update(S => { S.exAliases = withAlias(S.exAliases, key, null, highestStamp(S) + 1) })
       return true
+    },
+    // The program posted for `date` logged after class (lib/wod-log.js): filed into the past like
+    // any backfilled session, as `wod-<date>`, so logging the day again edits it. S.active, which
+    // may hold a session still in progress, is never touched. Returns the workout as filed with its
+    // badges, for the finish summary; null when there is no program or nothing to log.
+    logWod(date, choice, logged) {
+      const program = wodOf(get().S, date)
+      if (!program) return null
+      const { active, w } = buildWodWorkout(get().S, date, program, choice, logged)
+      if (!w.entries.length) return null
+      let shown = w
+      get().update(S => { shown = fileBackfill(S, active, w) })
+      get().autoBackupNow()
+      return { w: shown, prs: [...(shown.prs || [])] }
     },
     // An edit that took out every set deletes the workout rather than saving it empty.
     deleteHistoryEdit() {

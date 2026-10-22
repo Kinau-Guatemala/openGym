@@ -85,3 +85,26 @@ describe('load, export and import', () => {
     expect(S().hypTarget).toBe(10)
   })
 })
+
+describe('logWod', () => {
+  const program = { title: 'EMOM', tracks: [{ id: 'full', label: 'Full Equipment', kind: 'main', blocks: [
+    { id: 'b1', format: 'emom', capMin: 10, movements: [{ id: 'm0', rawName: 'c and j', exId: '5122', dose: { reps: 2 }, rx: { male: { w: 100, unit: 'kg' } }, alts: [] }] },
+  ] }] }
+
+  it('files wod-<date> next to a live session, and a re-log edits it', () => {
+    const { setWod, logWod, update } = useStore.getState()
+    setWod('2026-10-13', program)
+    update(s => { s.active = { id: 'live', d: '2026-10-20', start: 5, entries: [{ id: '0032', sets: [{ w: 100, r: 5, done: false }] }] } })
+    const live = clone(S().active)
+    const first = logWod('2026-10-13', { tracks: ['full'] }, { moves: { 'full/b1/m0': { w: 90 } } })
+    expect(first.w).toMatchObject({ id: 'wod-2026-10-13', src: 'wod' })
+    expect(first.prs).toEqual(['5122'])
+    expect(S().active).toEqual(live)
+    logWod('2026-10-13', { tracks: ['full'] }, { moves: { 'full/b1/m0': { w: 95 } } })
+    const wods = S().workouts.filter(w => w.d === '2026-10-13')
+    expect(wods).toHaveLength(1)
+    expect(wods[0].entries[0].sets[0].w).toBe(95)
+    expect(S().active).toEqual(live)
+    expect(logWod('2026-10-14', { tracks: ['full'] }, {})).toBeNull()
+  })
+})
