@@ -27,6 +27,7 @@ import { DEFAULT_TEMPLATE_ID } from '../lib/structuralBalanceTemplates.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 import { sanitizeAccent } from '../lib/accent.js'
+import { pruneWods, validWod, withWod, withAlias } from '../lib/wods.js'
 
 const KEY = 'gym_state_v1'
 // Where the saved copy stands with the server: the revision it descends from, and its own `_ts`
@@ -237,6 +238,12 @@ export const DEF = {
   // cleared) replaces that role's curated exercise-id whitelist with a single user-chosen
   // exercise id; the stamp is what lets a sync keep the choice made last (lib/sync-merge.js).
   balanceTemplate: DEFAULT_TEMPLATE_ID, balanceOverrides: {},
+  // CrossFit (lib/wods.js): the posted programs by the date they are for ({ [iso]: { …, _ts } },
+  // the last 120 days only), and the exercise picked for a printed movement name
+  // ({ [norm(rawName)]: { exId, _ts } }). Both merge per key on their own stamp, a clear included.
+  wods: {}, exAliases: {},
+  // The weekly hard-set target per muscle the gap report holds each muscle against.
+  hypTarget: 10,
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 
@@ -283,6 +290,7 @@ function loadState() {
       const saved = JSON.parse(raw)
       const s = sanitizeAccent(Object.assign(clone(DEF), saved))
       if (!saved.lang) s.lang = detectedLang()
+      s.wods = pruneWods(s.wods)
       return s
     }
   } catch (e) { /* ignore */ }
@@ -1348,6 +1356,33 @@ export const useStore = create((set, get) => {
       return saved
     },
     discardHistoryEdit() { get().update(S => { S.active = null }) },
+    // A posted program saved for `date` (an ISO date; the program an object, its contents are the
+    // editor's), or taken away as a stamped clear, so the removal syncs (lib/wods.js). false when
+    // there is nothing to save. Stamped past every stamp the copy holds, so the change always moves
+    // the entry's stamp and stampChange gives it the change's time (a wall-clock stamp could equal
+    // the entry's old one, and a clear made in the same millisecond kept the old value's stamp).
+    setWod(date, program) {
+      if (!validWod(date, program)) return false
+      get().update(S => { S.wods = withWod(S.wods, date, program, highestStamp(S) + 1) })
+      return true
+    },
+    clearWod(date) {
+      if (!validWod(date, {})) return false
+      get().update(S => { S.wods = withWod(S.wods, date, null, highestStamp(S) + 1) })
+      return true
+    },
+    // The exercise picked for a printed movement name. `key` is the name already normalised
+    // (norm(rawName), lib/crossfit-resolve.js); a clear is stamped like a program's.
+    setAlias(key, exId) {
+      if (typeof key !== 'string' || !key || typeof exId !== 'string' || !exId) return false
+      get().update(S => { S.exAliases = withAlias(S.exAliases, key, exId, highestStamp(S) + 1) })
+      return true
+    },
+    clearAlias(key) {
+      if (typeof key !== 'string' || !key) return false
+      get().update(S => { S.exAliases = withAlias(S.exAliases, key, null, highestStamp(S) + 1) })
+      return true
+    },
     // An edit that took out every set deletes the workout rather than saving it empty.
     deleteHistoryEdit() {
       let removed = false

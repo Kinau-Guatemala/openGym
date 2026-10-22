@@ -36,10 +36,11 @@
  *     is the exception: the edit may have taken away the set the kept weight came from, so it
  *     is the best of the merged history and of the editing copy's own, and the other copy's
  *     can no longer bring a corrected typo back. exNotes, barWeights: key union
- *   - balanceOverrides, loadKind, plates, dbLoad, dumbbells, dayNotes: key union; of a key both
- *     have, the entry set last by its own `_ts`, a clear included (mergeStampedMap), the newer
- *     copy's on a tie. For plates and dumbbells the key is the unit, so the inventory of one unit
- *     is kept whole, as last edited; for dayNotes the key is the date, so each day's note is its own
+ *   - balanceOverrides, loadKind, plates, dbLoad, dumbbells, dayNotes, wods, exAliases: key union;
+ *     of a key both have, the entry set last by its own `_ts`, a clear included (mergeStampedMap),
+ *     the newer copy's on a tie. For plates and dumbbells the key is the unit, so the inventory of
+ *     one unit is kept whole, as last edited; for dayNotes and wods the key is the date, so each
+ *     day's note or program is its own. wods then keeps only its last 120 days (pruneWods)
  *   - `_ts`: the later of the two; `_rev` dropped (the server sets it); `active` left to the caller
  *
  * Two rules come before all of these:
@@ -78,12 +79,14 @@ import { bestWeightForEntry } from './history.js'
 import { convertStateUnit, convertBodyWeight } from './units.js'
 import { sanitizeAccent } from './accent.js'
 import { readDayNote as readNote } from './day-notes.js'
+import { pruneWods } from './wods.js'
 
 const clone = o => JSON.parse(JSON.stringify(o))
 const list = v => (Array.isArray(v) ? v : [])
 // The maps whose every entry carries its own edit time (mergeStampedMap). dayNotes is a day's
-// note on a day off (lib/day-notes.js), one entry per date.
-export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes']
+// note on a day off (lib/day-notes.js), one entry per date; wods a posted program per date, and
+// exAliases a printed movement name's exercise (lib/wods.js).
+export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes', 'wods', 'exAliases']
 
 /** The copy with the later `_ts`; on a tie the first argument (callers pass local first). */
 export const newerOf = (a, b) => ((b?._ts || 0) > (a?._ts || 0) ? b : a)
@@ -609,10 +612,10 @@ function applyDeletions(S, deleted) {
 // last: Wednesday set on an offline phone survives the weigh-in the desktop logged meanwhile, and
 // a rotation pass refilled on the phone survives a setting flipped on the desktop. Fields with a
 // merge of their own are not stamped here; a field nobody stamped follows the newer copy, as before.
-const OWN_MERGE = new Set([
+export const OWN_MERGE = new Set([
   '_ts', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'active', 'unit', 'unitSet', 'resetAt', 'resetIds', 'deleted', 'edited', 'undone', 'routineOrder',
   'workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'bodyweight', 'measurements', 'favEx',
-  'exWeights', 'balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes',
+  'exWeights', ...STAMPED_MAPS,
 ])
 // Stamped per key instead of whole: one day of the plan, one exercise's note or bar.
 const PER_KEY = new Set(['week', 'dayPlan', 'exNotes', 'barWeights'])
@@ -716,7 +719,8 @@ function applyEdits(out, n, o) {
 // `prefer` names the side whose settings, plan and per-exercise config win regardless of `_ts`:
 // on sign-in the server's profile is the truth and the device only contributes the entries it
 // logged while signed out. Without it the newer copy decides, as for a conflict between devices.
-export function mergeStates(a0, b0, { prefer } = {}) {
+// `today` (an ISO date, UTC by default) is what the programs are pruned against (pruneWods).
+export function mergeStates(a0, b0, { prefer, today } = {}) {
   if (!a0) return b0 ? clone(b0) : b0
   if (!b0) return clone(a0)
   let a = a0, b = b0
@@ -852,6 +856,7 @@ export function mergeStates(a0, b0, { prefer } = {}) {
   for (const f of STAMPED_MAPS) {
     if (n[f] || o[f]) out[f] = clone(mergeStampedMap(n[f], o[f], prefer))
   }
+  if (out.wods) out.wods = pruneWods(out.wods, today)
   // Each stamped setting and plan day from the copy that changed it last (the `edited` section
   // above). `prefer` (sign-in) keeps the preferred side's, stamps and all.
   if (!prefer) {
