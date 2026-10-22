@@ -82,6 +82,8 @@ export default function CrossFit() {
         <div className="tt">{w.title || fmtDate(d, true)}</div>
         <div className="ss">{[w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</div>
       </div>
+      {d <= today && <Button size="sm" variant="tinted" style={{ width: 'auto', flex: 'none' }}
+        onClick={e => { e.stopPropagation(); nav('/crossfit/log/' + d) }}>{t('Log')}</Button>}
       <Icon name="chevronRight" className="chev" />
     </div>
   }

@@ -47,6 +47,7 @@ import Measurements from './views/Measurements.jsx'
 import CoachIntake from './views/CoachIntake.jsx'
 import CoachSetup from './views/CoachSetup.jsx'
 import CrossFit, { CrossFitEdit } from './views/CrossFit.jsx'
+import CrossFitLog from './views/CrossFitLog.jsx'
 
 // last known scrollY per route, so back-navigation can put the page where it was
 const scrollPositions = new Map()
@@ -222,6 +223,7 @@ function Shell() {
               <Route path="/crossfit" element={<CrossFit />} />
               <Route path="/crossfit/new" element={<CrossFitEdit />} />
               <Route path="/crossfit/edit/:date" element={<CrossFitEdit />} />
+              <Route path="/crossfit/log/:date" element={<CrossFitLog />} />
               <Route path="/settings" element={<SettingsRoute />} />
               <Route path="/settings/:page" element={<SettingsRoute />} />
               {/* The Coach screens gate themselves on the instance config; the routes exist

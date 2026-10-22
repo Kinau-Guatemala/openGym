@@ -52,7 +52,7 @@ export function cardioMinutes(exId, dose, rounds = 1) {
 // A calorie or distance dose is cardio whatever the catalogue says (the ski erg is filed under
 // triceps); a catalogue cardio exercise is too, unless it is counted in reps (double-unders, or
 // burpees down a ladder).
-const isCardioMove = (dose, exId, ladder) => pos(dose.cal) > 0 || pos(dose.m) > 0 || (isCardio(exId) && !pos(dose.reps) && !ladder)
+export const isCardioMove = (dose, exId, ladder) => pos(dose.cal) > 0 || pos(dose.m) > 0 || (isCardio(exId) && !pos(dose.reps) && !ladder)
 
 // What one round of a movement counts towards a rounds+reps score.
 const unitsOf = dose => pos(dose.reps) || pos(dose.cal) || 0
