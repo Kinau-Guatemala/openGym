@@ -2320,4 +2320,12 @@ export default {
   'or': '또는',
   '{0} already has a program. Saving replaces it.': '{0}에 이미 프로그램이 있어요. 저장하면 바뀌어요.',
   '{0} rounds': '{0}라운드',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': '이 이미지를 열 수 없습니다.',
+  'No routine found in this image.': '이 이미지에서 운동을 찾지 못했습니다.',
+  'The Coach is busy. Reading the image as soon as it is done…': '코치가 작업 중입니다. 끝나는 대로 이미지를 읽습니다…',
+  'Reading the image…': '이미지를 읽는 중…',
+  'Enter manually': '직접 입력',
+  'Give the Coach the go-ahead': '코치에게 동의하기',
+  'Read the image again': '이미지 다시 읽기',
 }

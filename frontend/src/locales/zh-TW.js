@@ -2313,4 +2313,12 @@ export default {
   'or': '或',
   '{0} already has a program. Saving replaces it.': '{0} 已有計畫。儲存會取代它。',
   '{0} rounds': '{0} 輪',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': '無法開啟此圖片。',
+  'No routine found in this image.': '此圖片中找不到訓練內容。',
+  'The Coach is busy. Reading the image as soon as it is done…': '教練正忙，完成後會立即讀取圖片…',
+  'Reading the image…': '正在讀取圖片…',
+  'Enter manually': '手動輸入',
+  'Give the Coach the go-ahead': '同意教練使用',
+  'Read the image again': '重新讀取圖片',
 }

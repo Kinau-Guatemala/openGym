@@ -5,6 +5,9 @@ import { MOBILE } from './lib/mobile.js'
 import { useStore } from './store/useStore.js'
 import { startMediaSync } from './lib/media-sync.js'
 import { startNativeKeyboard } from './lib/native-keyboard.js'
+import { initShareIntake } from './lib/wod-intake.js'
+import { useUI } from './store/useUI.js'
+import { t } from './lib/i18n.js'
 import './index.css'
 
 // App.jsx restores per-route scroll itself; the browser's own attempt races it.
@@ -21,6 +24,10 @@ startMediaSync(useStore)
 // Android 15 does not resize the page for the soft keyboard; the app says how much it covers and
 // this keeps the focused field above it. Idle everywhere else.
 startNativeKeyboard()
+
+// Android: a routine image shared to the app (WhatsApp → Share → openGym) opens the intake
+// screen, the one the app was launched with included. Idle everywhere else.
+initShareIntake(() => useUI.getState().toast(t('This image could not be opened.')))
 
 // Not in the mobile build: the native shell already serves everything from disk.
 if (!MOBILE && 'serviceWorker' in navigator && location.protocol === 'https:') {

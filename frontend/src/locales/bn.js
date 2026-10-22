@@ -2399,4 +2399,12 @@ export default {
   'or': 'অথবা',
   '{0} already has a program. Saving replaces it.': '{0}-এর জন্য আগেই একটি প্রোগ্রাম আছে। সংরক্ষণ করলে তা বদলে যাবে।',
   '{0} rounds': '{0} রাউন্ড',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'এই ছবিটি খোলা যায়নি।',
+  'No routine found in this image.': 'এই ছবিতে কোনো ওয়ার্কআউট পাওয়া যায়নি।',
+  'The Coach is busy. Reading the image as soon as it is done…': 'কোচ ব্যস্ত। কাজ শেষ হলেই ছবিটি পড়বে…',
+  'Reading the image…': 'ছবি পড়া হচ্ছে…',
+  'Enter manually': 'হাতে লিখুন',
+  'Give the Coach the go-ahead': 'কোচকে অনুমতি দিন',
+  'Read the image again': 'ছবিটি আবার পড়ুন',
 }

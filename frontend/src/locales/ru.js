@@ -2324,4 +2324,12 @@ export default {
   'or': 'или',
   '{0} already has a program. Saving replaces it.': 'На {0} уже есть программа. Сохранение заменит её.',
   '{0} rounds': '{0} раундов',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Не удалось открыть это изображение.',
+  'No routine found in this image.': 'На этом изображении не найдено тренировки.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'Коуч занят. Он прочитает изображение, как только освободится…',
+  'Reading the image…': 'Чтение изображения…',
+  'Enter manually': 'Ввести вручную',
+  'Give the Coach the go-ahead': 'Дать Коучу согласие',
+  'Read the image again': 'Прочитать изображение снова',
 }

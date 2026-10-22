@@ -2,13 +2,16 @@
 //
 //   #/crossfit             upcoming and recent programs
 //   #/crossfit/new         a new program: empty, or a parsed draft handed over in the route's state
-//                          ({ draft, date, image }, T05's Share/upload); ?date= picks the day
+//                          ({ draft, date, image }, T05's Share/upload); ?date= picks the day.
+//                          { image, date, reason } is the manual path for an image the Coach
+//                          could not read: typed by hand, the image beside it.
+//   #/crossfit/new?shared=1  an image being read (lib/wod-intake.js), on its way to the above
 //   #/crossfit/edit/<date> the program saved for that date
 //
 // The editor works on a draft (lib/wod-draft.js) and writes nothing until Save. A movement's
 // exercise chip opens the exercise picker; the pick is remembered for that printed name
 // (S.exAliases), so the same name resolves by itself in every later program.
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -21,6 +24,10 @@ import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft } from '../lib/wod-draft.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
 import { exercisePicker, confirmSheet } from '../sheets.jsx'
+import { DEMO } from '../lib/demo.js'
+import { hasConsent } from '../lib/coach.js'
+import { JOB_ERRORS, ackParsed, parseStatus, parseWod } from '../lib/coach-api.js'
+import { INTAKE_ROUTE, beginIntake, currentIntake, downscale, fromDataUrl, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Row, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
 
@@ -53,6 +60,18 @@ export default function CrossFit() {
   const dates = Object.keys(S.wods || {}).filter(d => wodOf(S, d))
   const upcoming = dates.filter(d => d >= today).sort()
   const recent = dates.filter(d => d < today).sort().reverse()
+  const file = useRef(null)
+  // The box's image, picked from the device: read into a program on the intake screen.
+  const upload = async e => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    let image = null
+    try { image = await downscale(f) } catch { /* below */ }
+    if (!image) { toast(t('This image could not be opened.')); return }
+    setIntakeImage(image, tomorrowISO())
+    nav(INTAKE_ROUTE)
+  }
   const row = d => {
     const w = wodOf(S, d)
     return <div key={d} className="item" {...tappable(() => nav('/crossfit/edit/' + d))}>
@@ -72,9 +91,8 @@ export default function CrossFit() {
     </div>
     <div className="row" style={{ gap: 8, marginBottom: 18 }}>
       <Button variant="primary" icon="plus" onClick={() => nav('/crossfit/new')}>{t('New program')}</Button>
-      {/* T05: the image upload (and the Android Share target) parses the box's image and lands
-          on #/crossfit/new with the draft. Not wired yet. */}
-      <Button icon="camera" disabled data-placeholder="t05-upload">{t('Upload image')}</Button>
+      <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
+      <Button icon="camera" onClick={() => file.current?.click()}>{t('Upload image')}</Button>
     </div>
     {!dates.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
     {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(row)}</div></>}
@@ -87,7 +105,75 @@ export default function CrossFit() {
 // A brand-new hand-entered program starts with the main track, ready for its first block.
 const emptyProgram = () => ({ title: '', tracks: [{ id: 'full', label: 'Full Equipment', kind: 'main', blocks: [] }] })
 
+// #/crossfit/new?shared=1 is the image being read; everything else is the editor. Two components,
+// so going from one to the other mounts the editor fresh with what the intake handed it.
 export function CrossFitEdit() {
+  const loc = useLocation()
+  return new URLSearchParams(loc.search).get('shared') ? <Intake /> : <Editor />
+}
+
+/* ============================ reading an image ============================ */
+
+// What the person reads for a failure or a refusal (lib/wod-intake.js readProgram).
+const intakeErrorText = cls => cls === 'empty' ? t('No routine found in this image.')
+  : cls === 'network' ? t('The server cannot be reached')
+    : JOB_ERRORS[cls] || JOB_ERRORS.internal
+
+function Intake() {
+  const nav = useNavigate()
+  const run = useSyncExternalStore(subscribeIntake, currentIntake)
+  const ready = useStore(s => s.ready)
+
+  // Typed by hand from here on, with the image beside it and the reason it was not read.
+  const manual = (r, reason) => nav('/crossfit/new', { replace: true, state: { image: r.image.url, date: r.date, reason } })
+
+  useEffect(() => {
+    // A reload: the image was only ever in memory.
+    if (!run) { nav('/crossfit', { replace: true }); return }
+    if (run.phase === 'pending' && ready) {
+      // Without a Coach on a server there is nobody to ask, and a guest never calls the server.
+      const st = useStore.getState()
+      if (DEMO || !st.user || !st.config?.coach?.enabled) { if (takeIntake()) manual(run, 'off'); return }
+      beginIntake({ parse: parseWod, status: parseStatus })
+      return
+    }
+    const r = run.phase === 'done' && !run.result.failed && takeIntake()
+    if (!r) return
+    if (r.result.program) {
+      nav('/crossfit/new', { replace: true, state: { draft: r.result.program, date: r.date, image: r.image.url } })
+      ackParsed(r.result.jobId).catch(() => {})
+    } else if (r.result.manual) manual(r, r.result.manual)
+  }, [run, ready])
+
+  if (!run) return null
+  const failed = run.phase === 'done' ? run.result.failed : null
+  return <div className="narrow">
+    <div className="hdr">
+      <button className="iconbtn" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
+        <h1>{t('New program')}</h1>
+        <div className="sub">{fmtDate(run.date, true)}</div>
+      </div>
+    </div>
+    <div className="card">
+      <div className="row" style={{ gap: 10 }}>
+        <Icon name={failed ? 'warning' : 'hourglass'} style={{ color: failed ? 'var(--orange)' : 'var(--label-3)' }} />
+        <div className="grow" role="status">{failed ? intakeErrorText(failed)
+          : run.phase === 'waiting' ? t('The Coach is busy. Reading the image as soon as it is done…')
+            : t('Reading the image…')}</div>
+      </div>
+      {failed && <><div style={{ height: 12 }} />
+        <Button variant="primary" icon="repeat" onClick={() => setIntakeImage(run.image, run.date)}>{t('Try again')}</Button></>}
+      <div style={{ height: 8 }} />
+      <Button icon="pencil" onClick={() => { if (takeIntake()) manual(run, failed || null) }}>{t('Enter manually')}</Button>
+    </div>
+    <img src={run.image.url} alt={t('Posted image')} style={{ width: '100%', borderRadius: 10 }} />
+  </div>
+}
+
+/* ============================ the editor ============================ */
+
+function Editor() {
   const nav = useNavigate()
   const loc = useLocation()
   const { date: editDate } = useParams()
@@ -123,6 +209,17 @@ export function CrossFitEdit() {
       confirmText: t('Replace'), danger: true, onConfirm: write,
     })
     else write()
+  }
+  // The manual path's image, read again: after the go-ahead was given, or a failure that may not
+  // repeat. A consent given a moment ago reaches the server first, or the read is refused again.
+  const readAgain = () => {
+    const go = async () => {
+      setIntakeImage(fromDataUrl(loc.state.image), ISO.test(date) ? date : tomorrowISO())
+      await store().pushState()
+      nav(INTAKE_ROUTE, { replace: true })
+    }
+    if (dirty) confirmSheet({ title: t('Discard changes?'), message: t('This program has changes you have not saved.'), confirmText: t('Discard'), danger: true, onConfirm: go })
+    else go()
   }
   const remove = () => confirmSheet({
     title: t('Delete this program?'), message: t('The program for {0} goes away on every device.', fmtDate(editDate, true)),
@@ -167,7 +264,18 @@ export function CrossFitEdit() {
       </div>
     </div>
 
-    {loc.state?.image && <details className="card" style={{ padding: 12 }}>
+    {loc.state?.reason && <div className="card">
+      <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+        <Icon name="info" style={{ color: 'var(--label-3)', marginTop: 2 }} />
+        <div className="grow small">{intakeErrorText(loc.state.reason)}</div>
+      </div>
+      {loc.state.reason === 'consent' && !hasConsent(S) && <><div style={{ height: 10 }} />
+        <Button size="sm" onClick={() => nav('/coach/intake?consent=1')}>{t('Give the Coach the go-ahead')}</Button></>}
+      {loc.state.reason !== 'off' && <><div style={{ height: 8 }} />
+        <Button size="sm" variant="ghost" icon="repeat" onClick={readAgain}>{t('Read the image again')}</Button></>}
+    </div>}
+
+    {loc.state?.image && <details className="card" style={{ padding: 12 }} open={!loc.state.draft}>
       <summary className="small muted">{t('Posted image')}</summary>
       <img src={loc.state.image} alt={t('Posted image')} style={{ width: '100%', borderRadius: 10, marginTop: 8 }} />
     </details>}

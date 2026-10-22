@@ -222,6 +222,16 @@ export function onAppActive(cb) {
   ).catch(() => {})
 }
 
+// Share → openGym on Android (ShareIntakePlugin.java): cb({ data, mime } | { error }) for each image
+// shared to the app, the one it was opened with included — the plugin holds that one until this
+// listener is added. No-op off mobile and on iOS, where the plugin is not behind the bridge.
+export function onSharedImage(cb) {
+  if (!MOBILE) return
+  import('@capacitor/core').then(({ registerPlugin }) =>
+    registerPlugin('ShareIntake').addListener('shared', cb)
+  ).catch(() => {})
+}
+
 // WKWebView can't do blob-URL downloads, so the backup goes out through the OS share sheet
 // (Files, AirDrop, mail, …) from a temp file instead.
 export async function shareExport(json, filename) {

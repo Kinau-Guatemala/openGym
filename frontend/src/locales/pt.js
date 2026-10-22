@@ -2320,4 +2320,12 @@ export default {
   'or': 'ou',
   '{0} already has a program. Saving replaces it.': '{0} já tem um programa. Guardar substitui-o.',
   '{0} rounds': '{0} rondas',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Não foi possível abrir esta imagem.',
+  'No routine found in this image.': 'Nenhum treino encontrado nesta imagem.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'O Coach está ocupado. Vai ler a imagem assim que terminar…',
+  'Reading the image…': 'A ler a imagem…',
+  'Enter manually': 'Introduzir à mão',
+  'Give the Coach the go-ahead': 'Dar autorização ao Coach',
+  'Read the image again': 'Ler a imagem novamente',
 }

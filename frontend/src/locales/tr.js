@@ -2320,4 +2320,12 @@ export default {
   'or': 'veya',
   '{0} already has a program. Saving replaces it.': '{0} için zaten bir program var. Kaydetmek onu değiştirir.',
   '{0} rounds': '{0} tur',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Bu görsel açılamadı.',
+  'No routine found in this image.': 'Bu görselde antrenman bulunamadı.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'Koç meşgul. İşi biter bitmez görseli okuyacak…',
+  'Reading the image…': 'Görsel okunuyor…',
+  'Enter manually': 'Elle gir',
+  'Give the Coach the go-ahead': 'Koç’a onay ver',
+  'Read the image again': 'Görseli yeniden oku',
 }
