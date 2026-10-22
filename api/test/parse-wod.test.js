@@ -307,6 +307,20 @@ test('validateWod: shape, bounds and rawName, with ids assigned and exId always 
   assert.match(errs({ tracks: [{ label: 'x', kind: 'main', blocks: Array.from({ length: 13 }, () => ({ label: 'b', format: 'other', movements: [] })) }] }).join(), /at most 12/);
   assert.match(errs(move({})).join() + errs({ tracks: [{ label: 'x', kind: 'main', blocks: [{ label: 'b', format: 'other', movements: Array.from({ length: 21 }, () => ({ rawName: 'x' })) }] }] }).join(), /at most 20/);
   assert.match(errs({ nope: 1 }).join(), /tracks must be an array/);
+  // A sex-split dose rides beside `dose`, on the movement and on each alternative, and only when there is one.
+  const only = v => v.proposal.program.tracks[0].blocks[0].movements[0];
+  const split = only(validateWod(move({ dose: { cal: 20 }, doseFemale: { cal: 15 }, alts: [{ rawName: 'ski', dose: { cal: 20 }, doseFemale: { cal: 15 } }, { rawName: 'bike', dose: { m: 500 } }] })));
+  assert.deepEqual(split.dose, { cal: 20 });
+  assert.deepEqual(split.doseFemale, { cal: 15 });
+  assert.deepEqual(split.alts[0].doseFemale, { cal: 15 });
+  assert.ok(!('doseFemale' in split.alts[1]), 'a per-alternative dose is not a split');
+  assert.ok(!('doseFemale' in only(validateWod(move({})))), 'absent unless printed');
+  assert.ok(!('doseFemale' in only(validateWod(move({ doseFemale: {} })))), 'an empty split is no split');
+  assert.match(errs(move({ doseFemale: { cal: -3 } })).join(), /doseFemale\.cal must be a number/);
+  assert.match(errs(move({ doseFemale: 15 })).join(), /doseFemale must be an object/);
+  assert.match(errs(move({ alts: [{ rawName: 'ski', doseFemale: { cal: 'x' } }] })).join(), /alts\.doseFemale\.cal/);
+  const fixtureRow = ok.proposal.program.tracks[0].blocks[1].movements[0];
+  assert.deepEqual([fixtureRow.dose, fixtureRow.doseFemale], [{ cal: 20 }, { cal: 15 }], '20/15 Cal Row/Ski/Bike in the fixture');
   const long = validateWod(move({ rawName: 'y'.repeat(500) })).proposal.program.tracks[0].blocks[0].movements[0];
   assert.equal(long.rawName.length, 80, 'strings are clipped');
 });

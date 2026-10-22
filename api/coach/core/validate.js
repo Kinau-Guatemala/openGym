@@ -667,16 +667,24 @@ const MAX_WOD_LOAD = 1000;
 const TRACK_ID = /^[a-z0-9-]{1,24}$/;
 const strOrNull = (v, n) => (isStr(v) ? clampStr(v.trim(), n) : null);
 
-function wodDose(v, where, errors) {
+function wodDose(v, where, errors, field = 'dose') {
   if (v == null) return {};
-  if (typeof v !== 'object' || Array.isArray(v)) { errors.push(`${where}.dose must be an object like {"reps": 5}`); return {}; }
+  if (typeof v !== 'object' || Array.isArray(v)) { errors.push(`${where}.${field} must be an object like {"reps": 5}`); return {}; }
   const out = {};
   for (const k of WOD_DOSE_KEYS) {
     if (v[k] == null) continue;
-    if (!isNum(v[k]) || v[k] < 0 || v[k] > MAX_WOD_DOSE) errors.push(`${where}.dose.${k} must be a number from 0 to ${MAX_WOD_DOSE}`);
+    if (!isNum(v[k]) || v[k] < 0 || v[k] > MAX_WOD_DOSE) errors.push(`${where}.${field}.${k} must be a number from 0 to ${MAX_WOD_DOSE}`);
     else out[k] = v[k];
   }
   return out;
+}
+
+// A dose printed as a male/female split (`20/15 Cal`): same keys and bounds as `dose`, and
+// absent unless there is one, so a client reads `doseFemale || dose` the way it reads `rx`.
+function wodDoseFemale(v, where, errors) {
+  if (v == null) return {};
+  const d = wodDose(v, where, errors, 'doseFemale');
+  return Object.keys(d).length ? { doseFemale: d } : {};
 }
 
 function wodLoad(v, where, errors) {
@@ -704,10 +712,11 @@ function wodMovement(m, i, where, errors) {
     slot: strOrNull(m.slot, 8),
     exId: null,
     dose: wodDose(m.dose, at, errors),
+    ...wodDoseFemale(m.doseFemale, at, errors),
     perSide: m.perSide === true,
     rx: rx && (rx.male || rx.female) ? rx : null,
     alts: (Array.isArray(m.alts) ? m.alts : []).filter(a => a && isStr(a.rawName)).slice(0, 5)
-      .map(a => ({ exId: null, rawName: clampStr(a.rawName.trim(), 80), dose: wodDose(a.dose, `${at}.alts`, errors) }))
+      .map(a => ({ exId: null, rawName: clampStr(a.rawName.trim(), 80), dose: wodDose(a.dose, `${at}.alts`, errors), ...wodDoseFemale(a.doseFemale, `${at}.alts`, errors) }))
   };
 }
 

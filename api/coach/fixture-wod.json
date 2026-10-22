@@ -20,8 +20,8 @@
           "label": "MIN 1-10 · EMOM 10", "warmup": false, "format": "emom", "capMin": 10, "rounds": null, "scheme": null, "benchmark": null,
           "raw": "WOD\nTC 40\nMIN 1-10\nEMOM 10\n20/15 Cal Row/Ski/Bike",
           "movements": [
-            { "raw": "20/15 Cal Row/Ski/Bike", "rawName": "row", "name": "rowing machine", "slot": null, "dose": { "cal": 20 }, "perSide": false, "rx": null,
-              "alts": [ { "rawName": "ski", "dose": { "cal": 20 } }, { "rawName": "bike", "dose": { "cal": 20 } } ] }
+            { "raw": "20/15 Cal Row/Ski/Bike", "rawName": "row", "name": "rowing machine", "slot": null, "dose": { "cal": 20 }, "doseFemale": { "cal": 15 }, "perSide": false, "rx": null,
+              "alts": [ { "rawName": "ski", "dose": { "cal": 20 }, "doseFemale": { "cal": 15 } }, { "rawName": "bike", "dose": { "cal": 20 }, "doseFemale": { "cal": 15 } } ] }
           ]
         },
         {

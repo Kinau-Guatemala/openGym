@@ -3853,9 +3853,13 @@ components:
                               name: { type: string, description: English canonical name. }
                               slot: { oneOf: [{ type: string }, { type: 'null' }] }
                               exId: { type: 'null' }
-                              dose:
-                                type: object
-                                properties: { reps: { type: number }, repsMax: { type: number }, cal: { type: number }, m: { type: number }, sec: { type: number } }
+                              dose: { $ref: '#/components/schemas/CoachWodDose' }
+                              doseFemale:
+                                allOf: [{ $ref: '#/components/schemas/CoachWodDose' }]
+                                description: |
+                                  Present only when the dose itself is printed as a male/female split
+                                  (`20/15 Cal Row` → `dose {cal: 20}`, `doseFemale {cal: 15}`). Pick it by
+                                  sex the way `rx` is picked; absent means `dose` applies to both.
                               perSide: { type: boolean }
                               rx:
                                 description: Male/female load as printed; a unitless barbell pair is pounds.
@@ -3869,7 +3873,11 @@ components:
                                 type: array
                                 items:
                                   type: object
-                                  properties: { exId: { type: 'null' }, rawName: { type: string }, dose: { type: object } }
+                                  properties: { exId: { type: 'null' }, rawName: { type: string }, dose: { $ref: '#/components/schemas/CoachWodDose' }, doseFemale: { $ref: '#/components/schemas/CoachWodDose' } }
+
+    CoachWodDose:
+      type: object
+      properties: { reps: { type: number }, repsMax: { type: number }, cal: { type: number }, m: { type: number }, sec: { type: number } }
 
     CoachWodLoad:
       type: object

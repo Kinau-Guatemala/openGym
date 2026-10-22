@@ -125,9 +125,9 @@ const MOVEMENT_SCHEMA = {
   type: 'object',
   properties: {
     raw: STR, rawName: STR, name: STR, slot: STR_OR_NULL,
-    dose: DOSE, perSide: { type: 'boolean' },
+    dose: DOSE, doseFemale: DOSE, perSide: { type: 'boolean' },
     rx: { type: ['object', 'null'], properties: { male: LOAD, female: LOAD } },
-    alts: { type: 'array', items: { type: 'object', properties: { rawName: STR, dose: DOSE }, required: ['rawName'] } }
+    alts: { type: 'array', items: { type: 'object', properties: { rawName: STR, dose: DOSE, doseFemale: DOSE }, required: ['rawName'] } }
   },
   required: ['raw', 'rawName', 'name', 'dose']
 };

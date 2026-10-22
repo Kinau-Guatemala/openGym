@@ -37,7 +37,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 | `R` / `L`, `7/7` | per side: `perSide: true`. An R line and its L line are **one** movement. |
 | `12-15` | `dose: { "reps": 12, "repsMax": 15 }` |
 | `185/135`, `95/65` | male/female Rx. **A barbell pair without a unit is pounds** (`"lb"`); kilograms only when printed (`24KG/16KG`). |
-| `20/15 Cal` | a male/female dose: put the male figure in `dose`, keep both in `raw` |
+| `20/15 Cal` | a male/female dose: `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }` |
 | `DB´s`, `KB´s` | dumbbells, kettlebells (the apostrophe is the box's plural) |
 | `S2OH` | shoulder to overhead · `BMU` bar muscle up · `T2B` toes to bar · `C&J` clean and jerk |
 | `ALT` | alternating |
@@ -52,6 +52,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 - `rawName`: the movement **without** its slot label (`M1`, `R1`), its leading dose (`5`, `12-15`, `Max`, `40 seg`, `20/15 Cal`, `14 mts`), its trailing load or Rx pair (`185/135`, `20KG/12KG`), an R/L or `6/6` marker, `Sincro` or a trailing `/ 2`, in lowercase. Everything else stays exactly as printed — the box's typos, `´s`, and words like `easy` or `estrictos`; do not correct, singularise or translate it. Examples: `"M1 5 Hang Cleans 185/135"` → `"hang cleans"`, `"15 DB´s Skull Cruches"` → `"db´s skull cruches"`, `"Max Diamond push ups"` → `"diamond push ups"`, `"20/15 Cal Row"` → `"row"`, `"M1 12 DB Split Squat 6/6"` → `"db split squat"`, `"Easy Run"` → `"easy run"`. Each alternative's `rawName` follows the same rule (`Row/Ski/Bike` → `"row"`, alts `"ski"`, `"bike"`).
 - `name`: a short English canonical exercise name in catalogue style, singular, equipment first (`"barbell hang clean"`, `"dumbbell skull crusher"`, `"dumbbell devils press"`, `"rowing machine"`).
 - `dose`: `reps`, `cal`, `m` or `sec`, plus `repsMax` for a range. `{}` when no number is printed (`Max Diamond push ups`).
+- `doseFemale`: **only** when the dose itself is printed as a male/female split (`20/15 Cal Row` → `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }`), same keys as `dose`; otherwise leave it out. Different doses for different alternatives (`250 mts Row/Ski/500 mts Bike`) are not a split: each alternative carries its own `dose`. A load pair (`185/135`) is `rx`, never `doseFemale`.
 - `rx`: `{ "male": { "w": 185, "unit": "lb" }, "female": { "w": 135, "unit": "lb" } }` or `null`. One printed load is the male figure, female `null`.
 - `A + B` on one line is two movements **only when B has its own dose** (`"4 Cleans + 4 Push press"` → two). Otherwise it is one movement, and the `+` stays in `rawName` (`"DB´s Lateral + Front Fly"` → `"db´s lateral + front fly"`, `"Sled Pull + Drag Just Arms"` → `"sled pull + drag just arms"`).
 
