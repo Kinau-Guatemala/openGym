@@ -11,6 +11,8 @@
  * echoes real ids back out of it, and never tries to be a coach. Tests assert on structure.
  */
 
+import { readFileSync } from 'node:fs';
+
 const MODE = process.env.FIXTURE_MODE || '';
 
 const read = () => new Promise(resolve => {
@@ -48,6 +50,11 @@ function payload() {
 }
 const P = payload();
 const kind = P.task || (/change-set/i.test(prompt) ? 'review' : 'create');
+
+// A routine image, read: the canned program is one of the sample images transcribed by hand
+// (fixture-wod.json). The image itself never reaches this process — a runtime has no image
+// channel — and the answer does not depend on it; what is under test is everything around it.
+if (kind === 'parse-wod') out(JSON.parse(readFileSync(new URL('./fixture-wod.json', import.meta.url), 'utf8')));
 
 // Well-formed JSON naming an exercise nobody has. This is the failure validate.js exists for,
 // and it is not the same as garbage: every check upstream of the validator is happy with it.

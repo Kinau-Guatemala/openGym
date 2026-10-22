@@ -14,7 +14,7 @@ import { CONTRACT } from './payload.js';
 import { buildPrompt, buildPromptParts } from './prompt.js';
 import { SCHEMAS } from './schemas.js';
 import { extractJSON, contractOK } from './parse.js';
-import { validatePlan, validateReview, validateDebrief } from './validate.js';
+import { validatePlan, validateReview, validateDebrief, validateWod } from './validate.js';
 import { isChangeList, changesOntoPlan } from './refine-changes.js';
 
 /**
@@ -45,7 +45,8 @@ export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutM
 
   const parsed = extractJSON(r.text);
   if (parsed.error) return { ok: false, repairable: !repair, errors: [parsed.error], raw: r.text, errorClass: 'unusable' };
-  if (!contractOK(parsed.value)) {
+  // A read image answers in the program's own shape, which has no contract field to claim.
+  if (kind !== 'parse-wod' && !contractOK(parsed.value)) {
     return { ok: false, repairable: !repair, errors: [`coach_contract must be ${CONTRACT}`], raw: r.text, errorClass: 'unusable' };
   }
 
@@ -67,15 +68,21 @@ export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutM
   const answer = kind === 'create' && isChangeList(parsed.value)
     ? changesOntoPlan(payload.refine?.previous, parsed.value) || parsed.value
     : parsed.value;
-  const checked = kind === 'review'
-    ? validateReview(parsed.value, payload.plan, { customIds, equipment, offered })
-    : kind === 'debrief'
-      ? validateDebrief(parsed.value)
-      : validatePlan(answer, {
-      customIds, equipment, offered,
-      workingWeights: payload.history?.workingWeights,
-      daysPerWeek: payload.coachProfile?.daysPerWeek
-    });
+  // Every kind by name, and no default that quietly judges a new kind as a plan.
+  let checked;
+  switch (kind) {
+    case 'review': checked = validateReview(parsed.value, payload.plan, { customIds, equipment, offered }); break;
+    case 'debrief': checked = validateDebrief(parsed.value); break;
+    case 'create':
+      checked = validatePlan(answer, {
+        customIds, equipment, offered,
+        workingWeights: payload.history?.workingWeights,
+        daysPerWeek: payload.coachProfile?.daysPerWeek
+      });
+      break;
+    case 'parse-wod': checked = validateWod(parsed.value); break;
+    default: throw new Error(`unknown Coach job kind "${kind}"`);
+  }
 
   if (!checked.ok) return { ok: false, repairable: !repair, errors: checked.errors, raw: r.text, errorClass: 'unusable' };
   if (checked.nochange) return { ok: true, nochange: true, reading: checked.reading };

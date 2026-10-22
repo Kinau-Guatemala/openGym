@@ -648,3 +648,124 @@ export function validateDebrief(data) {
   if (errors.length) return fail(errors);
   return { ok: true, proposal: { summary: clampStr(data.summary.trim(), 600), score, ...lists } };
 }
+
+/* ---------- parse-wod: a posted workout read off an image ----------
+   What comes back is a draft for a review screen, not something applied to anything, so the
+   job here is shape and bounds: the closed format list, doses that are numbers, a size a phone
+   can render, and strings clipped. Every movement has to carry `rawName` — it is the key the
+   client resolves an exercise by, and a line without one can never be resolved. Ids are
+   assigned here rather than trusted, and `exId` is always null: naming the exercise is the
+   client's job (crossfit-resolve.js), against the catalogue and the user's own aliases. An
+   image that holds no workout answers `tracks: []`, which is valid and means "nothing found". */
+export const WOD_FORMATS = ['amrap', 'emom', 'fortime', 'rounds', 'interval', 'strength', 'other'];
+export const MAX_WOD_TRACKS = 6;
+export const MAX_WOD_BLOCKS = 12;
+export const MAX_WOD_MOVES = 20;
+const WOD_DOSE_KEYS = ['reps', 'repsMax', 'cal', 'm', 'sec'];
+const MAX_WOD_DOSE = 100000;      // 42195 m is a marathon; anything past this is a misread
+const MAX_WOD_LOAD = 1000;
+const TRACK_ID = /^[a-z0-9-]{1,24}$/;
+const strOrNull = (v, n) => (isStr(v) ? clampStr(v.trim(), n) : null);
+
+function wodDose(v, where, errors, field = 'dose') {
+  if (v == null) return {};
+  if (typeof v !== 'object' || Array.isArray(v)) { errors.push(`${where}.${field} must be an object like {"reps": 5}`); return {}; }
+  const out = {};
+  for (const k of WOD_DOSE_KEYS) {
+    if (v[k] == null) continue;
+    if (!isNum(v[k]) || v[k] < 0 || v[k] > MAX_WOD_DOSE) errors.push(`${where}.${field}.${k} must be a number from 0 to ${MAX_WOD_DOSE}`);
+    else out[k] = v[k];
+  }
+  return out;
+}
+
+// A dose printed as a male/female split (`20/15 Cal`): same keys and bounds as `dose`, and
+// absent unless there is one, so a client reads `doseFemale || dose` the way it reads `rx`.
+function wodDoseFemale(v, where, errors) {
+  if (v == null) return {};
+  const d = wodDose(v, where, errors, 'doseFemale');
+  return Object.keys(d).length ? { doseFemale: d } : {};
+}
+
+function wodLoad(v, where, errors) {
+  if (v == null) return null;
+  if (typeof v !== 'object' || !isNum(v.w) || v.w <= 0 || v.w > MAX_WOD_LOAD || !['lb', 'kg'].includes(v.unit)) {
+    errors.push(`${where} must be {"w": <number above 0>, "unit": "lb" or "kg"} or null`);
+    return null;
+  }
+  return { w: v.w, unit: v.unit };
+}
+
+function wodMovement(m, i, where, errors) {
+  const at = `${where}.movements[${i}]`;
+  if (!m || typeof m !== 'object') { errors.push(`${at} must be an object`); return null; }
+  if (!isStr(m.rawName)) errors.push(`${at}.rawName is required — the movement without its dose or load, e.g. "hang cleans"`);
+  if (m.alts != null && !Array.isArray(m.alts)) errors.push(`${at}.alts must be an array`);
+  const rx = m.rx == null ? null : (typeof m.rx === 'object'
+    ? { male: wodLoad(m.rx.male, `${at}.rx.male`, errors), female: wodLoad(m.rx.female, `${at}.rx.female`, errors) }
+    : (errors.push(`${at}.rx must be an object with "male" and "female", or null`), null));
+  return {
+    id: 'm' + i,
+    raw: clampStr(isStr(m.raw) ? m.raw.trim() : m.rawName, 200),
+    rawName: clampStr(isStr(m.rawName) ? m.rawName.trim() : '', 80),
+    name: clampStr(isStr(m.name) ? m.name.trim() : (isStr(m.rawName) ? m.rawName.trim() : ''), 80),
+    slot: strOrNull(m.slot, 8),
+    exId: null,
+    dose: wodDose(m.dose, at, errors),
+    ...wodDoseFemale(m.doseFemale, at, errors),
+    perSide: m.perSide === true,
+    rx: rx && (rx.male || rx.female) ? rx : null,
+    alts: (Array.isArray(m.alts) ? m.alts : []).filter(a => a && isStr(a.rawName)).slice(0, 5)
+      .map(a => ({ exId: null, rawName: clampStr(a.rawName.trim(), 80), dose: wodDose(a.dose, `${at}.alts`, errors), ...wodDoseFemale(a.doseFemale, `${at}.alts`, errors) }))
+  };
+}
+
+function wodBlock(b, i, where, errors) {
+  const at = `${where}.blocks[${i}]`;
+  if (!b || typeof b !== 'object') { errors.push(`${at} must be an object`); return null; }
+  if (!WOD_FORMATS.includes(b.format)) errors.push(`${at}.format must be one of ${WOD_FORMATS.join(', ')}`);
+  if (b.capMin != null && (!isNum(b.capMin) || b.capMin < 0 || b.capMin > 600)) errors.push(`${at}.capMin must be minutes from 0 to 600, or null`);
+  if (b.rounds != null && !isInt(b.rounds, 0, 100)) errors.push(`${at}.rounds must be a whole number from 0 to 100, or null`);
+  if (!Array.isArray(b.movements)) { errors.push(`${at}.movements must be an array`); return null; }
+  if (b.movements.length > MAX_WOD_MOVES) errors.push(`${at} has ${b.movements.length} movements — at most ${MAX_WOD_MOVES}`);
+  return {
+    id: 'b' + i,
+    label: clampStr(isStr(b.label) ? b.label.trim() : '', 80),
+    warmup: b.warmup === true,
+    format: b.format,
+    capMin: b.capMin ?? null,
+    rounds: b.rounds ?? null,
+    scheme: strOrNull(b.scheme, 60),
+    benchmark: strOrNull(b.benchmark, 40),
+    raw: clampStr(isStr(b.raw) ? b.raw.trim() : '', 1000),
+    movements: b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean)
+  };
+}
+
+export function validateWod(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return fail(['the answer was not an object']);
+  if (!Array.isArray(data.tracks)) return fail(['tracks must be an array — use [] when the image holds no workout']);
+  const errors = [];
+  if (data.tracks.length > MAX_WOD_TRACKS) errors.push(`${data.tracks.length} tracks — at most ${MAX_WOD_TRACKS}`);
+  const seen = new Set();
+  const tracks = data.tracks.slice(0, MAX_WOD_TRACKS).map((tr, i) => {
+    const at = `tracks[${i}]`;
+    if (!tr || typeof tr !== 'object') { errors.push(`${at} must be an object`); return null; }
+    if (!['main', 'extra'].includes(tr.kind)) errors.push(`${at}.kind must be "main" or "extra"`);
+    if (!Array.isArray(tr.blocks)) { errors.push(`${at}.blocks must be an array`); return null; }
+    if (tr.blocks.length > MAX_WOD_BLOCKS) errors.push(`${at} has ${tr.blocks.length} blocks — at most ${MAX_WOD_BLOCKS}`);
+    const want = isStr(tr.id) ? tr.id.trim().toLowerCase() : '';
+    let id = TRACK_ID.test(want) && !seen.has(want) ? want : 't' + i;
+    // The fallback can be taken already — a model may name a track `t1` itself.
+    for (let n = i + 1; seen.has(id); n++) id = 't' + n;
+    seen.add(id);
+    return {
+      id,
+      label: clampStr(isStr(tr.label) ? tr.label.trim() : '', 80),
+      kind: tr.kind,
+      blocks: tr.blocks.slice(0, MAX_WOD_BLOCKS).map((b, j) => wodBlock(b, j, at, errors)).filter(Boolean)
+    };
+  }).filter(Boolean);
+  if (errors.length) return fail(errors);
+  return { ok: true, proposal: { program: { title: strOrNull(data.title, 120), tracks } } };
+}

@@ -111,4 +111,60 @@ export const DEBRIEF_SCHEMA = {
   required: ['coach_contract', 'summary', 'score']
 };
 
-export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA };
+// A posted workout read off an image: the program shape of S.wods[date] (docs: CrossFit data
+// model §1) minus what only the client knows — `exId` is resolved on the phone, `_ts` and `via`
+// are stamped when it is saved. Nullable fields say so with a type union, like ANY above.
+const NUM_OR_NULL = { type: ['number', 'null'] };
+const STR_OR_NULL = { type: ['string', 'null'] };
+const DOSE = {
+  type: 'object',
+  properties: { reps: { type: 'number' }, repsMax: { type: 'number' }, cal: { type: 'number' }, m: { type: 'number' }, sec: { type: 'number' } }
+};
+const LOAD = { type: ['object', 'null'], properties: { w: { type: 'number' }, unit: { type: 'string', enum: ['lb', 'kg'] } } };
+const MOVEMENT_SCHEMA = {
+  type: 'object',
+  properties: {
+    raw: STR, rawName: STR, name: STR, slot: STR_OR_NULL,
+    dose: DOSE, doseFemale: DOSE, perSide: { type: 'boolean' },
+    rx: { type: ['object', 'null'], properties: { male: LOAD, female: LOAD } },
+    alts: { type: 'array', items: { type: 'object', properties: { rawName: STR, dose: DOSE, doseFemale: DOSE }, required: ['rawName'] } }
+  },
+  required: ['raw', 'rawName', 'name', 'dose']
+};
+export const WOD_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: STR_OR_NULL,
+    tracks: {
+      type: 'array',
+      maxItems: 6,
+      items: {
+        type: 'object',
+        properties: {
+          id: STR, label: STR, kind: { type: 'string', enum: ['main', 'extra'] },
+          blocks: {
+            type: 'array',
+            maxItems: 12,
+            items: {
+              type: 'object',
+              properties: {
+                label: STR, warmup: { type: 'boolean' },
+                format: { type: 'string', enum: ['amrap', 'emom', 'fortime', 'rounds', 'interval', 'strength', 'other'] },
+                capMin: NUM_OR_NULL, rounds: { type: ['integer', 'null'] },
+                scheme: STR_OR_NULL, benchmark: STR_OR_NULL, raw: STR,
+                movements: { type: 'array', maxItems: 20, items: MOVEMENT_SCHEMA }
+              },
+              required: ['label', 'format', 'movements']
+            }
+          }
+        },
+        required: ['label', 'kind', 'blocks']
+      }
+    }
+  },
+  required: ['tracks']
+};
+
+// Every kind by name. No fallback: a kind missing here gets no schema, and the prompt and the
+// validator refuse it before a schema would matter.
+export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA, 'parse-wod': WOD_SCHEMA };

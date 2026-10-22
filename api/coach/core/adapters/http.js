@@ -157,7 +157,7 @@ export function httpAdapter(spec) {
      * native HTTP and a test can hand in a fake.
      */
     async invoke(opts = {}) {
-      const { cfg, prompt, system, schema, env, model, timeoutMs = DEFAULT_TIMEOUT_MS, maxTokens = MAX_OUTPUT_TOKENS, fetch: fetchImpl = globalThis.fetch, signal } = opts;
+      const { cfg, prompt, system, schema, images, env, model, timeoutMs = DEFAULT_TIMEOUT_MS, maxTokens = MAX_OUTPUT_TOKENS, fetch: fetchImpl = globalThis.fetch, signal } = opts;
       const base = adapter.baseUrl(cfg);
       if (!base) return { code: -1, text: '', stderr: `no endpoint configured for ${id}`, spawnError: true };
       const key = keyOf(env);
@@ -165,7 +165,9 @@ export function httpAdapter(spec) {
       const chosen = model || meta.defaultModel;
       if (!chosen) return { code: 1, text: '', stderr: `no model chosen for ${id} (pick one from the list the endpoint serves)` };
 
-      let body = spec.body({ model: chosen, prompt, system: system || null, schema: schema || null, maxTokens });
+      // `images` ([{ mime, data }], base64) only for a parse-wod job; a spec that has no image
+      // part ignores it, and the job runner refuses those providers before it gets here.
+      let body = spec.body({ model: chosen, prompt, system: system || null, schema: schema || null, maxTokens, ...(images && images.length ? { images } : {}) });
       let retriedWithoutJsonMode = false;
       let transientRetries = 0;
       for (;;) {

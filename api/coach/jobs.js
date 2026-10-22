@@ -27,6 +27,7 @@ import { handleFor } from './handle.js';
 import { fetchFor } from './node-fetch.js';
 import { canDropPrivileges, unprivilegedIds } from './adapters/spawn.js';
 import { cohortForPayload, invalidate as invalidateCohort } from './cohort.js';
+import { CONSENT_VERSION } from './core/categories.js';
 
 // The prompt assembly, the plan fingerprint and the invoke→parse→validate→repair loop all
 // live in ./core now, where the phone can import them too. Re-exported so nothing that
@@ -47,7 +48,9 @@ const HISTORY_MAX = 20;
 
 const safe = uid => String(uid).replace(/[^a-zA-Z0-9_-]/g, '');
 const userFile = uid => path.join(COACH_DIR, safe(uid) + '.json');
-const EMPTY = { daily: null, current: null, pending: null, history: [] };
+// `parsed` is a read routine image's program, waiting for the client to take it (parse-wod).
+// Its own slot, apart from `pending`: reading an image must never touch a plan proposal.
+const EMPTY = { daily: null, current: null, pending: null, parsed: null, history: [] };
 
 export function readUser(uid) {
   try { return { ...EMPTY, ...JSON.parse(fs.readFileSync(userFile(uid), 'utf8')) }; }
@@ -142,11 +145,12 @@ export function status(uid) {
     archive(uid, rec, 'expired');
     // Same shape as every other answer: the poll that happens to be the one which expires a
     // proposal must not be the one where the client's cap readout goes undefined.
-    return { job: null, pending: null, cap: capState(uid) };
+    return { job: null, pending: null, parsed: rec.parsed || null, cap: capState(uid) };
   }
   return {
     job: rec.current ? { id: rec.current.id, kind: rec.current.kind, state: rec.current.state, startedAt: rec.current.startedAt } : null,
     pending: rec.pending || null,
+    parsed: rec.parsed || null,
     cap: capState(uid),
     // How the most recent job ended, so the chat can say "nothing to change" or "that failed"
     // in the Coach's own bubble rather than leaving a job that silently stopped appearing.
@@ -190,11 +194,19 @@ export function clampMessage(text) {
   return String(text).slice(0, max);
 }
 
+// Every job kind there is. Anything else is a programming error and throws as one — never a
+// CoachError a route would turn into a polite refusal, and never a plan by default.
+export const KINDS = ['create', 'review', 'debrief', 'parse-wod'];
+// The providers that can read an image. The fixture answers a canned program for CI and dev.
+export const IMAGE_PROVIDERS = ['anthropic', 'openai', 'fixture'];
+const hasCurrentConsent = S => !!S?.coach?.consent?.agreedAt && S.coach.consent.version === CONSENT_VERSION;
+
 /**
  * Enqueue a job. Throws CoachError with a code the routes layer maps to an HTTP status:
- * `off`, `busy`, `cap`, `consent`.
+ * `off`, `busy`, `cap`, `consent`, `unsupported`.
  */
 export function enqueue(uid, opts) {
+  if (!KINDS.includes(opts.kind)) throw new Error(`unknown Coach job kind "${opts.kind}"`);
   if (!cfgStore.isEnabled() || !cfgStore.isConnected()) throw new CoachError('off', 'the Coach is not set up on this instance');
   if (inflight.has(uid)) throw new CoachError('busy', 'the Coach is already thinking about your training');
 
@@ -202,6 +214,12 @@ export function enqueue(uid, opts) {
   // Consent is enforced here, server-side, not by the screen that collects it: a UI-only gate
   // is not a gate (FR-08/13).
   if (!S?.coach?.consent?.agreedAt) throw new CoachError('consent', 'the Coach needs your go-ahead first');
+  // Reading an image sends a category the older consents never named, so only the current
+  // version will do. The plan jobs keep accepting any recorded consent, as they always have.
+  if (opts.kind === 'parse-wod') {
+    if (!hasCurrentConsent(S)) throw new CoachError('consent', 'the Coach needs your go-ahead first');
+    if (!IMAGE_PROVIDERS.includes(cfgStore.load().provider)) throw new CoachError('unsupported', 'this Coach provider cannot read images');
+  }
 
   // Whose account pays. In instance mode the credential binds to the first profile that spends
   // it and every other profile is refused outright — not warned. A warning would move the
@@ -239,13 +257,17 @@ export function enqueue(uid, opts) {
     id: crypto.randomBytes(8).toString('hex'),
     uid,
     forgetSeq: forgetSeq.get(uid) || 0,
-    kind: opts.kind,                                  // 'create' | 'review' | 'debrief'
+    kind: opts.kind,                                  // one of KINDS
     trigger: opts.trigger || 'manual',                // 'manual' | 'scheduled'
     workoutId: opts.workoutId ? String(opts.workoutId).slice(0, 40) : null,
     intake: opts.intake || null,
     note: clampMessage(opts.note),
     refine: clampMessage(opts.refine),
     lang: payloadLib.langTag(opts.lang),              // the language the app was showing (#303)
+    // parse-wod only. The image lives on this in-memory object and nowhere else: patchUser
+    // below copies id/kind/state/startedAt, so it never reaches the user's file.
+    date: opts.kind === 'parse-wod' ? opts.date : null,
+    image: opts.kind === 'parse-wod' ? opts.image : null,
     state: 'queued',
     startedAt: Date.now()
   };
@@ -298,9 +320,11 @@ function finish(job, result) {
     ...rec,
     current: null,
     pending: result.pending !== undefined ? result.pending : rec.pending,
+    parsed: result.parsed !== undefined ? result.parsed : (rec.parsed || null),
     history
   });
-  if (result.outcome === 'ready' && onProposal) {
+  // A read image is not a proposal: no "your Coach has a suggestion" push for it.
+  if (result.outcome === 'ready' && job.kind !== 'parse-wod' && onProposal) {
     try { onProposal(job.uid, result.pending, job); } catch (e) { console.error('coach notify failed', e); }
   }
 }
@@ -319,12 +343,16 @@ async function execute(job) {
   if (!S) return finish(job, { outcome: 'failed', errorClass: 'nostate' });
   // Checked again here, not only at enqueue: a job can wait behind two others, and consent
   // withdrawn or the Coach switched off in the meantime means no payload leaves for it.
-  if (!S.coach?.consent?.agreedAt) return finish(job, { outcome: 'failed', errorClass: 'consent' });
+  if (!(job.kind === 'parse-wod' ? hasCurrentConsent(S) : S.coach?.consent?.agreedAt)) return finish(job, { outcome: 'failed', errorClass: 'consent' });
   if (!cfgStore.isEnabled()) return finish(job, { outcome: 'failed', errorClass: 'off' });
 
   const cfg = cfgStore.load();
   const adapter = adapterFor(cfg.provider);
   if (!adapter) return finish(job, { outcome: 'failed', errorClass: 'off' });
+
+  // Before payload.build, on purpose: a parse sends the image and its date, and nothing the
+  // payload builder would add — no plan, no history, no body weight, no profile.
+  if (job.kind === 'parse-wod') return executeParse(job, cfg, adapter);
 
   if (job.kind === 'debrief' && !payloadLib.findWorkout(S, job.workoutId)) {
     return finish(job, { outcome: 'failed', errorClass: 'noworkout' });
@@ -354,6 +382,39 @@ async function execute(job) {
     return finish(job, { outcome: 'failed', errorClass: 'toolarge', detail: `payload of ${Math.round(size / 1000)}k characters` });
   }
 
+  const attempt = await invokeProvider(job, cfg, adapter, payload);
+  if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
+  if (attempt.nochange) {
+    return finish(job, { outcome: 'nochange', pending: null, detail: null, reading: attempt.reading });
+  }
+  const pending = {
+    id: job.id,
+    kind: job.kind,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + PENDING_DAYS * 86400000,
+    planHash: hashPlan(payloadLib.canonicalPlan(S)),
+    iteration: job.refine ? (pendingCreate?.iteration || 1) + 1 : 1,
+    // A debrief names the session it read, so the card can show it after the fact.
+    ...(job.kind === 'debrief' ? { workout: payloadLib.workoutMeta(S, job.workoutId) } : {}),
+    ...attempt.result
+  };
+  return finish(job, { outcome: 'ready', pending });
+}
+
+/** A parse-wod job: the date and the image go out, a checked program comes back into `parsed`. */
+async function executeParse(job, cfg, adapter) {
+  // Checked again here too: the provider may have been switched while the job waited.
+  if (!IMAGE_PROVIDERS.includes(cfg.provider)) return finish(job, { outcome: 'failed', errorClass: 'unsupported' });
+  const payload = { task: 'parse-wod', date: job.date, lang: job.lang || null };
+  const images = [job.image];
+  job.image = null;   // handed over; nothing here holds it past the call
+  const attempt = await invokeProvider(job, cfg, adapter, payload, { images });
+  if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
+  return finish(job, { outcome: 'ready', parsed: { jobId: job.id, date: job.date, program: attempt.result.program, at: Date.now() } });
+}
+
+/** The provider call every kind shares: job directory, credential, abort, pipeline, cleanup. */
+async function invokeProvider(job, cfg, adapter, payload, extra = {}) {
   // An HTTPS provider has no child process, so no directory for one to live in either.
   const jobDir = adapter.spawns === false ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'coach-'));
   const env = cfgStore.jobEnv(jobDir || os.tmpdir(), cfgStore.credentialFor(job.uid));
@@ -367,28 +428,11 @@ async function execute(job) {
       adapter, cfg, kind: job.kind, payload, model: cfgStore.modelFor(cfg), timeoutMs: TIMEOUT_MS,
       // The HTTP adapters take the fetch and the abort signal they are given; the runtime
       // adapters ignore both.
-      invokeOpts: { jobDir, env, fetch: fetchFor(TIMEOUT_MS), signal: ctl.signal, maxTokens: cfg.maxOutputTokens }
+      invokeOpts: { jobDir, env, fetch: fetchFor(TIMEOUT_MS), signal: ctl.signal, maxTokens: cfg.maxOutputTokens, ...extra }
     });
-    if (!attempt.ok) {
-      // Cancelled by a forget, not failed by the provider: the log must not blame the job budget.
-      const errorClass = ctl.signal.aborted ? 'forgotten' : attempt.errorClass;
-      return finish(job, { outcome: 'failed', errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
-    }
-    if (attempt.nochange) {
-      return finish(job, { outcome: 'nochange', pending: null, detail: null, reading: attempt.reading });
-    }
-    const pending = {
-      id: job.id,
-      kind: job.kind,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + PENDING_DAYS * 86400000,
-      planHash: hashPlan(payloadLib.canonicalPlan(S)),
-      iteration: job.refine ? (pendingCreate?.iteration || 1) + 1 : 1,
-      // A debrief names the session it read, so the card can show it after the fact.
-      ...(job.kind === 'debrief' ? { workout: payloadLib.workoutMeta(S, job.workoutId) } : {}),
-      ...attempt.result
-    };
-    return finish(job, { outcome: 'ready', pending });
+    // Cancelled by a forget, not failed by the provider: the log must not blame the job budget.
+    if (!attempt.ok && ctl.signal.aborted) return { ...attempt, errorClass: 'forgotten' };
+    return attempt;
   } finally {
     aborts.delete(job.uid);
     if (jobDir) removeJobDir(jobDir, unprivilegedIds());
@@ -407,6 +451,15 @@ export function resolvePending(uid, { accepted = [], rejected = [], dismissed = 
     accepted: accepted.length, rejected: rejected.length, at: Date.now()
   }].slice(-HISTORY_MAX);
   writeUser(uid, { ...rec, pending: null, history });
+  return { ok: true };
+}
+
+/** The client has taken the read program (saved it, or thrown it away). With a `jobId`, only
+ *  that program is cleared, so an ack that arrives late cannot drop a newer one. */
+export function ackParsed(uid, jobId) {
+  const rec = readUser(uid);
+  if (!rec.parsed || (jobId && rec.parsed.jobId !== jobId)) return { ok: true };
+  writeUser(uid, { ...rec, parsed: null });
   return { ok: true };
 }
 

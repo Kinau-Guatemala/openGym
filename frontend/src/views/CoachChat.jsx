@@ -47,7 +47,12 @@ export default function CoachChat() {
   const storeReady = useStore(s => s.ready)
   const toast = useUI(s => s.toast)
   const openSheet = useUI(s => s.openSheet)
-  const { job, pending, cap, loading, lastError, last, refresh, maxMessageLen } = useCoachStatus(true)
+  const st = useCoachStatus(true)
+  const { pending, cap, loading, lastError, refresh, maxMessageLen } = st
+  // Reading a routine image is a job too, but not a conversation: the chat neither types
+  // "Reading your training…" through one nor reports how one ended.
+  const job = st.job?.kind === 'parse-wod' ? null : st.job
+  const last = st.last?.kind === 'parse-wod' ? null : st.last
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const endRef = useRef(null)

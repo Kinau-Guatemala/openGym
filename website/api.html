@@ -245,7 +245,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.1</span>
-    <span>69 endpoints</span>
+    <span>71 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -2087,7 +2087,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <div class="ptab">
   <div class="prow rrow">
     <span class="r-code s2">200</span>
-    <span class="p-desc">The disclosure.<span class="r-sig">{ provider: string, providerLabel: string, categories: (&quot;plan&quot; | &quot;training&quot; | &quot;bodyweight&quot; | &quot;profile&quot; | &quot;prefs&quot;)[], version: integer }</span></span>
+    <span class="p-desc">The disclosure.<span class="r-sig">{ provider: string, providerLabel: string, categories: (&quot;plan&quot; | &quot;training&quot; | &quot;bodyweight&quot; | &quot;profile&quot; | &quot;prefs&quot; | &quot;image&quot;)[], version: integer }</span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>
@@ -2178,15 +2178,15 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">409</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s5">503</span>
@@ -2231,15 +2231,15 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">409</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s5">503</span>
@@ -2284,15 +2284,128 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">409</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
-    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile. - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">The Coach is not set up on this instance (switched off, or no provider connected). Every Coach route answers this rather than pretending, so an unconfigured instance renders exactly the app it was before the feature existed. <code>code</code> is <code>off</code>, the class a job refused at enqueue for the same reason carries; the app shows its own line for it.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is not set up on this instance&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-postCoachParseWod">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/coach/parse-wod</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Read a routine image into a program</span>
+  </summary>
+  <div class="ep-body">
+<p>Queues a <code>parse-wod</code> job: the image of a gym's posted workout, read by the provider into a program for <code>date</code> (tracks → blocks → movements, with each movement's <code>rawName</code> for the client to resolve to an exercise). <b>Only the image and the date leave the server</b>: no plan, history, body weight or profile. The image is held in memory for the one call and never written to disk.</p>
+<p>The result arrives as <code>parsed</code> on <code>GET /api/coach/status</code>, never as a proposal, and a proposal already waiting is left alone. Needs consent at the current version (it names the <code>image</code> category) and a provider that reads images: Anthropic or OpenAI (or the fixture). Any other provider is refused with <code>unsupported</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">date<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc">The day the program is for (YYYY-MM-DD).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">mime<em class="p-req" title="required">required</em></span>
+    <span class="p-type">&quot;image/jpeg&quot; | &quot;image/png&quot; | &quot;image/webp&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">image<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 4000000 chars)</span></span>
+    <span class="p-desc">The image, base64, without a <code>data:</code> prefix. The app sends a JPEG downscaled to 1600 px.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">lang</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The language the app is showing.</span>
+  </div>
+</div>
+<pre><code>{
+  &quot;date&quot;: &quot;2026-10-22&quot;,
+  &quot;mime&quot;: &quot;image/jpeg&quot;,
+  &quot;image&quot;: &quot;/9j/4AAQSkZJRg…&quot;
+}</code></pre>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">202</span>
+    <span class="p-desc">Queued. The job runs in the background; its outcome arrives through <code>GET /api/coach/status</code>, which the client polls.<span class="r-sig">{ job: object }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">A date that is not an ISO date, a mime outside the list, or an image that is not bounded base64.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">422</span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">The Coach will not take this job, and says which reason in <code>code</code>: - <code>busy</code> (409): a job for this profile is already running. - <code>shared</code> (409): instance mode, and the credential belongs to another profile. - <code>cap</code> (429): this profile's or the instance's daily limit is spent. - <code>consent</code> (403): no consent recorded for this profile (for a routine image: none at the current version). - <code>unprivileged</code> (503): the privilege drop cannot be performed, so no job runs. - <code>unsupported</code> (422): a routine image was sent, and this provider cannot read one. The message is the one to show; the raw provider detail never reaches the user.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is already thinking about your training&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">The Coach is not set up on this instance (switched off, or no provider connected). Every Coach route answers this rather than pretending, so an unconfigured instance renders exactly the app it was before the feature existed. <code>code</code> is <code>off</code>, the class a job refused at enqueue for the same reason carries; the app shows its own line for it.<span class="r-sig"><code>{&quot;error&quot;:&quot;the Coach is not set up on this instance&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-postCoachParsedAck">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/coach/parsed/ack</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Clear a read program</span>
+  </summary>
+  <div class="ep-body">
+<p>The client has saved the program (or thrown it away); the server forgets it. With <code>jobId</code>, only that program is cleared, so a late ack cannot drop a newer one. Sending it when nothing is waiting is a no-op, not an error.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span> <span class="p-hint">(optional)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">jobId</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The <code>parsed.jobId</code> being acknowledged.</span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Cleared.<span class="r-sig"><a href="#schema-Ok">Ok</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s5">503</span>
@@ -4516,6 +4629,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-desc"></span>
   </div>
   <div class="prow">
+    <span class="p-name">parsed</span>
+    <span class="p-type"><a href="#schema-CoachParsed">CoachParsed</a> | null</span>
+    <span class="p-desc">A routine image, read, waiting for the client to take it (<code>POST /api/coach/parsed/ack</code>).</span>
+  </div>
+  <div class="prow">
     <span class="p-name">cap</span>
     <span class="p-type"><a href="#schema-CoachCap">CoachCap</a></span>
     <span class="p-desc"></span>
@@ -4528,6 +4646,130 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">last</span>
     <span class="p-type">object | null</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachParsed">
+  <summary>
+    <span class="sch-name"><code>CoachParsed</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">The program a <code>parse-wod</code> job read off an image.</span>
+  </summary>
+  <div class="ep-body">
+<p>A draft for the review screen: every <code>exId</code> is null (the client resolves <code>rawName</code> to an exercise), and nothing has been applied to anything. <code>tracks: []</code> means no workout was found in the image.</p>
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">jobId</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">date</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">at</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc">Epoch ms.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program</span>
+    <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program.title</span>
+    <span class="p-type">string | null</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program.tracks</span>
+    <span class="p-type">object[]</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program.tracks[].id</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">e.g. <code>full</code>, <code>evo</code>, <code>pump</code>.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program.tracks[].label</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program.tracks[].kind</span>
+    <span class="p-type">&quot;main&quot; | &quot;extra&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">program.tracks[].blocks</span>
+    <span class="p-type">object[]</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachWodDose">
+  <summary>
+    <span class="sch-name"><code>CoachWodDose</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum"></span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">reps</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">repsMax</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">cal</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">m</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">sec</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-CoachWodLoad">
+  <summary>
+    <span class="sch-name"><code>CoachWodLoad</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum"></span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">w</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">unit</span>
+    <span class="p-type">&quot;lb&quot; | &quot;kg&quot;</span>
     <span class="p-desc"></span>
   </div>
 </div>
