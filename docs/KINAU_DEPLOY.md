@@ -86,8 +86,8 @@ Two services from the public images, plus one volume. Railway gives each service
 | Public networking | generate a domain, target port **8080** |
 | `BACKEND` | `api.railway.internal` (the api service's private hostname) |
 | `PORT` | `3000` (the api's port, which nginx proxies `/api` to) |
-| `RESOLVER` | Railway's internal DNS resolver; see the check below |
-| `RESOLVER_IPV6` | `on` if `api.railway.internal` resolves to IPv6 only |
+| `RESOLVER` | the `nameserver` from the web service's `/etc/resolv.conf`, **in brackets if it's an IPv6 address** (e.g. `[fd12::10]`); see the check below |
+| `RESOLVER_IPV6` | `on` only if `api.railway.internal` has no IPv4 address |
 
 ### The DNS check (do this first)
 
@@ -98,8 +98,10 @@ cat /etc/resolv.conf                 # the nameserver to use as RESOLVER
 getent ahosts api.railway.internal   # IPv4 (A), IPv6 (AAAA), or both
 ```
 
-- **IPv4 available:** set `RESOLVER` to the nameserver address and leave `RESOLVER_IPV6=off`.
-- **IPv6 only:** set `RESOLVER_IPV6=on` and put an IPv6 nameserver in brackets, e.g. `RESOLVER=[fd12::10]`.
+Two independent settings come out of this:
+
+- **`RESOLVER`** is the `nameserver` line from `resolv.conf`. If it's an IPv6 address (Railway's usually is, e.g. `fd12::10`), it **must be in brackets**: `RESOLVER=[fd12::10]`. Without brackets nginx reads the last group as a port and the web service won't start.
+- **`RESOLVER_IPV6`** depends on what `getent` printed for `api.railway.internal`. If it shows at least one IPv4 address, leave it `off`. If it shows only IPv6 addresses, set it to `on`.
 
 Redeploy `web`. Every `/api` call hanging is the symptom of a wrong resolver.
 
