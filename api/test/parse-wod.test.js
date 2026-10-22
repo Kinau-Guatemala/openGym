@@ -321,6 +321,10 @@ test('validateWod: shape, bounds and rawName, with ids assigned and exId always 
   assert.match(errs(move({ alts: [{ rawName: 'ski', doseFemale: { cal: 'x' } }] })).join(), /alts\.doseFemale\.cal/);
   const fixtureRow = ok.proposal.program.tracks[0].blocks[1].movements[0];
   assert.deepEqual([fixtureRow.dose, fixtureRow.doseFemale], [{ cal: 20 }, { cal: 15 }], '20/15 Cal Row/Ski/Bike in the fixture');
+  // Track ids stay unique when a fallback id is one the model already used.
+  const ids = v => validateWod({ tracks: v.map(id => ({ id, label: 'x', kind: 'main', blocks: [] })) }).proposal.program.tracks.map(t => t.id);
+  assert.deepEqual(ids(['t1', 'Full Equipment']), ['t1', 't2']);
+  assert.deepEqual(ids(['Full Equipment', 't0', 'full', 'full']), ['t0', 't1', 'full', 't3']);
   const long = validateWod(move({ rawName: 'y'.repeat(500) })).proposal.program.tracks[0].blocks[0].movements[0];
   assert.equal(long.rawName.length, 80, 'strings are clipped');
 });

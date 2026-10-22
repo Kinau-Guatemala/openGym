@@ -755,7 +755,9 @@ export function validateWod(data) {
     if (!Array.isArray(tr.blocks)) { errors.push(`${at}.blocks must be an array`); return null; }
     if (tr.blocks.length > MAX_WOD_BLOCKS) errors.push(`${at} has ${tr.blocks.length} blocks — at most ${MAX_WOD_BLOCKS}`);
     const want = isStr(tr.id) ? tr.id.trim().toLowerCase() : '';
-    const id = TRACK_ID.test(want) && !seen.has(want) ? want : 't' + i;
+    let id = TRACK_ID.test(want) && !seen.has(want) ? want : 't' + i;
+    // The fallback can be taken already — a model may name a track `t1` itself.
+    for (let n = i + 1; seen.has(id); n++) id = 't' + n;
     seen.add(id);
     return {
       id,
