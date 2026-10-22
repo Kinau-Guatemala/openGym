@@ -474,6 +474,17 @@ export function matchExercise(e, query) {
 export function searchExercises(list, query) {
   const tokens = queryTokens(query)
   if (!tokens.length) return list
+  return rankedSearch(list, tokens).map(x => x.e)
+}
+
+// The same search with each match's relevance score ({ e, score }, best first), for a caller that
+// has to know how sure the top hit is: crossfit-resolve.js only takes a clear match on its own.
+export function scoredSearch(list, query) {
+  const tokens = queryTokens(query)
+  return tokens.length ? rankedSearch(list, tokens) : []
+}
+
+function rankedSearch(list, tokens) {
   resetNearCache()
   const fuzzy = new Set(tokens.filter(tok => !list.some(e => hits(corpusOf(e), tok))))
   return rankByRelevance(list.filter(e => matchTokens(e, tokens, fuzzy)), tokens)
@@ -549,7 +560,7 @@ function wholeNameScore(plain, typedForms) {
 
 // The matches in order of how well they match, shorter names first among equals (the plain
 // "barbell squat" before its six variations), and the list's own order after that: custom
-// exercises, which callers put first, stay first among equal matches.
+// exercises, which callers put first, stay first among equal matches. Each as { e, score }.
 function rankByRelevance(found, tokens) {
   const ctx = queryContext(tokens)
   // The query as typed, and with each word in its singular: "pull ups" is the name "pull-up".
@@ -565,7 +576,7 @@ function rankByRelevance(found, tokens) {
     return { e, i, score: tokens.reduce((sum, tok) => sum + tokenScore(entry, tok, ctx), 0) + priorOf(e) + whole - extra, len: entry.nameWords.length }
   })
   scored.sort((a, b) => b.score - a.score || a.len - b.len || a.i - b.i)
-  return scored.map(x => x.e)
+  return scored
 }
 
 // Exercises that come close to a query without matching all of it: most of the words found, or
