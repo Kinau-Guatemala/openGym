@@ -1,0 +1,131 @@
+# The Kinau fork's signed APK (gt.kinau.opengym), attached to a GitHub release on every fork tag,
+# vX.Y.Z-kinau.N. Upstream's own tags (v1.4.2, …) reach the fork whenever tags are synced and must
+# never be signed with the Kinau key: that would offer every phone a different app as an update.
+# The in-app updater (frontend/src/lib/update.js) reads Kinau-Guatemala/openGym's latest release
+# and takes its .apk and .apk.sha256 assets, so both are uploaded here. Mirrors upstream's
+# build:apk job in .gitlab-ci.yml: build:mobile, assembleRelease, zipalign, apksigner.
+#
+# The release is created as a full release, never a pre-release: releases/latest skips
+# pre-releases, so a phone would not see it. A release created here with GITHUB_TOKEN does not
+# trigger docker-publish.yml's `release` event; run that workflow on the tag by hand if the
+# versioned images are wanted (`gh workflow run docker-publish.yml --ref <tag>`).
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_B64       base64 of the keystore file (one line: base64 -w0)
+#   ANDROID_KEYSTORE_PASSWORD  the keystore password
+#   ANDROID_KEY_ALIAS          the key's alias
+#   ANDROID_KEY_PASSWORD       optional; a PKCS12 keystore (keytool's default) has one password
+#                              for store and key, and the keystore password is used when unset
+#
+# Generating the keystore, once:
+#   keytool -genkeypair -v -keystore kinau-release.jks -storetype PKCS12 -alias kinau \
+#     -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Kinau Guatemala, O=Kinau, C=GT"
+#   base64 -w0 kinau-release.jks | gh secret set ANDROID_KEYSTORE_B64 -R Kinau-Guatemala/openGym
+#   gh secret set ANDROID_KEYSTORE_PASSWORD -R Kinau-Guatemala/openGym
+#   gh secret set ANDROID_KEY_ALIAS -R Kinau-Guatemala/openGym --body kinau
+# KEEP THAT KEYSTORE: updates must be signed with the same key or Android refuses to install
+# them over an existing copy.
+name: Android release
+
+on:
+  push:
+    tags: ['v*-kinau.*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    # Upstream's APK is built and signed on GitLab; this job is the fork's.
+    if: github.repository != 'DuarteSantos8/openGym'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      # The tag filter is a glob; this is the exact scheme the updater orders (update.js).
+      - name: Check the tag
+        run: |
+          if ! printf '%s' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-kinau\.[0-9]+$'; then
+            echo "::error::$GITHUB_REF_NAME is not a fork release tag (vX.Y.Z-kinau.N)."
+            exit 1
+          fi
+
+      # No token left in .git/config for npm, Gradle or their plugins to read.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # Capacitor 7 compiles for Java 21 (android/app/capacitor.build.gradle)
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      # No secrets in this step: it runs dependency install scripts, the test suite, Vite and
+      # Gradle plugins, any of which could read its environment.
+      - name: Build the unsigned APK
+        run: |
+          set -eu
+          cd frontend
+          npm ci
+          npm test
+          # The app reports, and the updater compares, the tag's version (1.4.1-kinau.2), not
+          # package.json's upstream one; without it every fork build would call itself 1.4.1.
+          # Checkout-only: no commit, no tag.
+          npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version --ignore-scripts
+          npm run build:mobile
+          cd android
+          ./gradlew --no-daemon assembleRelease
+
+      # The key only ever meets zipalign and apksigner from the SDK.
+      - name: Sign the APK
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -eu
+          # A release must never quietly ship an APK nobody can install.
+          if [ -z "$ANDROID_KEYSTORE_B64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "::error::$GITHUB_REF_NAME is a release tag but the signing secrets are not set (see this workflow's header)."
+            exit 1
+          fi
+          export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+          KS="$RUNNER_TEMP/release.jks"
+          trap 'rm -f "$KS"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > "$KS"
+          UNSIGNED=frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          APK="openGym-${GITHUB_REF_NAME#v}.apk"
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign \
+            --ks "$KS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "$APK" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" verify --print-certs "$APK"
+          # The updater refuses an APK without its published digest.
+          sha256sum "$APK" > "$APK.sha256"
+          cat "$APK.sha256"
+
+      - name: Attach to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          files="openGym-${GITHUB_REF_NAME#v}.apk openGym-${GITHUB_REF_NAME#v}.apk.sha256"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" $files --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" $files --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi

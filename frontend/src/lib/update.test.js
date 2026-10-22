@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { checkForUpdate, sha256, resetUpdateCheck, fetchChecksum } from './update.js'
+import { checkForUpdate, sha256, resetUpdateCheck, fetchChecksum, compareSemver } from './update.js'
 
 // __APP_VERSION__ is defined at build time by vite.config.js (reads package.json).
 // In the test environment vitest applies the same define, so it's available here.
@@ -43,7 +43,7 @@ describe('checkForUpdate', () => {
   it('asks GitHub for the latest published release (never a draft or a beta)', async () => {
     mockFetch({ tag_name: 'v' + __APP_VERSION__, assets: [] })
     await checkForUpdate()
-    expect(globalThis.fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/DuarteSantos8/openGym/releases/latest')
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('https://api.github.com/repos/Kinau-Guatemala/openGym/releases/latest')
   })
 
   it('reports no update when the latest release matches the current version', async () => {
@@ -82,8 +82,8 @@ describe('checkForUpdate', () => {
   const REAL_RELEASE = {
     tag_name: 'v1.4.0',
     assets: [
-      { name: 'openGym-1.4.0.apk', browser_download_url: 'https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk' },
-      { name: 'openGym-1.4.0.apk.sha256', browser_download_url: 'https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256' },
+      { name: 'openGym-1.4.0.apk', browser_download_url: 'https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk' },
+      { name: 'openGym-1.4.0.apk.sha256', browser_download_url: 'https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256' },
     ],
   }
 
@@ -91,8 +91,8 @@ describe('checkForUpdate', () => {
     mockFetch(REAL_RELEASE)
     const result = await checkForUpdate()
     expect(result.latestVersion).toBe('1.4.0')
-    expect(result.apkUrl).toBe('https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk')
-    expect(result.hashUrl).toBe('https://github.com/DuarteSantos8/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256')
+    expect(result.apkUrl).toBe('https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk')
+    expect(result.hashUrl).toBe('https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.0/openGym-1.4.0.apk.sha256')
   })
 
   it('does not take the checksum for the APK when it is listed first', async () => {
@@ -226,5 +226,32 @@ describe('semver comparison (via checkForUpdate behavior)', () => {
     // minus one on the minor when possible.
     mockRelease('v' + [MAJ, Math.max(0, MIN - 1), 0].join('.'))
     expect((await checkForUpdate()).hasUpdate).toBe(false)
+  })
+})
+
+describe('compareSemver: fork builds (-<word>.N) count on top of their base', () => {
+  it('orders 1.4.1 < 1.4.1-kinau.1 < 1.4.1-kinau.2 < 1.4.2', () => {
+    const order = ['1.4.1', '1.4.1-kinau.1', '1.4.1-kinau.2', '1.4.2']
+    for (let i = 0; i < order.length - 1; i++) {
+      expect(compareSemver(order[i + 1], order[i])).toBe(1)
+      expect(compareSemver(order[i], order[i + 1])).toBe(-1)
+    }
+  })
+
+  it('lets a plain upstream release win over an older base with many fork builds', () => {
+    expect(compareSemver('1.4.2', '1.4.1-kinau.5')).toBe(1)
+    expect(compareSemver('v1.4.10-kinau.1', '1.4.9-kinau.7')).toBe(1)
+  })
+
+  it('reads the tag and the app version alike, with or without v and build metadata', () => {
+    expect(compareSemver('v1.4.1-kinau.2', '1.4.1-kinau.2+abc')).toBe(0)
+  })
+
+  it('never throws on malformed input, reading what it cannot parse as 0', () => {
+    for (const v of ['', 'garbage', 'v', '1..2', '1.4.1-', '1.4.1-kinau', '-kinau.1', null, undefined]) {
+      expect(() => compareSemver(v, '1.4.1')).not.toThrow()
+    }
+    expect(compareSemver('1.4.1-kinau', '1.4.1')).toBe(0)
+    expect(compareSemver('garbage', '0.0.0')).toBe(0)
   })
 })
