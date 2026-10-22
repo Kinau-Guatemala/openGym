@@ -3,8 +3,17 @@
  * the server under bare node and by the phone under Vite, with neither reading a file. */
 import { PROMPTS } from './prompts.js';
 
-export const taskOf = (kind, payload) =>
-  kind === 'review' ? 'review' : kind === 'debrief' ? 'debrief' : payload && payload.refine ? 'refine' : 'create';
+// Every kind by name, and an unknown one throws: falling through to `create` would hand a new
+// kind the plan prompt, the plan schema and the plan validator without anyone deciding it should.
+export function taskOf(kind, payload) {
+  switch (kind) {
+    case 'review': return 'review';
+    case 'debrief': return 'debrief';
+    case 'create': return payload && payload.refine ? 'refine' : 'create';
+    case 'parse-wod': return 'parse-wod';
+    default: throw new Error(`unknown Coach job kind "${kind}"`);
+  }
+}
 
 /**
  * The prompt in two parts: `system` is the rules — byte-identical for every job of the same
@@ -22,7 +31,9 @@ export function buildPromptParts(kind, payload, repair) {
   // plan format to follow at all, and a request like "swap the leverage machine" came back as
   // a review-style change list the plan validator can only reject (#471).
   const rules = task === 'refine' ? PROMPTS.create + '\n\n---\n\n' + PROMPTS.refine : PROMPTS[task];
-  const system = PROMPTS.common + '\n\n---\n\n' + rules;
+  // Reading an image is not coaching: common.md's rules are about a plan, a library and a
+  // lifter's history, none of which a parse-wod job has, so its prompt stands alone.
+  const system = task === 'parse-wod' ? rules : PROMPTS.common + '\n\n---\n\n' + rules;
   // Compact JSON, not pretty-printed: the indentation was ~30% of the payload's tokens and
   // a model reads either just as well.
   let user = '## Payload\n\n```json\n' + JSON.stringify(payload) + '\n```\n';

@@ -2461,13 +2461,15 @@ paths:
                   providerLabel: { type: string }
                   categories:
                     type: array
-                    items: { type: string, enum: [plan, training, bodyweight, profile, prefs] }
-                    description: The data categories a job may send. Nothing else ever is.
+                    items: { type: string, enum: [plan, training, bodyweight, profile, prefs, image] }
+                    description: |
+                      The data categories a job may send. Nothing else ever is. `image` is sent
+                      only by `POST /api/coach/parse-wod`, and that job sends nothing else.
                   version: { type: integer, description: Disclosure version the consent is recorded against. }
               example:
                 provider: anthropic
                 providerLabel: Claude
-                categories: [plan, training, bodyweight, profile, prefs]
+                categories: [plan, training, bodyweight, profile, prefs, image]
                 version: 1
         '401': { $ref: '#/components/responses/Unauthorized' }
 
@@ -2596,6 +2598,86 @@ paths:
         '403': { $ref: '#/components/responses/CoachRefused' }
         '409': { $ref: '#/components/responses/CoachRefused' }
         '429': { $ref: '#/components/responses/CoachRefused' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/parse-wod:
+    post:
+      tags: [coach]
+      operationId: postCoachParseWod
+      summary: Read a routine image into a program
+      description: |
+        Queues a `parse-wod` job: the image of a gym's posted workout, read by the provider
+        into a program for `date` (tracks → blocks → movements, with each movement's
+        `rawName` for the client to resolve to an exercise). **Only the image and the date
+        leave the server**: no plan, history, body weight or profile. The image is held in
+        memory for the one call and never written to disk.
+
+        The result arrives as `parsed` on `GET /api/coach/status`, never as a proposal, and
+        a proposal already waiting is left alone. Needs consent at the current version (it
+        names the `image` category) and a provider that reads images: Anthropic or OpenAI
+        (or the fixture). Any other provider is refused with `unsupported`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, mime, image]
+              properties:
+                date:
+                  type: string
+                  format: date
+                  description: The day the program is for (YYYY-MM-DD).
+                mime:
+                  type: string
+                  enum: [image/jpeg, image/png, image/webp]
+                image:
+                  type: string
+                  maxLength: 4000000
+                  description: The image, base64, without a `data:` prefix. The app sends a JPEG downscaled to 1600 px.
+                lang:
+                  type: string
+                  pattern: '^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?$'
+                  description: The language the app is showing.
+            example: { date: '2026-10-22', mime: image/jpeg, image: '/9j/4AAQSkZJRg…' }
+      responses:
+        '202': { $ref: '#/components/responses/CoachJobQueued' }
+        '400':
+          description: A date that is not an ISO date, a mime outside the list, or an image that is not bounded base64.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/CoachRefused' }
+        '409': { $ref: '#/components/responses/CoachRefused' }
+        '422': { $ref: '#/components/responses/CoachRefused' }
+        '429': { $ref: '#/components/responses/CoachRefused' }
+        '503': { $ref: '#/components/responses/CoachOff' }
+
+  /api/coach/parsed/ack:
+    post:
+      tags: [coach]
+      operationId: postCoachParsedAck
+      summary: Clear a read program
+      description: |
+        The client has saved the program (or thrown it away); the server forgets it. With
+        `jobId`, only that program is cleared, so a late ack cannot drop a newer one.
+        Sending it when nothing is waiting is a no-op, not an error.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                jobId: { type: string, description: The `parsed.jobId` being acknowledged. }
+      responses:
+        '200':
+          description: Cleared.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '503': { $ref: '#/components/responses/CoachOff' }
 
   /api/coach/pending/resolve:
@@ -3022,8 +3104,9 @@ components:
         - `busy` (409): a job for this profile is already running.
         - `shared` (409): instance mode, and the credential belongs to another profile.
         - `cap` (429): this profile's or the instance's daily limit is spent.
-        - `consent` (403): no consent recorded for this profile.
+        - `consent` (403): no consent recorded for this profile (for a routine image: none at the current version).
         - `unprivileged` (503): the privilege drop cannot be performed, so no job runs.
+        - `unsupported` (422): a routine image was sent, and this provider cannot read one.
 
         The message is the one to show; the raw provider detail never reaches the user.
       content:
@@ -3683,7 +3766,7 @@ components:
             - type: object
               properties:
                 id: { type: string }
-                kind: { type: string, enum: [create, review, debrief] }
+                kind: { type: string, enum: [create, review, debrief, parse-wod] }
                 state: { type: string, enum: [queued, running] }
                 startedAt: { type: integer, description: Epoch ms. }
             - type: 'null'
@@ -3692,6 +3775,11 @@ components:
           oneOf:
             - $ref: '#/components/schemas/CoachProposal'
             - type: 'null'
+        parsed:
+          oneOf:
+            - $ref: '#/components/schemas/CoachParsed'
+            - type: 'null'
+          description: A routine image, read, waiting for the client to take it (`POST /api/coach/parsed/ack`).
         cap: { $ref: '#/components/schemas/CoachCap' }
         maxMessageLen:
           type: integer
@@ -3706,7 +3794,7 @@ components:
               description: How the most recent job ended, so the chat can say so in the Coach's own voice.
               properties:
                 id: { type: string }
-                kind: { type: string, enum: [create, review, debrief] }
+                kind: { type: string, enum: [create, review, debrief, parse-wod] }
                 outcome: { type: string, enum: [ready, nochange, applied, dismissed, expired, failed] }
                 errorClass:
                   oneOf: [{ type: string }, { type: 'null' }]
@@ -3714,6 +3802,80 @@ components:
                 at: { type: integer, description: Epoch ms. }
                 reading: { type: string, description: "Present on `nochange`: why there was nothing to change." }
             - type: 'null'
+
+    CoachParsed:
+      type: object
+      description: |
+        The program a `parse-wod` job read off an image. A draft for the review screen: every
+        `exId` is null (the client resolves `rawName` to an exercise), and nothing has been
+        applied to anything. `tracks: []` means no workout was found in the image.
+      properties:
+        jobId: { type: string }
+        date: { type: string, format: date }
+        at: { type: integer, description: Epoch ms. }
+        program:
+          type: object
+          properties:
+            title: { oneOf: [{ type: string }, { type: 'null' }] }
+            tracks:
+              type: array
+              maxItems: 6
+              items:
+                type: object
+                properties:
+                  id: { type: string, description: "e.g. `full`, `evo`, `pump`." }
+                  label: { type: string }
+                  kind: { type: string, enum: [main, extra] }
+                  blocks:
+                    type: array
+                    maxItems: 12
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+                        warmup: { type: boolean }
+                        format: { type: string, enum: [amrap, emom, fortime, rounds, interval, strength, other] }
+                        capMin: { oneOf: [{ type: number }, { type: 'null' }] }
+                        rounds: { oneOf: [{ type: integer }, { type: 'null' }] }
+                        scheme: { oneOf: [{ type: string }, { type: 'null' }] }
+                        benchmark: { oneOf: [{ type: string }, { type: 'null' }] }
+                        raw: { type: string }
+                        movements:
+                          type: array
+                          maxItems: 20
+                          items:
+                            type: object
+                            properties:
+                              id: { type: string }
+                              raw: { type: string, description: The printed line, verbatim. }
+                              rawName: { type: string, description: "The movement without dose or load, e.g. `hang cleans`." }
+                              name: { type: string, description: English canonical name. }
+                              slot: { oneOf: [{ type: string }, { type: 'null' }] }
+                              exId: { type: 'null' }
+                              dose:
+                                type: object
+                                properties: { reps: { type: number }, repsMax: { type: number }, cal: { type: number }, m: { type: number }, sec: { type: number } }
+                              perSide: { type: boolean }
+                              rx:
+                                description: Male/female load as printed; a unitless barbell pair is pounds.
+                                oneOf:
+                                  - type: object
+                                    properties:
+                                      male: { oneOf: [{ $ref: '#/components/schemas/CoachWodLoad' }, { type: 'null' }] }
+                                      female: { oneOf: [{ $ref: '#/components/schemas/CoachWodLoad' }, { type: 'null' }] }
+                                  - type: 'null'
+                              alts:
+                                type: array
+                                items:
+                                  type: object
+                                  properties: { exId: { type: 'null' }, rawName: { type: string }, dose: { type: object } }
+
+    CoachWodLoad:
+      type: object
+      properties:
+        w: { type: number }
+        unit: { type: string, enum: [lb, kg] }
 
     CoachProposal:
       type: object

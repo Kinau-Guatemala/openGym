@@ -193,6 +193,32 @@ score out of ten, what went well, what to watch, and what to do next time, each 
 session's own numbers. A debrief cannot carry a change; an answer that tries is refused by the
 validator rather than trimmed. The card is kept in the Coach's history like everything else.
 
+### Reading a routine image
+
+`POST /api/coach/parse-wod` takes the image of a gym's posted workout (the WhatsApp graphic a
+CrossFit box sends out) and the date it is for, and reads it into a program: tracks (Full / Evo
+equipment, and extras such as a pump or a running club), blocks (`amrap`, `emom`, `fortime`,
+`rounds`, `interval`, `strength`) and movements with their dose and male/female Rx. A barbell pair
+printed without a unit (`185/135`) is read as pounds. Each movement carries `rawName`, the
+printed name without dose or load, which the app resolves to an exercise itself — the model
+never names a catalogue id here.
+
+- **Only the image and the date leave the server.** No plan, history, body weight or profile:
+  the job is built before, and apart from, the payload builder. The image is held in memory
+  for the one call and never written to disk; a restart loses the job, and the app retries
+  from its own copy.
+- The answer goes through `validateWod` (closed format list, bounded sizes, `rawName` on every
+  movement) with the same single repair round as a plan, and lands as `parsed` on
+  `GET /api/coach/status` — **never** as a proposal, so a plan suggestion waiting for an answer
+  is left alone and no "proposal ready" notification is sent. The app clears it with
+  `POST /api/coach/parsed/ack`.
+- **Anthropic and OpenAI only** (and the fixture, which answers a canned program). Any other
+  provider is refused with `unsupported` before anything is counted against the daily cap.
+- It needs consent **at the current version**, which names the `image` category; a consent
+  given before that re-prompts once. It counts against the same daily cap as any other job and
+  waits behind one already running (`busy`).
+- The phone's own-key mode does not read images; the app always asks the server.
+
 ### Comparing with others on the instance
 
 Off unless the admin turns it on (**Settings → Account → Admin dashboard**, the **AI Coach** card →
@@ -248,7 +274,7 @@ archive.
 
 `api/coach/payload.js` is built as an allowlist: every field is copied in **by name**, nothing
 is spread and nothing is passed through, so a field added to the state blob next year cannot
-ride along by accident. The five categories it can send — the same list the consent screen
+ride along by accident. The categories it can send — the same list the consent screen
 renders from, so the screen cannot drift from the payload — are:
 
 | Category | What it covers |
@@ -259,6 +285,7 @@ renders from, so the screen cannot drift from the payload — are:
 | `profile` | the intake answers you gave the Coach, including any limitations |
 | `cohort` (optional) | only with comparison on and your own opt-in: anonymous medians from the other people sharing — never their data, and never yours to them beyond the same medians |
 | `prefs` | unit, language, effort scale |
+| `image` | only for [reading a routine image](#reading-a-routine-image): that image and its date, and nothing else |
 
 A review reads a training block, not a training career: the window is capped at **12 weeks or 60
 sessions**. Your profile is identified by a stable pseudonym that is never the user id and never

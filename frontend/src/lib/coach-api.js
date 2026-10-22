@@ -162,6 +162,8 @@ export const JOB_ERRORS = {
   // The refusal at enqueue when the process cannot drop privileges (api/coach/jobs.js). The same
   // words as api/coach/routes.js USER_ERROR.unprivileged; what to fix goes to the admin card.
   get unprivileged() { return t('The Coach is switched off on this instance for safety reasons.') },
+  // Reading a routine image on a provider that cannot see one (api/coach/jobs.js IMAGE_PROVIDERS).
+  get unsupported() { return t('This Coach provider can’t read images. Switch it to Anthropic or OpenAI.') },
   get internal() { return t('Something went wrong on the server.') }
 }
 

@@ -17,13 +17,20 @@ export const anthropicSpec = {
   }),
   // The rules block is marked cacheable: identical for every job of a task, so subsequent
   // jobs read it from Anthropic's prompt cache at a tenth of the input price.
-  body: ({ model, prompt, system, maxTokens }) => ({
+  // With `images` (a parse-wod job) the user turn becomes a content array, image first, as the
+  // Messages API documents it; without them it stays the plain string, byte for byte.
+  body: ({ model, prompt, system, maxTokens, images }) => ({
     model,
     max_tokens: maxTokens,
     system: system
       ? [{ type: 'text', text: SYSTEM_PROMPT + '\n\n' + system, cache_control: { type: 'ephemeral' } }]
       : SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: prompt }]
+    messages: [{
+      role: 'user',
+      content: images
+        ? [...images.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.data } })), { type: 'text', text: prompt }]
+        : prompt
+    }]
   }),
   errorMessage: data => data && data.error && data.error.message,
   readText: data => {

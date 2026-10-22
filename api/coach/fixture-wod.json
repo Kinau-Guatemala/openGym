@@ -1,0 +1,85 @@
+{
+  "title": "Coaches are watching",
+  "tracks": [
+    {
+      "id": "full",
+      "label": "Full Equipment",
+      "kind": "main",
+      "blocks": [
+        {
+          "label": "WARM UP · AMRAP 5", "warmup": true, "format": "amrap", "capMin": 5, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "WARM UP\nAMRAP 5\n20 seg machine\n12 Predator jacks\n10 Jump Squats\n8 Push ups Knee tap",
+          "movements": [
+            { "raw": "20 seg machine", "rawName": "machine", "name": "rowing machine", "slot": null, "dose": { "sec": 20 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "12 Predator jacks", "rawName": "predator jacks", "name": "predator jack", "slot": null, "dose": { "reps": 12 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "10 Jump Squats", "rawName": "jump squats", "name": "jump squat", "slot": null, "dose": { "reps": 10 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "8 Push ups Knee tap", "rawName": "push ups knee tap", "name": "push-up to knee tap", "slot": null, "dose": { "reps": 8 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        },
+        {
+          "label": "MIN 1-10 · EMOM 10", "warmup": false, "format": "emom", "capMin": 10, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "WOD\nTC 40\nMIN 1-10\nEMOM 10\n20/15 Cal Row/Ski/Bike",
+          "movements": [
+            { "raw": "20/15 Cal Row/Ski/Bike", "rawName": "row", "name": "rowing machine", "slot": null, "dose": { "cal": 20 }, "perSide": false, "rx": null,
+              "alts": [ { "rawName": "ski", "dose": { "cal": 20 } }, { "rawName": "bike", "dose": { "cal": 20 } } ] }
+          ]
+        },
+        {
+          "label": "MIN 11-20 · EMOM 10", "warmup": false, "format": "emom", "capMin": 10, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "MIN 11-20\nEMOM 10\n10 Wall Balls + 3 Burpees",
+          "movements": [
+            { "raw": "10 Wall Balls", "rawName": "wall balls", "name": "wall ball", "slot": null, "dose": { "reps": 10 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "3 Burpees", "rawName": "burpees", "name": "burpee", "slot": null, "dose": { "reps": 3 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        },
+        {
+          "label": "MIN 21-30 · TC 10", "warmup": false, "format": "fortime", "capMin": 10, "rounds": null, "scheme": "50-40-30-20-10", "benchmark": null,
+          "raw": "MIN 21-30\nTC 10\n50-40-30-20-10\nSit ups\nM.Climbers\nRussian Twist",
+          "movements": [
+            { "raw": "Sit ups", "rawName": "sit ups", "name": "sit-up", "slot": null, "dose": {}, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M.Climbers", "rawName": "m.climbers", "name": "mountain climber", "slot": null, "dose": {}, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "Russian Twist", "rawName": "russian twist", "name": "russian twist", "slot": null, "dose": {}, "perSide": false, "rx": null, "alts": [] }
+          ]
+        },
+        {
+          "label": "MIN 31-40 · TC 10", "warmup": false, "format": "fortime", "capMin": 10, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "MIN 31-40\nTC 10\nRun 1K\n100 Push ups",
+          "movements": [
+            { "raw": "Run 1K", "rawName": "run", "name": "run", "slot": null, "dose": { "m": 1000 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "100 Push ups", "rawName": "push ups", "name": "push-up", "slot": null, "dose": { "reps": 100 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "running",
+      "label": "Holy Running Club",
+      "kind": "extra",
+      "blocks": [
+        {
+          "label": "WOD", "warmup": false, "format": "interval", "capMin": null, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "Calentamiento 15 min\nWOD\n1x8000 x 3 de pausa\n2x200 x 1 De pausa",
+          "movements": [
+            { "raw": "1x8000 x 3 de pausa", "rawName": "run", "name": "run", "slot": null, "dose": { "m": 8000 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "2x200 x 1 De pausa", "rawName": "run", "name": "run", "slot": null, "dose": { "m": 200 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "conditioning",
+      "label": "Holy Conditioning",
+      "kind": "extra",
+      "blocks": [
+        {
+          "label": "AMRAP 40", "warmup": false, "format": "amrap", "capMin": 40, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "AMRAP 40\nEasy Run/Bike/Row/Ski",
+          "movements": [
+            { "raw": "Easy Run/Bike/Row/Ski", "rawName": "easy run", "name": "run", "slot": null, "dose": {}, "perSide": false, "rx": null,
+              "alts": [ { "rawName": "bike" }, { "rawName": "row" }, { "rawName": "ski" } ] }
+          ]
+        }
+      ]
+    }
+  ]
+}

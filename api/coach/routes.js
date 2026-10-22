@@ -22,9 +22,18 @@ const USER_ERROR = {
   // Verbatim, because it tells the user the one thing that resolves it and names who resolves
   // it. A vaguer message here turns into a support question for the person running the box.
   shared: cfgStore.SHARED_ACCOUNT_REFUSAL,
-  unprivileged: 'the Coach is switched off on this instance for safety reasons'
+  unprivileged: 'the Coach is switched off on this instance for safety reasons',
+  unsupported: 'switch the Coach provider to Anthropic or OpenAI to read routine images'
 };
-const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503 };
+const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503, unsupported: 422 };
+
+// What a routine image may be. The client downscales to ~200–400 KB of JPEG; the ceiling is
+// what a provider accepts for one image (5 MB decoded), comfortably under the 5 MB body limit
+// once base64 has grown it by a third.
+const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_CHARS = 4_000_000;
+const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
+const isoDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(v + 'T00:00:00Z').toISOString().slice(0, 10) === v;
 
 export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
   /** Every user route starts the same way: signed in, feature on, feature reachable. The class
@@ -104,6 +113,29 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
         const job = jobs.enqueue(user.id, { kind: 'debrief', lang: body.lang, workoutId: body.workoutId ? String(body.workoutId).slice(0, 40) : null });
         json(res, 202, { job });
       } catch (e) { failEnqueue(res, e); }
+    },
+
+    // A routine image, read into a program for the date it is for. Only the image and the date
+    // leave; the result arrives as `parsed` on GET /api/coach/status, never as a proposal.
+    'POST /api/coach/parse-wod': async (req, res) => {
+      const user = guard(req, res); if (!user) return;
+      const body = await readBody(req);
+      if (!isoDate(body.date)) return json(res, 400, { error: 'date must be an ISO date (YYYY-MM-DD)' });
+      if (!IMAGE_MIMES.includes(body.mime)) return json(res, 400, { error: 'mime must be image/jpeg, image/png or image/webp' });
+      if (typeof body.image !== 'string' || !body.image || body.image.length > MAX_IMAGE_CHARS || !BASE64.test(body.image)) {
+        return json(res, 400, { error: 'image must be base64, at most ' + MAX_IMAGE_CHARS + ' characters' });
+      }
+      try {
+        const job = jobs.enqueue(user.id, { kind: 'parse-wod', date: body.date, image: { mime: body.mime, data: body.image }, lang: body.lang });
+        json(res, 202, { job });
+      } catch (e) { failEnqueue(res, e); }
+    },
+
+    // The client has saved (or dropped) the read program; clear the slot.
+    'POST /api/coach/parsed/ack': async (req, res) => {
+      const user = guard(req, res); if (!user) return;
+      const body = await readBody(req);
+      json(res, 200, jobs.ackParsed(user.id, body.jobId ? String(body.jobId).slice(0, 40) : null));
     },
 
     /* How this profile sits against everyone else on the instance who opted in: medians only,
