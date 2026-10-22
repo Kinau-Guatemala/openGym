@@ -2,14 +2,15 @@
 // the logged WODs, recomputing nothing the app already keeps.
 //
 //   Benchmarks        best Rx and scaled score per named WOD (lib/crossfit-records.js), and the
-//                     lift PRs WODs were filed with, each opening the exercise's own history.
-//   Furthest from Rx  the movements done lightest against their Rx over 8 weeks
+//                     latest lift PR a WOD was filed with per lift, opening the exercise's own
+//                     history.
+//   Furthest from Rx  the movements last done lightest against their Rx in 8 weeks
 //                     (lib/rx-history.js); swaps counted apart.
 //   Skills            the gymnastics skills (lib/skills.js).
 import { useMemo } from 'react'
 import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
-import { t, tn, exerciseNameFor } from '../lib/i18n.js'
+import { t, tn, exerciseNameFor, exerciseNameClass } from '../lib/i18n.js'
 import { fmtDate, fmtNum } from '../lib/format.js'
 import { fmtSec } from '../lib/history.js'
 import { benchmarks, wodPrs } from '../lib/crossfit-records.js'
@@ -22,7 +23,7 @@ import Icon from '../components/Icon.jsx'
 const SHOWN = 5
 const NAME = { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
 const SUB = { display: 'block', fontWeight: 400 }
-const exName = id => exerciseNameFor(exOr(id))
+const exName = id => { const ex = exOr(id); return <span className={exerciseNameClass(ex)}>{exerciseNameFor(ex)}</span> }
 
 /** A score as the whiteboard writes it: "4:55", "15 + 29", "16 rounds", "100 kg". */
 export function fmtScore(score, value, unit) {
@@ -76,8 +77,8 @@ export default function CrossFitRecords({ S }) {
         : <div className="muted small">{t('No benchmark logged yet. Name one on a block of a program.')}</div>}
       {prs.length > 0 && <>
         <h4 className="sec" style={{ marginTop: 14 }}>{t('Lift PRs from WODs')}</h4>
-        {prs.slice(0, SHOWN).map(p => <Line key={p.wid + p.exId} name={<><Icon name="trophy" style={{ fontSize: 13, color: 'var(--yellow)', marginInlineEnd: 4 }} />{exName(p.exId)}</>}
-          sub={fmtDate(p.d, true)} value={<Icon name="chevronRight" />} onClick={() => exerciseHistorySheet(p.exId)} />)}
+        {prs.slice(0, SHOWN).map(p => <Line key={p.wid + p.exId} name={exName(p.exId)}
+          sub={fmtDate(p.d, true)} value={<span className="pr"><Icon name="trophy" />PR</span>} onClick={() => exerciseHistorySheet(p.exId)} />)}
       </>}
     </div>
 

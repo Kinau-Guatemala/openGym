@@ -61,15 +61,15 @@ describe('benchmarks', () => {
 })
 
 describe('wodPrs', () => {
-  it('reads the PR badges logged WODs were filed with, newest first', () => {
+  it('reads the PR badges logged WODs were filed with, the latest per lift, newest first', () => {
     expect(wodPrs([
-      wod('2026-09-01', [], { prs: ['1520'] }),
+      wod('2026-09-01', [], { prs: ['1520', '3305'] }),
       { id: 'x', d: '2026-09-05', prs: ['0025'], entries: [] },
       wod('2026-10-01', [], { prs: ['0648', '1520'] }),
     ])).toEqual([
-      { d: '2026-10-01', wid: 'wod-2026-10-01', exId: '0648' },
       { d: '2026-10-01', wid: 'wod-2026-10-01', exId: '1520' },
-      { d: '2026-09-01', wid: 'wod-2026-09-01', exId: '1520' },
+      { d: '2026-10-01', wid: 'wod-2026-10-01', exId: '0648' },
+      { d: '2026-09-01', wid: 'wod-2026-09-01', exId: '3305' },
     ])
   })
 })

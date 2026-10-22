@@ -37,29 +37,28 @@ describe('rxHistory', () => {
 
 describe('furthestFromRx', () => {
   const log = [
-    day('2026-07-01', [{ id: '0648', rx: { w: 135, unit: 'lb' }, sets: [row(20)] }]),            // outside 8 weeks
+    day('2026-07-01', [{ id: '0042', rx: { w: 135, unit: 'lb' }, sets: [row(20)] }]),            // outside 8 weeks
     day('2026-10-01', [
       { id: '1520', rx: { w: 135, unit: 'lb' }, sets: [row(40)] },
-      { id: '0648', rx: { w: 135, unit: 'lb' }, sets: [row(61.25)] },
-      { id: '0549', rx: { w: 24, unit: 'kg' }, sets: [row(20)] },
+      { id: '0648', rx: { w: 135, unit: 'lb' }, sets: [row(40)] },
+      { id: '0549', rx: { w: 24, unit: 'kg' }, sets: [row(18)] },
     ]),
     day('2026-10-08', [
       { id: '1520', rx: { w: 135, unit: 'lb' }, sets: [row(50)] },
+      { id: '0648', rx: { w: 135, unit: 'lb' }, sets: [row(60)] },                               // at Rx now
       { id: '0535', swappedFrom: '0652', sets: [row(0)] },
     ]),
   ]
 
-  it('ranks the lowest average ratio first, drops what is at Rx, and puts swap-only last', () => {
+  it('ranks by the latest attempt, drops what was last done at Rx, and puts swap-only last', () => {
     const out = furthestFromRx(log, 8, 'kg', NOW)
-    expect(out.map(x => x.exId)).toEqual(['1520', '0549', '0652'])
-    expect(out[0]).toMatchObject({ n: 2, swaps: 0 })
-    expect(out[0].ratio).toBeCloseTo((40 + 50) / 2 / 60, 6)
-    expect(out[0].last.d).toBe('2026-10-08')
+    expect(out.map(x => x.exId)).toEqual(['0549', '1520', '0652'])
+    expect(out[1]).toMatchObject({ ratio: 50 / 60, n: 2, swaps: 0 })
+    expect(out[1].last.d).toBe('2026-10-08')
     expect(out[2]).toEqual({ exId: '0652', ratio: null, last: null, n: 0, swaps: 1 })
   })
 
   it('reaches back as far as asked', () => {
-    // The July clean (20 of 60 kg) pulls its average to 0.68, under the hang clean's 0.75.
-    expect(furthestFromRx(log, 20, 'kg', NOW).map(x => x.exId)).toEqual(['0648', '1520', '0549', '0652'])
+    expect(furthestFromRx(log, 20, 'kg', NOW).map(x => x.exId)).toEqual(['0042', '0549', '1520', '0652'])
   })
 })

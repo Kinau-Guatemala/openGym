@@ -53,8 +53,12 @@ export function benchmarks(workouts, unit = 'kg') {
   return out.sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0))
 }
 
-/** The lifts a logged WOD earned a PR badge on: `[{ d, wid, exId }]`, newest first. */
-export const wodPrs = workouts => list(workouts)
-  .filter(w => w?.src === 'wod')
-  .flatMap(w => list(w.prs).map(exId => ({ d: w.d, wid: w.id, exId })))
-  .sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0))
+/** The latest PR badge a logged WOD was filed with, per lift: `[{ d, wid, exId }]`, newest first. */
+export function wodPrs(workouts) {
+  const latest = new Map()
+  for (const w of list(workouts)) {
+    if (w?.src !== 'wod') continue
+    for (const exId of list(w.prs)) if (!(latest.get(exId)?.d >= w.d)) latest.set(exId, { d: w.d, wid: w.id, exId })
+  }
+  return [...latest.values()].sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0))
+}

@@ -37,9 +37,10 @@ export function rxHistory(workouts, exId, unit = 'kg') {
 }
 
 /**
- * The movements furthest from Rx over the last `weeks`: `[{ exId, ratio, last, n, swaps }]`,
- * the lowest average ratio first. Only movements below Rx on average, or swapped at least once,
- * are listed; one only ever swapped (ratio null) comes after every ratio.
+ * The movements furthest from Rx over the last `weeks`: `[{ exId, ratio, last, n, swaps }]`, by
+ * where each one stands now: `last` is the latest rated attempt and `ratio` its ratio, lowest
+ * first, `n` the rated attempts in the window. A movement last done at Rx and never swapped is
+ * left out; one only ever swapped (ratio null) comes after every ratio.
  */
 export function furthestFromRx(workouts, weeks = 8, unit = 'kg', now = Date.now()) {
   const from = isoOf(new Date(now - weeks * 7 * DAY))
@@ -54,9 +55,9 @@ export function furthestFromRx(workouts, weeks = 8, unit = 'kg', now = Date.now(
     const h = rxHistory(recent, exId, unit)
     const rated = h.filter(x => !x.swapped)
     const swaps = h.length - rated.length
-    const ratio = rated.length ? rated.reduce((s, x) => s + x.ratio, 0) / rated.length : null
-    if (ratio != null && ratio >= 1 && !swaps) continue
-    out.push({ exId, ratio, last: rated[rated.length - 1] || null, n: rated.length, swaps })
+    const last = rated[rated.length - 1] || null
+    if (last && last.ratio >= 1 && !swaps) continue
+    out.push({ exId, ratio: last ? last.ratio : null, last, n: rated.length, swaps })
   }
   return out.sort((a, b) => (a.ratio ?? Infinity) - (b.ratio ?? Infinity) || b.swaps - a.swaps)
 }
