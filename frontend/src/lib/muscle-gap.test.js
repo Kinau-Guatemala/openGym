@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { muscleGap, sourceOf, GAP_MUSCLES } from './muscle-gap.js'
-import { sessionEffSets, rirWeightFor, FATIGUE_MAX_SETS_PER_SESSION } from './recovery.js'
+import { sessionEffSets, rirWeightFor, anchorsByWorkout, resolveSetRir, FATIGUE_MAX_SETS_PER_SESSION } from './recovery.js'
+import { EXIDX } from './exercises.js'
+import { musclesOf } from './muscles.js'
 
 const DAY = 86400000
 const NOW = Date.UTC(2026, 9, 22, 20)
@@ -112,5 +114,42 @@ describe('muscleGap', () => {
     const out = muscleGap([at(-1, [entry(CHEST, done(4))]), { entries: [entry(CHEST, done(4))] }], NOW)
     expect(row(out, 'chest').setsPerWeek).toBe(0)
     expect(muscleGap(undefined, NOW)).toHaveLength(GAP_MUSCLES.length)
+  })
+})
+
+// A metcon row (`wodRir`) is never a capacity test, so it never sets an anchor - not even the
+// one its own session is estimated against.
+describe('metcon rows never set anchors', () => {
+  const PUSHUP = '0662', CJ = '5122'
+  const opts = { bodyweightKg: 80 }
+  const pushups = () => ({ id: PUSHUP, noProg: true, sets: done(5, { w: 0, wodRir: 5 }) })
+
+  it('bodyweight metcon with no other history resolves to wodRir (≈0.53 a set)', () => {
+    const w = wod(1, [pushups()])
+    const anchors = anchorsByWorkout([w], opts)
+    expect(anchors.get(w).has(PUSHUP)).toBe(false)
+    expect(resolveSetRir(w.entries[0].sets[0], w.entries[0].sets[0], w.entries[0], w, anchors.get(w), opts)).toEqual({ rir: 5, source: 'wod' })
+    const chest = musclesOf(EXIDX[PUSHUP]).chest
+    expect(sessionEffSets(w, anchors.get(w), opts).chest / chest).toBeCloseTo(5 * rirWeightFor(5), 9)
+    expect(rirWeightFor(5)).toBeCloseTo(0.53, 2)
+  })
+
+  it('a heavy EMOM still gets full credit against a strength anchor, and never raises it', () => {
+    const strength = at(3, [{ id: CJ, sets: [{ w: 100, r: 1, done: true }] }])
+    const emom = wod(1, [{ id: CJ, noProg: true, sets: [...done(4, { w: 90, r: 2, wodRir: 5 }), { w: 100, r: 3, done: true, wodRir: 5 }] }])
+    const anchors = anchorsByWorkout([strength, emom], opts)
+    expect(anchors.get(emom).get(CJ)).toBe(100)    // the strength single, not the metcon's 100×3
+    const [row] = emom.entries[0].sets
+    const resolved = resolveSetRir(row, row, emom.entries[0], emom, anchors.get(emom), opts)
+    expect(resolved.source).toBe('estimated')
+    expect(resolved.rir).toBeLessThanOrEqual(3)
+    expect(rirWeightFor(resolved.rir)).toBe(1)
+  })
+
+  it('gap report: two WODs of 5×10 push-ups credit chest ≈2.7 WOD sets a week, not 5', () => {
+    const chest = row(muscleGap([wod(2, [pushups()]), wod(9, [pushups()])], NOW, opts), 'chest')
+    expect(musclesOf(EXIDX[PUSHUP]).chest).toBe(1)
+    expect(chest.sources.wod).toBeCloseTo(5 * rirWeightFor(5), 9)
+    expect(chest.sources.wod).toBeCloseTo(2.67, 2)
   })
 })

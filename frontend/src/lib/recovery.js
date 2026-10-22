@@ -313,11 +313,13 @@ export function sessionEffSets(workout, anchors, opts = {}) {
 // estimate inverts this same formula, so the set that set the anchor reads RIR 0. Session-local, so a
 // 90-day-old import can never reweight today's anchor - only sessions inside the
 // anchor window ending at the scored session contribute. Assistance work has no
-// 1RM (the load is help received) and stays out, matching onerm.js.
+// 1RM (the load is help received) and stays out, matching onerm.js. Metcon rows (`wodRir`,
+// lib/wod-log.js) are never a capacity test either: 5 rounds of 10 push-ups would otherwise
+// anchor themselves and read RIR 0, full credit instead of the WOD's own guess.
 function sessionBests(workout, opts = {}) {
   const best = new Map()
   const consider = (ex, set, entry, exId) => {
-    if (set?.done !== true) return
+    if (set?.done !== true || set.wodRir != null) return
     const sides = isSideSet(set) ? [set.sides.L, set.sides.R].filter(s => s?.done === true) : [set]
     for (const side of sides) {
       const est = estimate1RM(loadKgFor(ex, entry, set, workout, opts, side), numeric(side?.r))
