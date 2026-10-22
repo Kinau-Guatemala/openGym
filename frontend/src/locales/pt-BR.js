@@ -1503,6 +1503,26 @@ export const PT_BR_OVERRIDES = {
   'Substitute': 'Substituir',
   'Reps each side': 'Reps por lado',
   'Nothing to log: pick a track and an exercise for each movement': 'Nada para registrar: escolha uma trilha e um exercício para cada movimento',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Não foi possível abrir esta imagem.',
+  'No routine found in this image.': 'Nenhum treino encontrado nesta imagem.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'O Coach está ocupado. Vai ler a imagem assim que terminar…',
+  'Reading the image…': 'Lendo a imagem…',
+  'Enter manually': 'Digitar à mão',
+  'Give the Coach the go-ahead': 'Dar autorização ao Coach',
+  'Read the image again': 'Ler a imagem de novo',
+  // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)
+  'Gap': 'Déficit',
+  'Hypertrophy gap': 'Déficit de hipertrofia',
+  'Far below': 'Muito abaixo',
+  'Below target': 'Abaixo da meta',
+  'On target': 'Na meta',
+  'Lifting': 'Musculação',
+  'Pump': 'Pump',
+  'WOD': 'WOD',
+  'Effective sets a week over the last 14 days, against your target of {0}.': 'Séries efetivas por semana nos últimos 14 dias, em relação à sua meta de {0}.',
+  'Every muscle is at the weekly target.': 'Todos os músculos estão na meta semanal.',
+  'Below the weekly target: {0}': 'Abaixo da meta semanal: {0}',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }
