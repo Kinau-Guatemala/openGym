@@ -3,12 +3,23 @@
    its own changes (an older app, an API planner) must hold in this side's merge. */
 import { describe, expect, it } from 'vitest'
 import * as S from '../../../api/sync-stamps.js'
-import { highestStamp, mergeDeletions, mergeEdits, mergeStates, stampChange, stampEntry, stampEdits, stampRestore } from './sync-merge.js'
+import { highestStamp, mergeDeletions, mergeEdits, mergeStates, stampChange, stampEntry, stampEdits, stampRestore, OWN_MERGE, STAMPED_MAPS } from './sync-merge.js'
+import { WODS_KEEP_DAYS, pruneWods } from './wods.js'
 
 const clone = v => JSON.parse(JSON.stringify(v))
 function rng(seed) { let s = seed >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296 } }
 
 describe('api/sync-stamps.js matches sync-merge.js', () => {
+  // A field missing from OWN_MERGE on either side is stamped as a whole setting (`edited.<key>`),
+  // and the whole map of one copy then overwrites the per-key merge (critique C1, lib/wods.js).
+  it('on the fields merged on their own, the stamped maps and the programs kept', () => {
+    expect(S.STAMPED_MAPS).toEqual(STAMPED_MAPS)
+    expect([...S.OWN_MERGE].sort()).toEqual([...OWN_MERGE].sort())
+    for (const k of STAMPED_MAPS) expect(OWN_MERGE.has(k)).toBe(true)
+    expect(S.WODS_KEEP_DAYS).toBe(WODS_KEEP_DAYS)
+    const m = { '2026-06-25': 1, '2026-06-26': 2, '2027-01-01': 3, x: 4 }
+    for (const today of ['2026-10-24', '2026-02-28', '2024-03-01', 'bad']) expect(S.pruneWods(m, today)).toEqual(pruneWods(m, today))
+  })
   it('on random records and entries', () => {
     for (let seed = 1; seed < 300; seed++) {
       const R = rng(seed)

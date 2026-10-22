@@ -61,15 +61,30 @@ const capStamps = m => {
   for (const k of ks.slice(0, ks.length - DELETED_MAX)) delete m[k];
   return m;
 };
-const OWN_MERGE = new Set([
+// The maps whose every entry carries its own edit time (sync-merge.js STAMPED_MAPS): merged per
+// key by the app, so never stamped here as a whole setting. dayNotes is a note per day off, wods a
+// posted program per date, exAliases a printed movement name's exercise (frontend lib/wods.js).
+export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes', 'wods', 'exAliases'];
+export const OWN_MERGE = new Set([
   '_ts', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'active', 'unit', 'unitSet', 'resetAt', 'resetIds', 'deleted', 'edited', 'undone', 'routineOrder',
   'workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'bodyweight', 'measurements', 'favEx',
-  'exWeights', 'balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes',
+  'exWeights', ...STAMPED_MAPS,
 ]);
 const PER_KEY = new Set(['week', 'dayPlan', 'exNotes', 'barWeights']);
-// The maps whose every entry carries its own edit time (sync-merge.js STAMPED_MAPS): merged per
-// key by the app, so never stamped here as a whole setting. dayNotes is a note per day off.
-export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes'];
+
+// The posted programs are kept for their last WODS_KEEP_DAYS by date key (frontend lib/wods.js
+// pruneWods, hand-copied): pruned on every PUT, as the app prunes on every merge and load.
+export const WODS_KEEP_DAYS = 120;
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const utcToday = (now = Date.now()) => new Date(now).toISOString().slice(0, 10);
+export function pruneWods(map, today = utcToday()) {
+  if (!isMap(map)) return {};
+  const t = Date.parse(today + 'T00:00:00Z');
+  const cutoff = Number.isFinite(t) ? utcToday(t - WODS_KEEP_DAYS * 86400000) : '';
+  const out = {};
+  for (const [k, v] of Object.entries(map)) if (ISO.test(k) && k >= cutoff) out[k] = v;
+  return out;
+}
 const ENTRY_META = new Set(['id', '_ts', '_f', '_u']);
 const ENTRY_LISTS = ['routines', 'customEx', 'equipProfiles', 'gymCards', 'workouts'];
 
@@ -509,5 +524,7 @@ export function stampPut(cur, next, { overRead = false, stamped = false, now = D
   }
   keepHeld(next, t);
   if (cur && !reset) notePrior(cur, next);
+  // By the server's clock, not `t`: a client whose clock runs ahead lifts `t`, not today.
+  if (isMap(next.wods)) next.wods = pruneWods(next.wods, utcToday(Number(now) || Date.now()));
   return next;
 }

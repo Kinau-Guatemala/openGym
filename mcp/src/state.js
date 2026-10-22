@@ -160,6 +160,7 @@ function defaultsShape() {
     theme: 'dark', accent: 'lime', body: 'male', targetW: null,
     bodyweight: [], routines: [], week: {}, dayPlan: {},
     exWeights: {}, workouts: [], customEx: [], gifSize: 'full',
-    reminder: { on: false, time: '08:00', tz: null }
+    reminder: { on: false, time: '08:00', tz: null },
+    wods: {}, exAliases: {}, hypTarget: 10
   }
 }
