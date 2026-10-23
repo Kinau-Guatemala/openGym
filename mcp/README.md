@@ -119,7 +119,7 @@ Thirteen read-only tools:
 | `get_bodyweight` | Weigh-ins with the latest weight, the goal line, and deltas vs goal. |
 | `estimate_1rm` | All-time best 1RM for an exercise + the trend, or a PR table across all exercises. |
 | `muscle_balance` | Which muscles I've trained this week/month/all-time, ranked + which I've neglected. |
-| `get_wods` | The CrossFit programs saved for a date range: tracks, blocks, movements with the resolved exercise, dose and Rx. Image text is marked untrusted. |
+| `get_wods` | The CrossFit programs saved for a date range: tracks, blocks, movements with the resolved exercise (an unconfirmed best guess is flagged `exercise_guess`, with its candidates), dose and Rx. Image text is marked untrusted. |
 | `muscle_gap` | The hypertrophy gap: effective sets per week per muscle against the target, split into WOD / Pump / own lifting. |
 | `suggest_lift_days` | Which of the next 7 days suit lower- and upper-body lifting around the usual runs and the posted WODs. |
 | `crossfit_records` | Benchmark scores (Rx and scaled), lift PRs from WODs, the movements furthest from Rx, and gymnastics skills. |

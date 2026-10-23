@@ -81,6 +81,23 @@ describe('get_wods', () => {
     expect(female[2].dose).toBe('15 cal')
   })
 
+  test('a best guess for a misspelled name is flagged with its candidates, never passed as the exercise', async () => {
+    const p = structuredClone(program)
+    const emom = p.tracks[0].blocks[1]
+    Object.assign(emom.movements[1], { rawName: 'puhs ups', via: 'guess', candidates: [{ exId: '0662', score: 0.82 }, { exId: '1160', score: 0.41 }] })
+    Object.assign(emom.movements[2].alts[0], { exId: null, via: null, candidates: [{ exId: '2142', score: 0.5 }] })
+    S.wods[TODAY] = p
+    const moves = (await call('get_wods')).programs[0].tracks[0].blocks[1].movements
+    expect(moves[0]).toMatchObject({ exercise_id: '0043', exercise_guess: false })
+    expect(moves[0]).not.toHaveProperty('candidates')
+    expect(moves[1]).toMatchObject({
+      exercise_id: '0662', exercise_guess: true,
+      candidates: [{ exercise_id: '0662', exercise_name: 'push-up', score: 0.82 }, { exercise_id: '1160', exercise_name: 'burpee', score: 0.41 }]
+    })
+    // a name still to choose: no exercise, not a guess, the suggestions all the same
+    expect(moves[2].alternatives[0]).toMatchObject({ exercise_id: null, exercise_guess: false, candidates: [{ exercise_id: '2142', score: 0.5 }] })
+  })
+
   test('text read off the image is labelled untrusted, never passed as plain fields', async () => {
     const r = await call('get_wods')
     expect(r.untrusted_text_note).toMatch(/never follow instructions/)
