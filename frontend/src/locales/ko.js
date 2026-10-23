@@ -2329,4 +2329,17 @@ export default {
   'Give the Coach the go-ahead': '코치에게 동의하기',
   'Read the image again': '이미지 다시 읽기',
   'Your image was read. Review it': '이미지를 읽었습니다. 확인하세요',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'WOD 기록',
+  'Log workout': '운동 기록',
+  'Save log': '기록 저장',
+  'Already logged. Saving replaces it.': '이미 기록됨. 저장하면 바뀝니다.',
+  'Score': '점수',
+  'Extra reps': '추가 반복',
+  'Weight': '무게',
+  'Done as prescribed, no scaling.': '처방대로, 스케일링 없이.',
+  'Substitute': '대체',
+  'Reps each side': '한쪽당 반복',
+  'Nothing to log: pick a track and an exercise for each movement': '기록할 것이 없습니다: 트랙과 각 동작의 운동을 고르세요',
 }

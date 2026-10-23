@@ -42,7 +42,7 @@ import { isBackoff, backoffWeights } from './lib/backoff.js'
 import { isPyramid, normalizePyramid, normalizePyramidRest, normalizePyramidWeight, pyramidFromFlat, flatFromPyramid, pyramidLabel, PYRAMID_MAX, MAX_PYRAMID_SETS, PYRAMID_PRESETS } from './lib/pyramid.js'
 import { MOBILE, shareExport, shareExportBlob, printHtml } from './lib/mobile.js'
 import { speedUnitOf, toSpeed, fromSpeed } from './lib/speed.js'
-import { buildCompletedWorkout, sessionEnd } from './lib/finish-workout.js'
+import { buildCompletedWorkout, fileBackfill, sessionEnd } from './lib/finish-workout.js'
 import { refillAfter } from './lib/rotation.js'
 import { isWarmupRow, hasCompletedWork } from './lib/workout-model.js'
 import { saveSessionAsRoutine } from './lib/session-routines.js'
@@ -56,8 +56,8 @@ import { finishCompare, finishCardio } from './lib/finish-compare.js'
 import { workoutFit, fitFileName } from './lib/fit-export.js'
 import { joinSessionNoProg } from './lib/session-noprog.js'
 import { buildCombinedEntries, deriveSessionName } from './lib/session-merge.js'
-import { workoutsOn, backfillStart, backfillEnd, completeBackfill, historyAsOf, sessionHistory } from './lib/backfill.js'
-import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuration, rebuildPrHistory, MAX_DURATION_MIN, endsInFuture } from './lib/workout-date.js'
+import { workoutsOn, backfillStart, backfillEnd, historyAsOf, sessionHistory } from './lib/backfill.js'
+import { moveWorkout, sameWorkout, startTimeOf, durationMinOf, setWorkoutDuration, MAX_DURATION_MIN, endsInFuture } from './lib/workout-date.js'
 import { editCompletedSession, editLeftEmpty, editedRecord, editChangesNothing } from './lib/session-edit.js'
 import { stampWorkout } from './lib/sync-merge.js'
 import { weeklyWeights } from './lib/bodyweight.js'
@@ -3306,7 +3306,7 @@ function CardioDone({ st, w }) {
   </div>
 }
 
-function FinishSummary({ w, prs, e1prs = [], close }) {
+export function FinishSummary({ w, prs, e1prs = [], close }) {
   const st = useStore(s => s.S)
   return <div style={{ textAlign: 'center', padding: '8px 0' }}>
     <div style={{ fontSize: 44, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="trophy" /></div>
@@ -3370,7 +3370,7 @@ function doFinishWorkout() {
   const prs = []
   const e1prs = []
   // A workout logged into the past is held against the history before it, the way an edit of a
-  // saved one is (rebuildPrHistory, below): it gains a badge it leads with, and a later session
+  // saved one is (fileBackfill, below): it gains a badge it leads with, and a later session
   // it outdoes loses its own. It used to report none at all while the editor's Save awarded them
   // (QA 1.3.9). The confirmed weights are left alone either way.
   if (!past) A.entries.forEach(e => {
@@ -3392,13 +3392,7 @@ function doFinishWorkout() {
   let shown = w
   update(s => {
     if (past) {
-      // Its start and end are in the past; the stamp says when it was logged, which is what a
-      // merge after a reset elsewhere asks of it (lib/sync-merge.js sinceReset).
-      stampWorkout(w)
-      const replaced = A.backfill.replaceId ? s.workouts.find(x => x.id === A.backfill.replaceId) : null
-      const touched = [...new Set([...(replaced?.entries || []), ...w.entries].map(e => e?.id).filter(id => id != null))]
-      s.workouts = rebuildPrHistory(completeBackfill(s.workouts, A, w), touched, w)
-      shown = s.workouts.find(x => x === w || (w.id != null && x.id === w.id)) || w
+      shown = fileBackfill(s, A, w)
       prs.push(...[...(shown.prs || [])])
     } else {
       w.entries.forEach(e => {

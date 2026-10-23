@@ -2408,4 +2408,17 @@ export default {
   'Give the Coach the go-ahead': 'কোচকে অনুমতি দিন',
   'Read the image again': 'ছবিটি আবার পড়ুন',
   'Your image was read. Review it': 'আপনার ছবি পড়া হয়েছে। দেখে নিন',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'WOD লিখুন',
+  'Log workout': 'ওয়ার্কআউট লিখুন',
+  'Save log': 'রেকর্ড সংরক্ষণ',
+  'Already logged. Saving replaces it.': 'আগেই লেখা হয়েছে। সংরক্ষণ করলে এটি বদলে যাবে।',
+  'Score': 'স্কোর',
+  'Extra reps': 'অতিরিক্ত রেপ',
+  'Weight': 'ওজন',
+  'Done as prescribed, no scaling.': 'যেমন নির্ধারিত, স্কেল না করে।',
+  'Substitute': 'বদলান',
+  'Reps each side': 'প্রতি পাশে রেপ',
+  'Nothing to log: pick a track and an exercise for each movement': 'লেখার কিছু নেই: একটি ট্র্যাক এবং প্রতিটি মুভমেন্টের জন্য একটি ব্যায়াম বাছুন',
 }

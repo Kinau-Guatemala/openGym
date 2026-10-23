@@ -2349,4 +2349,17 @@ export default {
   'Give the Coach the go-ahead': 'Dem Coach die Freigabe geben',
   'Read the image again': 'Bild erneut lesen',
   'Your image was read. Review it': 'Dein Bild wurde gelesen. Jetzt prüfen',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'WOD eintragen',
+  'Log workout': 'Training eintragen',
+  'Save log': 'Eintrag speichern',
+  'Already logged. Saving replaces it.': 'Schon eingetragen. Speichern ersetzt es.',
+  'Score': 'Ergebnis',
+  'Extra reps': 'Zusätzliche Wdh.',
+  'Weight': 'Gewicht',
+  'Done as prescribed, no scaling.': 'Wie vorgeschrieben, nicht skaliert.',
+  'Substitute': 'Ersetzen',
+  'Reps each side': 'Wdh. pro Seite',
+  'Nothing to log: pick a track and an exercise for each movement': 'Nichts einzutragen: wähle einen Track und eine Übung für jede Bewegung',
 }

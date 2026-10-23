@@ -270,7 +270,7 @@ export function cardioSetsOf(row, entry) {
 // logged effort first, Epley-inverse estimate against the anchor second, full
 // credit when intensity is unknowable (rings, load-less imports). Anchors come
 // from the 90-day window ending at this session, never from its future.
-function sessionEffSets(workout, anchors, opts = {}) {
+export function sessionEffSets(workout, anchors, opts = {}) {
   const sums = emptyMuscleMap(0)
   const score = (row, set, entry, weights, requireDone = true) => {
     if (requireDone && row?.done !== true) return
@@ -358,17 +358,21 @@ export function anchorsByWorkout(workouts, opts = {}) {
 
 /**
  * One set's RIR with its provenance: logged effort first, Epley-inverse estimate
- * against the workout's anchors second, null when intensity is unknowable. The same
- * precedence fatigue scoring uses, so stats and the map never disagree about a set.
+ * against the workout's anchors second, then the WOD's own guess (`wodRir`, a metcon
+ * row from lib/wod-log.js), null when intensity is unknowable. The same precedence
+ * fatigue scoring uses, so stats and the map never disagree about a set. The WOD guess
+ * comes last so a heavy EMOM single the anchor reads as near failure keeps full credit;
+ * it only discounts load-less conditioning (push-ups, burpees) nothing can estimate.
  */
 export function resolveSetRir(row, set, entry, workout, anchors, opts = {}) {
   const logged = rirOf(row)
   if (logged != null) return { rir: logged, source: 'logged' }
   const anchor = anchors?.get(entry?.id)
-  if (!(anchor > 0)) return null
   // Same load rule as the anchor: canonical kg, body mass included for bodyweight work.
-  const loadKg = loadKgFor(exerciseFor(entry), entry, set || row, workout, opts, row)
-  return estimateSetRir({ w: loadKg, r: row?.r }, anchor, 'kg')
+  const est = anchor > 0 ? estimateSetRir({ w: loadKgFor(exerciseFor(entry), entry, set || row, workout, opts, row), r: row?.r }, anchor, 'kg') : null
+  if (est) return est
+  if (row?.wodRir != null) return { rir: row.wodRir, source: 'wod' }
+  return null
 }
 
 // Build normalised stimuli in workout order. Each session is scored from its own

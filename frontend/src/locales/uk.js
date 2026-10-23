@@ -2326,4 +2326,17 @@ export default {
   'Give the Coach the go-ahead': 'Дати Коучу згоду',
   'Read the image again': 'Прочитати зображення знову',
   'Your image was read. Review it': 'Зображення прочитано. Перевірте його',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'Записати WOD',
+  'Log workout': 'Записати тренування',
+  'Save log': 'Зберегти запис',
+  'Already logged. Saving replaces it.': 'Уже записано. Збереження замінить запис.',
+  'Score': 'Результат',
+  'Extra reps': 'Дод. повтори',
+  'Weight': 'Вага',
+  'Done as prescribed, no scaling.': 'Як приписано, без спрощень.',
+  'Substitute': 'Замінити',
+  'Reps each side': 'Повтори на сторону',
+  'Nothing to log: pick a track and an exercise for each movement': 'Нічого записувати: виберіть трек і вправу для кожного руху',
 }

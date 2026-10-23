@@ -64,6 +64,12 @@ describe('setLabel', () => {
     expect(setLabel(LIFT, { sec: 90, w: 20 }, { mode: 'time' })).toBe('1:30 · 20')
   })
 
+  it('reads a WOD calorie or distance row as what was done, not as a speed', () => {
+    expect(setLabel('1161', { mode: 'cardio', cal: 60, min: 3, done: true })).toBe('60 cal · 3 min')
+    expect(setLabel('2142', { mode: 'cardio', m: 250, min: 1, done: true }, null)).toBe('250 m · 1 min')
+    expect(setLabel(CARDIO, { mode: 'cardio', m: 1000, min: 5 }, { mode: 'cardio' })).toBe('1,000 m · 5 min')
+  })
+
   it('reads a legacy set with no config exactly as before', () => {
     expect(setLabel(LIFT, { w: 0, r: 0 })).toBe('0×0')
     expect(setLabel(CARDIO, {})).toBe('0 min @ 0 km/h')

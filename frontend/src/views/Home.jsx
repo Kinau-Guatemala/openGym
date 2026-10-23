@@ -174,8 +174,9 @@ export default function Home() {
             {wod?.title && trackNames(wod) && <div className="ss">{trackNames(wod)}</div>}
           </div>
         </div>
-        {/* T08: logging what was done (logWod) starts here. Not wired yet. */}
-        {wod ? <Button size="sm" variant="tinted" disabled data-placeholder="t08-log" style={{ width: 'auto', flex: 'none' }}>{t('Log')}</Button>
+        {/* Logging what was done (views/CrossFitLog.jsx). Its own tap, not the row's. */}
+        {wod ? <Button size="sm" variant="tinted" style={{ width: 'auto', flex: 'none' }}
+          onClick={e => { e.stopPropagation(); nav('/crossfit/log/' + todayISO()) }}>{t('Log')}</Button>
           : <Icon name="plus" className="chev" />}
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>

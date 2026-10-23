@@ -62,8 +62,11 @@ const inWindow = (w, days) =>
 // (historical behaviour, unchanged); pass a resolver built on
 // recovery.js:resolveSetRir for the estimated fallback, which keeps stats and the
 // fatigue map in agreement about every set.
+//
+// A WOD's own guess (source 'wod', lib/wod-log.js) is left out: it is a fatigue fallback, and five
+// WODs a week would fill the card with synthetic RIR 5 rows.
 const normRir = r => {
-  if (r == null) return null
+  if (r == null || r.source === 'wod') return null
   if (typeof r === 'number') return { rir: r, estimated: false }
   return { rir: r.rir, estimated: r.source ? r.source !== 'logged' : !!r.estimated }
 }

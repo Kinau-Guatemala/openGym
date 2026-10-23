@@ -1490,6 +1490,19 @@ export const PT_BR_OVERRIDES = {
   'Give the Coach the go-ahead': 'Dar autorização ao Coach',
   'Read the image again': 'Ler a imagem de novo',
   'Your image was read. Review it': 'Sua imagem foi lida. Revise',
+
+  // CrossFit: logging a WOD (views/CrossFitLog.jsx)
+  'Log WOD': 'Registrar WOD',
+  'Log workout': 'Registrar treino',
+  'Save log': 'Salvar registro',
+  'Already logged. Saving replaces it.': 'Já registrado. Salvar substitui.',
+  'Score': 'Pontuação',
+  'Extra reps': 'Reps extras',
+  'Weight': 'Peso',
+  'Done as prescribed, no scaling.': 'Feito como prescrito, sem escalar.',
+  'Substitute': 'Substituir',
+  'Reps each side': 'Reps por lado',
+  'Nothing to log: pick a track and an exercise for each movement': 'Nada para registrar: escolha uma trilha e um exercício para cada movimento',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }
