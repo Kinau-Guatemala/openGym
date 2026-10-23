@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { norm, rawNameOf, resolveMovement } from './crossfit-resolve.js'
+import { GUESS_MARGIN, GUESS_MIN, guessMovement, norm, rawNameOf, resolveMovement } from './crossfit-resolve.js'
 import { SHIPPED_ALIASES } from './crossfit-aliases.js'
 import { EXIDX } from './exercises.js'
 
@@ -368,8 +368,9 @@ const FIXTURE = [
   ['100 Push ups', 'push ups', '0662'],
 ]
 
-// The names no shipped alias or clear search hit covers: the first time one shows up, the user
-// picks the exercise and the pick is remembered (S.exAliases).
+// The names no shipped alias or clear search hit covers, and no guess is sure of: the first time
+// one shows up, the user picks the exercise (from the suggestions or the search) and the pick is
+// remembered (S.exAliases).
 const NEEDS_PICK = [
   'machine', 'sushy rolls', 'sit wall balls', 'nastys', 'burpee pull ups', 'blast off push ups',
   'hollow crunches', 'burpee bj', 'db´s farmer hold', 'predator jacks', 'kips', 'sled pull & push',
@@ -380,7 +381,9 @@ const NEEDS_PICK = [
 describe('crossfit resolve: the sample programs', () => {
   it.each(FIXTURE)('%s → rawName %j → %s', (raw, rawName, exId) => {
     expect(rawNameOf(raw)).toBe(rawName)
-    expect(resolveMovement({ rawName }).exId).toBe(exId)
+    // exactly as before the guess tier: the table's answer, or left to choose (with suggestions)
+    const r = resolveMovement({ rawName })
+    expect([r.exId, r.via]).toEqual([exId, exId ? 'shipped' : null])
   })
 
   it('lists every unresolved name as needing a pick, and nothing else', () => {
@@ -395,7 +398,7 @@ describe('crossfit resolve: user aliases', () => {
     const monday = rawNameOf('5 Hang Cleans 185/135')
     userAliases[norm(monday)] = { exId: '4449', _ts: 1 }   // the user picked the dumbbell version
     const tuesday = rawNameOf('9 Hang Cleans 155/105')
-    expect(resolveMovement({ rawName: tuesday }, userAliases)).toEqual({ exId: '4449', via: 'user' })
+    expect(resolveMovement({ rawName: tuesday }, userAliases)).toEqual({ exId: '4449', via: 'user', candidates: [] })
   })
 
   it('one key for the spellings of a name', () => {
@@ -424,31 +427,33 @@ describe('crossfit resolve: user aliases', () => {
   })
 
   it('a pick for a name the table already knows wins over the table', () => {
-    expect(resolveMovement({ rawName: 'copas' }, { copa: { exId: '1741', _ts: 1 } })).toEqual({ exId: '1741', via: 'user' })
+    expect(resolveMovement({ rawName: 'copas' }, { copa: { exId: '1741', _ts: 1 } })).toEqual({ exId: '1741', via: 'user', candidates: [] })
   })
 
   it('a removed pick ({ _ts } only) falls back to the table', () => {
-    expect(resolveMovement({ rawName: 'copas' }, { copa: { _ts: 2 } })).toEqual({ exId: '0430', via: 'shipped' })
+    expect(resolveMovement({ rawName: 'copas' }, { copa: { _ts: 2 } })).toEqual({ exId: '0430', via: 'shipped', candidates: [] })
   })
 })
 
 describe('crossfit resolve: catalogue search', () => {
   it('takes a clear hit on the English name', () => {
-    expect(resolveMovement({ rawName: 'giros rusos', name: 'russian twist' })).toEqual({ exId: '0687', via: 'search' })
-    expect(resolveMovement({ rawName: 'k2e', name: 'hanging knees to elbows' })).toEqual({ exId: '3890', via: 'search' })
-    expect(resolveMovement({ rawName: 'dominadas', name: 'pull-up' })).toEqual({ exId: '0652', via: 'search' })
+    expect(resolveMovement({ rawName: 'giros rusos', name: 'russian twist' })).toEqual({ exId: '0687', via: 'search', candidates: [] })
+    expect(resolveMovement({ rawName: 'k2e', name: 'hanging knees to elbows' })).toEqual({ exId: '3890', via: 'search', candidates: [] })
+    expect(resolveMovement({ rawName: 'dominadas', name: 'pull-up' })).toEqual({ exId: '0652', via: 'search', candidates: [] })
   })
 
-  it('leaves a name the catalogue has in several kinds to a pick', () => {
-    expect(resolveMovement({ rawName: 'colgadas', name: 'hang clean' })).toEqual({ exId: null, via: null })
-    expect(resolveMovement({ rawName: 'zancadas kb', name: 'kettlebell goblet lunge' })).toEqual({ exId: null, via: null })
+  it('leaves a name the catalogue has in several kinds to a pick, offering them', () => {
+    const hang = resolveMovement({ rawName: 'colgadas', name: 'hang clean' })
+    expect(hang).toMatchObject({ exId: null, via: null })
+    expect(hang.candidates.map(c => c.exId).sort()).toEqual(['0535', '1520', '4449'])
+    expect(resolveMovement({ rawName: 'zancadas kb', name: 'kettlebell goblet lunge' })).toMatchObject({ exId: null, via: null })
   })
 
   it('leaves a vague or unknown name to a pick', () => {
-    expect(resolveMovement({ rawName: 'nastys', name: 'nasty' })).toEqual({ exId: null, via: null })
-    expect(resolveMovement({ rawName: 'machine' })).toEqual({ exId: null, via: null })
-    expect(resolveMovement({ rawName: 'kips', name: 'kip swing' })).toEqual({ exId: null, via: null })
-    expect(resolveMovement({})).toEqual({ exId: null, via: null })
+    expect(resolveMovement({ rawName: 'nastys', name: 'nasty' })).toMatchObject({ exId: null, via: null })
+    expect(resolveMovement({ rawName: 'machine' })).toMatchObject({ exId: null, via: null })
+    expect(resolveMovement({ rawName: 'kips', name: 'kip swing' })).toMatchObject({ exId: null, via: null })
+    expect(resolveMovement({})).toEqual({ exId: null, via: null, candidates: [] })
   })
 })
 
@@ -463,5 +468,70 @@ describe('crossfit aliases table', () => {
   it('tells a bar muscle-up from a ring one', () => {
     expect(resolveMovement({ rawName: 'BMU' }).exId).toBe('5194')
     expect(resolveMovement({ rawName: 'RMU' }).exId).toBe('0631')
+  })
+})
+
+// Misspellings, as the box prints them (the first five, from the sample programs) and made up:
+// [rawName, 'guess' | 'choose', the right exercise(s)]. A guess must be one of them; a choice must
+// offer one. The guess tier is asked directly: four of the box's are in the shipped table too, so
+// resolveMovement answers those from it (and the rest exactly as the tier does).
+const MISSPELT = [
+  ['skull cruches', 'choose', ['1504', '4351', '0060', '4344', '5861', '4151']],
+  ['pull ups estrcitos', 'choose', ['0652']],
+  ['dymond push ups', 'guess', ['0283']],
+  ['trhusters', 'choose', ['3305', '0550', '2968']],
+  ['tricep kick backs', 'choose', ['4143', '0860', '1150', '0333']],
+  ['bulgarian spit squat', 'choose', ['2290']],
+  ['thrusterz', 'choose', ['3305', '0550', '2968']],
+  ['wal balls', 'guess', ['2458']],
+  ['burpess', 'choose', ['1160']],
+  ['kettelbell swing', 'guess', ['0549']],
+  ['deadlfit', 'choose', ['0032', '0300']],
+  ['russian twsit', 'guess', ['0687']],
+  ['airsquats', 'guess', ['3948']],
+]
+
+describe('crossfit resolve: misspellings', () => {
+  it.each(MISSPELT)('%s → %s', (rawName, tier, ok) => {
+    const r = guessMovement({ rawName })
+    expect(resolveMovement({ rawName })).toEqual(Object.hasOwn(SHIPPED_ALIASES, norm(rawName))
+      ? { exId: SHIPPED_ALIASES[norm(rawName)], via: 'shipped', candidates: [] } : r)
+    const ids = r.candidates.map(c => c.exId)
+    if (tier === 'guess') {
+      expect(r.via).toBe('guess')
+      expect(ok).toContain(r.exId)
+      expect(ids[0]).toBe(r.exId)
+    } else {
+      expect([r.exId, r.via]).toEqual([null, null])
+      expect(ids.some(id => ok.includes(id)), ids.join()).toBe(true)
+    }
+    expect(r.candidates.length).toBeLessThanOrEqual(3)
+  })
+
+  it('leaves the known confident-wrong names to choose, with no exercise', () => {
+    for (const rawName of ['machine', 'kb goblet lunges']) {
+      const r = resolveMovement({ rawName })
+      expect([r.exId, r.via], rawName).toEqual([null, null])
+      expect(r.candidates.length, rawName).toBeGreaterThan(0)
+    }
+  })
+
+  it('guesses only a clear winner: top fit and margin over the runner-up', () => {
+    for (const [rawName] of MISSPELT) {
+      const { via, candidates: [top, next] } = guessMovement({ rawName })
+      const clear = !!top && top.score >= GUESS_MIN && top.score - (next?.score ?? 0) >= GUESS_MARGIN
+      expect(via === 'guess', rawName).toBe(clear)
+    }
+  })
+
+  it('a printed DB/KB/BB puts that equipment first', () => {
+    expect(EXIDX[guessMovement({ rawName: 'kb hang cleen' }).candidates[0].exId].eq).toBe('kettlebell')
+    expect(EXIDX[guessMovement({ rawName: 'db hang cleen' }).candidates[0].exId].eq).toBe('dumbbell')
+  })
+
+  it('a confirmed guess is the user\'s pick from then on', () => {
+    expect(resolveMovement({ rawName: 'wal balls' }).via).toBe('guess')
+    const userAliases = { [norm('wal balls')]: { exId: '2458', _ts: 1 } }   // what confirming writes
+    expect(resolveMovement({ rawName: 'Wal Balls' }, userAliases)).toEqual({ exId: '2458', via: 'user', candidates: [] })
   })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { prepareDraft, includeOf, applyPick, movementFromText, nextId } from './wod-draft.js'
+import { prepareDraft, includeOf, applyPick, movementFromText, nextId, resolveInto } from './wod-draft.js'
 import { norm } from './crossfit-resolve.js'
 
 // The parser's real shape (T04's validated example), before ids are assigned
@@ -84,6 +84,41 @@ describe('picks and hand entry', () => {
     const m = movementFromText('12 Copas 20/15', 'm0', { [norm('copas')]: { exId: '42', _ts: 1 } })
     expect(m.rawName).toBe('copas')
     expect(m.exId).toBe('42')
+  })
+
+  it('a misspelling carries its guess, a vague name its suggestions, a known one neither', () => {
+    const p = { tracks: [{ blocks: [{ movements: [
+      { rawName: 'wal balls', exId: null, alts: [{ rawName: 'machine', exId: null }] },
+      { rawName: 'copas', exId: null, alts: [] },
+    ] }] }] }
+    const [wal, copas] = prepareDraft(p).tracks[0].blocks[0].movements
+    expect(wal).toMatchObject({ exId: '2458', via: 'guess' })
+    expect(wal.candidates[0]).toMatchObject({ exId: '2458' })
+    expect(wal.alts[0]).toMatchObject({ exId: null, via: null })
+    expect(wal.alts[0].candidates.length).toBeGreaterThan(0)
+    expect(copas.exId).toBe('0430')
+    expect('via' in copas || 'candidates' in copas).toBe(false)
+  })
+
+  it('a saved guess is resolved again on opening, so a pick made since settles it', () => {
+    const saved = { tracks: [{ blocks: [{ movements: [{ rawName: 'wal balls', exId: '2458', via: 'guess', candidates: [{ exId: '2458', score: 0.88 }], alts: [] }] }] }] }
+    const m = prepareDraft(saved, { [norm('wal balls')]: { exId: '9999', _ts: 1 } }).tracks[0].blocks[0].movements[0]
+    expect(m.exId).toBe('9999')
+    expect('via' in m || 'candidates' in m).toBe(false)
+  })
+
+  it('confirming a guess (applyPick) settles every movement of that name', () => {
+    const d = prepareDraft({ tracks: [{ blocks: [{ movements: [{ rawName: 'wal balls', exId: null, alts: [] }, { rawName: 'Wal Balls', exId: null, alts: [] }] }] }] })
+    const out = applyPick(d, norm('wal balls'), '2458').tracks[0].blocks[0].movements
+    for (const m of out) {
+      expect(m.exId).toBe('2458')
+      expect('via' in m || 'candidates' in m).toBe(false)
+    }
+  })
+
+  it('resolveInto drops a stale guess when the name now resolves for certain', () => {
+    const m = resolveInto({ rawName: 'copas', exId: '1', via: 'guess', candidates: [{ exId: '1', score: 0.9 }] })
+    expect(m).toEqual({ rawName: 'copas', exId: '0430' })
   })
 
   it('nextId takes the first free number', () => {
