@@ -270,21 +270,31 @@ export function cardioSetsOf(row, entry) {
 // logged effort first, Epley-inverse estimate against the anchor second, full
 // credit when intensity is unknowable (rings, load-less imports). Anchors come
 // from the 90-day window ending at this session, never from its future.
+// `excludeCardio` skips cardio-mode rows (the hypertrophy gap: runs load fatigue, not
+// growth). `byEntry` returns [{ entry, sets }] instead, each entry's own uncapped sums, so a
+// caller can split a session's credit before applying the per-session cap itself.
 export function sessionEffSets(workout, anchors, opts = {}) {
   const sums = emptyMuscleMap(0)
+  const parts = []
+  let own = null
   const score = (row, set, entry, weights, requireDone = true) => {
     if (requireDone && row?.done !== true) return
+    if (opts.excludeCardio && modeForSet(row, entry?.target || {}) === 'cardio') return
     const resolved = resolveSetRir(row, set, entry, workout, anchors, opts)
     const count = (resolved?.source !== 'logged' && isWarmupRow(set)
       ? FATIGUE_RIR_FLOOR_WEIGHT
       : rirWeightFor(resolved?.rir)) * cardioSetsOf(row, entry)
     for (const [slug, weight] of Object.entries(weights)) {
-      if (Object.prototype.hasOwnProperty.call(MUSCLES_BY_SLUG, slug)) sums[slug] += count * weight
+      if (Object.prototype.hasOwnProperty.call(MUSCLES_BY_SLUG, slug)) {
+        sums[slug] += count * weight
+        if (own) own[slug] += count * weight
+      }
     }
   }
   for (const entry of workout?.entries || []) {
     const ex = exerciseFor(entry)
     const weights = musclesOf(ex)
+    if (opts.byEntry) parts.push({ entry, sets: own = emptyMuscleMap(0) })
     for (const set of entry.sets || []) {
       score(set, set, entry, weights)
       // Drop-set drops carry their own load against the same anchor - extra work at
@@ -293,6 +303,7 @@ export function sessionEffSets(workout, anchors, opts = {}) {
       if (set?.done === true) for (const drop of dropsOf(set)) score(drop, set, entry, weights, false)
     }
   }
+  if (opts.byEntry) return parts
   for (const slug of MUSCLES) sums[slug] = Math.min(sums[slug], FATIGUE_MAX_SETS_PER_SESSION)
   return sums
 }
@@ -302,11 +313,13 @@ export function sessionEffSets(workout, anchors, opts = {}) {
 // estimate inverts this same formula, so the set that set the anchor reads RIR 0. Session-local, so a
 // 90-day-old import can never reweight today's anchor - only sessions inside the
 // anchor window ending at the scored session contribute. Assistance work has no
-// 1RM (the load is help received) and stays out, matching onerm.js.
+// 1RM (the load is help received) and stays out, matching onerm.js. Metcon rows (`wodRir`,
+// lib/wod-log.js) are never a capacity test either: 5 rounds of 10 push-ups would otherwise
+// anchor themselves and read RIR 0, full credit instead of the WOD's own guess.
 function sessionBests(workout, opts = {}) {
   const best = new Map()
   const consider = (ex, set, entry, exId) => {
-    if (set?.done !== true) return
+    if (set?.done !== true || set.wodRir != null) return
     const sides = isSideSet(set) ? [set.sides.L, set.sides.R].filter(s => s?.done === true) : [set]
     for (const side of sides) {
       const est = estimate1RM(loadKgFor(ex, entry, set, workout, opts, side), numeric(side?.r))

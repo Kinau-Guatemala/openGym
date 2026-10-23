@@ -2,6 +2,7 @@
 // moves with water, salt and the last meal by more than it moves in a month, so the number worth
 // following is the week's mean — the one a single weigh-in on the card cannot give you.
 import { weekKey } from './format.js'
+import { LB_TO_KG } from './recovery.js'
 
 /**
  * The weigh-ins grouped into weeks, newest week first. Each week carries its mean, how many
@@ -25,4 +26,17 @@ export function weeklyWeights(bodyweight, ws) {
   })
   weeks.forEach((week, i) => { week.delta = i ? week.avg - weeks[i - 1].avg : null })
   return weeks.reverse()
+}
+
+/**
+ * The profile's last weigh-in in kg, or null with none: the body-mass part of a bodyweight
+ * exercise's load wherever fatigue, effort and the hypertrophy gap estimate a set, so every
+ * screen reads the same set the same way. Latest by date, not by stored order.
+ */
+export function profileBodyweightKg(S) {
+  const entries = S?.bodyweight || []
+  if (!entries.length) return null
+  const last = entries.slice().sort((a, b) => String(a.d).localeCompare(String(b.d))).at(-1)
+  if (!last || !(last.w > 0)) return null
+  return S.unit === 'lb' ? last.w * LB_TO_KG : last.w
 }

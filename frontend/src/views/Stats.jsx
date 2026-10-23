@@ -12,9 +12,11 @@ import Heatmap from '../components/Heatmap.jsx'
 import Icon from '../components/Icon.jsx'
 import BodyMap, { BodyMapLegend } from '../components/BodyMap.jsx'
 import { loadOfWeeklyPlan, loadOfWorkouts, muscleBalanceWindow, rankOf, MUSCLES, MUSCLE_NAME, musclesOf } from '../lib/muscles.js'
-import { fatigueOf, strengthOf, STRENGTH_FLOOR, LB_TO_KG } from '../lib/recovery.js'
+import { fatigueOf, strengthOf, STRENGTH_FLOOR } from '../lib/recovery.js'
 import { strengthExerciseRowsForMuscle } from '../lib/strength-exercises.js'
 import { fatigueStateOf } from '../lib/recovery-view.js'
+import { muscleGap } from '../lib/muscle-gap.js'
+import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { e1rmSeries, best1RM, formulaOf } from '../lib/onerm.js'
 import { currentDbLoad, workoutAs } from '../lib/dumbbells.js'
 import { maxRepsSeries } from '../lib/pyramid.js'
@@ -107,19 +109,36 @@ function StrengthLegend() {
   </div>
 }
 
+// Gap view: shaded by how far below the weekly target a muscle is (deficit / target).
+const GAP_LEVELS = [
+  { at: 0, level: 1, exclusive: true },
+  { at: 0.25, level: 2 },
+  { at: 0.5, level: 3 },
+  { at: 0.75, level: 4 },
+]
+
+function GapLegend() {
+  return <div className="hm-legend hm-gap" aria-label={t('Hypertrophy gap')}>
+    <span>{t('Far below')}</span><div className="hm-c l4" />
+    <span>{t('Below target')}</span><div className="hm-c l2" />
+    <span>{t('On target')}</span><div className="hm-c l0" />
+  </div>
+}
+
+// Where a muscle's weekly sets came from (lib/muscle-gap.js sourceOf), in bar order.
+const GAP_SOURCES = [['lift', 'var(--acc)', 'Lifting'], ['pump', 'var(--purple)', 'Pump'], ['wod', 'var(--orange)', 'WOD']]
+const round1 = n => Math.round(n * 10) / 10
+
+// The hypertrophy gap over the last 14 days, for the card and the map's gap view alike.
+function useGap(S, now) {
+  const bodyweightKg = useMemo(() => profileBodyweightKg(S), [S.bodyweight, S.unit])
+  return useMemo(() => muscleGap(S.workouts, now, { target: S.hypTarget ?? 10, unit: S.unit, bodyweightKg }),
+    [S.workouts, now, S.hypTarget, S.unit, bodyweightKg])
+}
+
 function fatigueLabel(value) {
   const state = fatigueStateOf(value)
   return t(state === 'ready' ? 'Ready' : state === 'recovering' ? 'Recovering' : 'Fatigued')
-}
-
-// The user's own last registered bodyweight, in kg: the body-mass part of a bodyweight
-// exercise's load for fatigue and for estimated effort, so both read the same set the same way.
-function profileBodyweightKg(S) {
-  const entries = S.bodyweight || []
-  if (!entries.length) return null
-  const last = entries.slice().sort((a, b) => String(a.d).localeCompare(String(b.d))).at(-1)
-  if (!last || !(last.w > 0)) return null
-  return S.unit === 'lb' ? last.w * LB_TO_KG : last.w
 }
 
 function MuscleBalance({ S }) {
@@ -135,6 +154,9 @@ function MuscleBalance({ S }) {
   const bodyweightKg = useMemo(() => profileBodyweightKg(S), [S.bodyweight, S.unit])
   const fatigue = useMemo(() => fatigueOf(workouts, now, { bodyweightKg, unit: S.unit }), [workouts, now, bodyweightKg, S.unit])
   const strength = useMemo(() => strengthOf(workouts, now, { bodyweightKg, unit: S.unit }), [workouts, now, bodyweightKg, S.unit])
+  const gap = useGap(S, now)
+  const gapLoad = Object.fromEntries(gap.map(r => [r.muscle, r.deficit / r.target]))
+  const gapSel = sel && gap.find(r => r.muscle === sel)
   const muscleExercises = useMemo(() => (sel ? strengthExerciseRowsForMuscle(S, now, sel) : []), [S, now, sel, lang])
   const lastTrained = useMemo(() => latestMuscleTraining(workouts), [workouts])
   const strengthHint = slug => {
@@ -222,7 +244,7 @@ function MuscleBalance({ S }) {
 
   return <div className="card">
     <Segmented className="seg-range" value={view} onChange={setView}
-      options={[{ value: 'balance', label: t('Muscle balance') }, { value: 'fatigue', label: t('Fatigue') }, { value: 'strength', label: t('Strength') }]} />
+      options={[{ value: 'balance', label: t('Muscle balance') }, { value: 'fatigue', label: t('Fatigue') }, { value: 'strength', label: t('Strength') }, { value: 'gap', label: t('Gap') }]} />
     {view === 'balance' ? <>
       <div className="row between" style={{ marginBottom: 8 }}>
         <h2 style={{ margin: 0 }}>{t('Muscle balance')} <span className="dim" style={{ textTransform: 'none', letterSpacing: 0 }}>· {on ? t('by hard sets') : t('by sets worked')}</span></h2>
@@ -257,6 +279,15 @@ function MuscleBalance({ S }) {
       {sel && <div className="mrow" style={{ borderTop: 'var(--hair) solid var(--sep)', marginTop: 4, paddingTop: 10 }}>
         <span className="nm"><b>{t(MUSCLE_NAME[sel])}</b></span>
         <span className="v">{fatigueLabel(fatigue[sel])}</span>
+      </div>}
+    </> : view === 'gap' ? <>
+      <h2>{t('Hypertrophy gap')}</h2>
+      <BodyMap className="tappable hm-gap" load={gapLoad} thresholds={GAP_LEVELS} body={S.body} selected={sel} onMuscle={toggleSel} />
+      <GapLegend />
+      <div className="muted small" style={{ marginTop: 10 }}>{t('Effective sets a week over the last 14 days, against your target of {0}.', fmtNum(S.hypTarget ?? 10))}</div>
+      {sel && <div className="mrow" style={{ borderTop: 'var(--hair) solid var(--sep)', marginTop: 4, paddingTop: 10 }}>
+        <span className="nm"><b>{t(MUSCLE_NAME[sel])}</b></span>
+        <span className="v">{gapSel ? `${fmtNum(round1(gapSel.setsPerWeek))}/${fmtNum(gapSel.target)}` : '–'}</span>
       </div>}
     </> : <>
       <h2>{t('Strength')}</h2>
@@ -305,6 +336,41 @@ function MuscleBalance({ S }) {
   </div>
 }
 
+
+// The muscles below the weekly hypertrophy target once CrossFit, Holy Pump and lifting all
+// count, and where each one's sets came from: the feedback loop behind the 2-day plan.
+const GAP_ROWS = 5
+function GapCard({ S }) {
+  const [all, setAll] = useState(false)
+  const gap = useGap(S, useNow())
+  const below = gap.filter(r => r.deficit > 0)
+  const shown = all ? below : below.slice(0, GAP_ROWS)
+  const target = S.hypTarget ?? 10
+  return <div className="card" data-hypertrophy-gap>
+    <h2 style={{ marginBottom: 2 }}>{t('Hypertrophy gap')}</h2>
+    <div className="muted small" style={{ marginBottom: 10 }}>{t('Effective sets a week over the last 14 days, against your target of {0}.', fmtNum(target))}</div>
+    {below.length ? shown.map(r => {
+      const split = GAP_SOURCES.map(([k, , label]) => `${t(label)} ${fmtNum(round1(r.sources[k]))}`).join(' · ')
+      return <div className="mrow" key={r.muscle} data-muscle-gap={r.muscle}>
+        <span className="nm">{t(MUSCLE_NAME[r.muscle])}</span>
+        {/* The bar is the target; each source fills its own share of it. */}
+        <span className="bar" style={{ display: 'flex' }} role="img" aria-label={split} title={split}>
+          {GAP_SOURCES.map(([k, color]) => r.sources[k] > 0 &&
+            <i key={k} style={{ width: Math.round(r.sources[k] / r.target * 100) + '%', background: color, borderRadius: 0 }} />)}
+        </span>
+        <span className="v">{fmtNum(round1(r.setsPerWeek))}/{fmtNum(r.target)}</span>
+      </div>
+    }) : <div className="muted small">{t('Every muscle is at the weekly target.')}</div>}
+    {below.length > 0 && <div className="hm-legend" style={{ marginTop: 8 }}>
+      {GAP_SOURCES.map(([k, color, label]) => <span key={k} className="row" style={{ gap: 4 }}><div className="hm-c" style={{ background: color }} />{t(label)}</span>)}
+    </div>}
+    {below.length > GAP_ROWS && <>
+      <div style={{ height: 8 }} />
+      <Button trailingIcon={all ? 'chevronUp' : 'chevronDown'} aria-expanded={all}
+        onClick={() => setAll(v => !v)}>{t(all ? 'Show less' : 'Show more')}</Button>
+    </>}
+  </div>
+}
 
 // How hard the training was — the half of the picture a volume chart cannot show. Everything
 // is computed in RIR (lib/effort.js) and converted to whichever scale this profile reads.
@@ -655,6 +721,7 @@ export default function Stats() {
     </div>
 
     {(workouts.length > 0 || Object.keys(loadOfWeeklyPlan(S)).length > 0) && <MuscleBalance S={S} />}
+    {workouts.length > 0 && <GapCard S={S} />}
     {S.routines.length > 0 && <WeeklyPlanVolume S={S} />}
     {workouts.length > 0 && <div className="card row between" style={{ alignItems: 'center', gap: 12 }}>
       <div style={{ minWidth: 0 }}><h2 style={{ margin: 0 }}>{t('Structural balance')}</h2>

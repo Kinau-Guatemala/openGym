@@ -1658,13 +1658,14 @@ body.no-tabbar #timer.working{box-shadow:inset 0 var(--hair) 0 var(--acc),0 -10p
 .bm-m.l3{fill:color-mix(in srgb,var(--acc) 78%,var(--bm-base))}
 .bm-m.l4{fill:var(--acc)}
 /* Fatigue view: attention ramp - fatigued muscles highlighted (owner tweak 2026-08-06) */
-.hm-fatigue .bm-m.l4{fill:var(--red)}
-.hm-fatigue .bm-m.l3{fill:var(--orange)}
-.hm-fatigue .bm-m.l2{fill:var(--yellow)}
-.hm-fatigue .bm-m.l1{fill:color-mix(in srgb,var(--yellow) 32%,var(--bm-base))}
-.hm-fatigue .hm-c.l4{background:var(--red)}
-.hm-fatigue .hm-c.l3{background:var(--orange)}
-.hm-fatigue .hm-c.l2{background:var(--yellow)}
+/* Gap view (lib/muscle-gap.js) shares the ramp: red = furthest below the weekly target. */
+:is(.hm-fatigue,.hm-gap) .bm-m.l4{fill:var(--red)}
+:is(.hm-fatigue,.hm-gap) .bm-m.l3{fill:var(--orange)}
+:is(.hm-fatigue,.hm-gap) .bm-m.l2{fill:var(--yellow)}
+:is(.hm-fatigue,.hm-gap) .bm-m.l1{fill:color-mix(in srgb,var(--yellow) 32%,var(--bm-base))}
+:is(.hm-fatigue,.hm-gap) .hm-c.l4{background:var(--red)}
+:is(.hm-fatigue,.hm-gap) .hm-c.l3{background:var(--orange)}
+:is(.hm-fatigue,.hm-gap) .hm-c.l2{background:var(--yellow)}
 /* Strength view: top band pops gold (owner tweak 2026-08-06) */
 .hm-strength .bm-m.l4{fill:var(--yellow);filter:drop-shadow(0 0 1.5px var(--yellow))}
 .hm-strength .hm-c.l4{background:var(--yellow)}

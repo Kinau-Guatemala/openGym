@@ -98,6 +98,11 @@ Two orthogonal multipliers on top of the phase-1 sets, both causal and bounded:
   correctly (176 lb anchors like 80 kg). A ramp-up row therefore costs a
   fraction of a set; a deload week of half-weight work reads RIR 10 instead of
   8 phantom hard sets (the case session-local intensity could never see).
+  **Metcon rows never set anchors** (fork, T10): a row carrying `wodRir`
+  (lib/wod-log.js) is conditioning, not a capacity test, so `sessionBests`
+  skips it. Otherwise 5×10 push-ups anchor themselves on body mass and read
+  RIR 0 (full credit) instead of the WOD's RIR 5 (≈0.53); a heavy EMOM still
+  reads near failure against a strength-day anchor for the same lift.
 - **Acute:chronic gain per session and muscle**: `clamp((acute7+4)/(chronicW+4),
   0.5, 2)` with a 4-sets/week novice prior (repeated-bout effect as arithmetic:
   first sessions score amplified, maintained veterans ~1.0 reproduce phase 1).

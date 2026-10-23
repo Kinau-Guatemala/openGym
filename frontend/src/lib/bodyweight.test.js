@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { weeklyWeights } from './bodyweight.js'
+import { weeklyWeights, profileBodyweightKg } from './bodyweight.js'
 
 // Discord 'Weight': every weigh-in, week by week, with the week's mean.
 describe('weeklyWeights', () => {
@@ -37,5 +37,14 @@ describe('weeklyWeights', () => {
     expect(weeks[0]).toMatchObject({ n: 2, avg: 80 })
     expect(weeks[0].entries.map(b => b.d)).toEqual(['2026-09-09', '2026-09-07'])
     expect(weeklyWeights(undefined, 1)).toEqual([])
+  })
+})
+
+describe('profileBodyweightKg', () => {
+  it('is the latest weigh-in by date, in kg, or null', () => {
+    expect(profileBodyweightKg({ unit: 'kg', bodyweight: [{ d: '2026-09-07', w: 80 }, { d: '2026-09-01', w: 82 }] })).toBe(80)
+    expect(profileBodyweightKg({ unit: 'lb', bodyweight: [{ d: '2026-09-07', w: 200 }] })).toBeCloseTo(90.718474, 6)
+    expect(profileBodyweightKg({ unit: 'kg', bodyweight: [] })).toBeNull()
+    expect(profileBodyweightKg({ unit: 'kg', bodyweight: [{ d: '2026-09-07', w: 0 }] })).toBeNull()
   })
 })
