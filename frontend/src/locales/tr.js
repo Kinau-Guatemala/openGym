@@ -1981,7 +1981,7 @@ export default {
   'Another device synced while you were importing, so its changes were kept next to the backup.': 'İçe aktarırken başka bir cihaz eşitlendi, onun değişiklikleri de yedeğin yanında tutuldu.',
   'Save as a backup file': 'Yedek dosyası olarak kaydet',
   'Add this device\'s plan to your profile?': 'Bu cihazdaki plan profiline eklensin mi?',
-  'Your plan, notes or gym cards on this device were set up while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'Bu cihazdaki planın, notların veya salon kartların oturum açılmadan oluşturuldu. Bunları profiline ekle ya da profili sunucudaki hâliyle bırak.',
+  'Your plan, notes, gym cards or CrossFit programs on this device were set up while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'Bu cihazdaki planın, notların, salon kartların veya CrossFit programların oturum açılmadan oluşturuldu. Bunları profiline ekle ya da profili sunucudaki hâliyle bırak.',
   '{0} routine was made on this device while signed out. Add it to your profile, or keep the profile exactly as it is on the server.': 'Bu cihazda oturum açılmadan {0} rutin oluşturuldu. Onu profiline ekle ya da profili sunucudaki hâliyle bırak.',
   '{0} routines were made on this device while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'Bu cihazda oturum açılmadan {0} rutin oluşturuldu. Bunları profiline ekle ya da profili sunucudaki hâliyle bırak.',
   'This device, before signing in': 'Bu cihaz, oturum açmadan önce',

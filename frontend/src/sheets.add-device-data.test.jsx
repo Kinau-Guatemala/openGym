@@ -4,6 +4,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { _setLangState } from './lib/i18n-core.js'
 import { addDeviceDataMessage, addDeviceSetupMessage } from './sheets.jsx'
+import { localExtras } from './lib/sync-merge.js'
+import es from './locales/es.js'
 import de from './locales/de.js'
 import ru from './locales/ru.js'
 
@@ -32,8 +34,20 @@ describe('addDeviceDataMessage', () => {
     _setLangState('en', null, null, null)
     expect(addDeviceSetupMessage(1)).toMatch(/^1 routine was made on this device/)
     expect(addDeviceSetupMessage(3)).toMatch(/^3 routines were made on this device/)
-    expect(addDeviceSetupMessage(0)).toMatch(/^Your plan, notes or gym cards/)
+    expect(addDeviceSetupMessage(0)).toMatch(/^Your plan, notes, gym cards or CrossFit programs/)
     _setLangState('de', de, null, null)
     expect(addDeviceSetupMessage(2)).toMatch(/^2 Routinen wurden/)
+  })
+
+  // A guest who only saved CrossFit programs or movement picks is asked too (lib/sync-merge.js
+  // localExtras counts them under setup), and the question has to say so, or "Keep profile as
+  // is" reads as safe and drops them.
+  it('a guest with only CrossFit programs is told the programs are at stake', () => {
+    const local = { wods: { '2026-10-22': { title: 'A', tracks: [], _ts: 5 } }, exAliases: { copa: { exId: '42', _ts: 5 } } }
+    const extras = localExtras(local, { workouts: [] })
+    expect(extras).toEqual({ workouts: 0, bodyweight: 0, customEx: 0, setup: 2 })
+    expect(addDeviceSetupMessage(extras.routines)).toMatch(/CrossFit programs/)
+    _setLangState('es', es, null, null)
+    expect(addDeviceSetupMessage(extras.routines)).toMatch(/programas de CrossFit/)
   })
 })
