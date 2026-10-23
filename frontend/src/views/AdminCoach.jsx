@@ -205,6 +205,9 @@ export default function AdminCoach() {
           </div>
           <div className="adm-hint" style={{ margin: '6px 0 0' }}>{g.hint}</div>
         </div>)}
+        {meta.id && <div className="adm-hint" style={{ margin: '10px 0 0' }}>{meta.images
+          ? <>Reads routine images: <b>yes</b>. Sharing or uploading a box's posted workout on the CrossFit screen reads it into a program.</>
+          : <>Reads routine images: <b>no</b>. On the CrossFit screen the program is typed in by hand, the image beside it.</>}</div>}
       </Step>
 
       {/* ---------- endpoint (compatible only) ---------- */}

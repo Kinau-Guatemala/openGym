@@ -429,3 +429,123 @@ test('an endpoint that refuses images answers the vision message; other 4xx stay
     assert.equal(s.last.errorClass, cls, msg);
   }
 });
+
+/* ---------- the Claude provider: the image rides the Agent SDK's streaming input (T16) ---------- */
+
+const claudeMod = await import('../coach/adapters/claude.js');
+
+// A stand-in for the SDK module: records what query() was handed and answers like the runtime.
+// `answer` is the list of messages to yield; `throwAfter` mimics query() throwing after an
+// is_error result, as the real SDK does.
+function stubSdk(answer, { throwAfter = false } = {}) {
+  const calls = [];
+  claudeMod.setSdkForTest({
+    query: ({ prompt, options }) => (async function* () {
+      const call = { options, prompt: typeof prompt === 'string' ? prompt : [] };
+      if (typeof prompt !== 'string') for await (const m of prompt) call.prompt.push(m);
+      // What the job directory holds while the runtime has the image.
+      call.jobDirFiles = options.cwd ? filesUnder(options.cwd).map(f => fs.readFileSync(f, 'utf8')) : [];
+      calls.push(call);
+      yield* answer;
+      if (throwAfter) throw new Error('Claude Code returned an error result');
+    })()
+  });
+  return calls;
+}
+const sdkResult = text => ({ type: 'result', subtype: 'success', is_error: false, result: text, stop_reason: 'end_turn' });
+
+test('claude adapter: images become one streaming-input user message, image blocks first, text last', async () => {
+  const calls = stubSdk([sdkResult('{"ok":1}')]);
+  try {
+    const claude = (await import('../coach/adapters/index.js')).adapterFor('claude');
+    const r = await claude.invoke({ prompt: 'read it', images: [{ mime: 'image/png', data: 'AAA' }, { mime: 'image/jpeg', data: 'BBB' }], env: {}, timeoutMs: 5000 });
+    assert.equal(r.code, 0);
+    const [msg, ...more] = calls[0].prompt;
+    assert.equal(more.length, 0, 'exactly one message');
+    assert.deepEqual(msg, {
+      type: 'user', parent_tool_use_id: null,
+      message: { role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAA' } },
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'BBB' } },
+        { type: 'text', text: 'read it' }
+      ] }
+    });
+    for (const [k, v] of Object.entries(claudeMod.LOCKDOWN)) assert.deepEqual(calls[0].options[k], v, `LOCKDOWN.${k} still applies`);
+
+    // Without images the prompt is the plain string it always was.
+    await claude.invoke({ prompt: 'a plan question', env: {}, timeoutMs: 5000 });
+    assert.equal(calls[1].prompt, 'a plan question');
+    await claude.invoke({ prompt: 'a plan question', images: [], env: {}, timeoutMs: 5000 });
+    assert.equal(calls[2].prompt, 'a plan question');
+  } finally { claudeMod.setSdkForTest(undefined); }
+});
+
+async function parseWithClaude(answer, opts) {
+  const calls = stubSdk(answer, opts);
+  cfg.save({ enabled: true, provider: 'claude' });
+  cfg.saveAuth('claude', { type: 'apikey', data: cfg.encrypt({ token: 'sk-ant-test' }), connectedAt: new Date().toISOString() });
+  const uid = 'u-t16-' + Math.random().toString(36).slice(2);
+  writeState(DIR, uid, consented());
+  try {
+    const r = await routesFor(uid)('POST /api/coach/parse-wod', parseBody);
+    assert.equal(r.status, 202, JSON.stringify(r.body));
+    return { s: await settle(uid), calls };
+  } finally {
+    claudeMod.setSdkForTest(undefined);
+    cfg.saveAuth('claude', null);
+    cfg.save({ provider: 'fixture' });
+  }
+}
+
+test('claude: parse-wod enqueues, the image reaches the SDK and never the job directory or ./data', async () => {
+  const { s, calls } = await parseWithClaude([sdkResult(JSON.stringify(FIXTURE_WOD))]);
+  assert.ok(s.parsed, JSON.stringify(s.last));
+  assert.equal(s.parsed.program.tracks.length, FIXTURE_WOD.tracks.length);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].prompt[0].message.content[0], { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: IMAGE } });
+  assert.deepEqual(payloadIn(calls[0].prompt[0].message.content[1].text), { task: 'parse-wod', date: DATE, lang: null });
+  assert.ok(calls[0].options.cwd, 'the runtime ran in a job directory');
+  for (const body of calls[0].jobDirFiles) assert.ok(!body.includes(IMAGE.slice(0, 200)), 'the job directory holds the image');
+  assert.equal(fs.existsSync(calls[0].options.cwd), false, 'the job directory is gone after the parse');
+  for (const f of filesUnder(DIR)) assert.ok(!fs.readFileSync(f, 'utf8').includes(IMAGE.slice(0, 200)), `${path.relative(DIR, f)} holds the image`);
+});
+
+test('claude: an empty program is believed, "no routine found", not novision', async () => {
+  const { s } = await parseWithClaude([sdkResult(JSON.stringify({ title: null, tracks: [] }))]);
+  assert.ok(s.parsed, JSON.stringify(s.last));
+  assert.deepEqual(s.parsed.program.tracks, []);
+});
+
+test('claude: an API error refusing the image is novision, and its text never carries the image', async () => {
+  const refusal = { type: 'result', subtype: 'success', is_error: true, api_error_status: 400, result: `API Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"image inputs are not supported (${IMAGE})"}}` };
+  const { s } = await parseWithClaude([refusal], { throwAfter: true });
+  assert.equal(s.last.errorClass, 'novision');
+  // The failure detail is logged for the admin card; the image is not in it, nor anywhere on disk.
+  // 60 characters: the logged detail is cut at 300, so a longer probe could miss a leak.
+  for (const f of filesUnder(DIR)) assert.ok(!fs.readFileSync(f, 'utf8').includes(IMAGE.slice(0, 60)), `${path.relative(DIR, f)} holds the image`);
+  // Another API error keeps its old meaning; the runtime's "Not logged in" is an auth failure.
+  const other = await parseWithClaude([{ type: 'result', subtype: 'success', is_error: true, api_error_status: 400, result: 'API Error: 400 prompt is too long' }], { throwAfter: true });
+  assert.equal(other.s.last.errorClass, 'provider');
+  const login = await parseWithClaude([{ type: 'result', subtype: 'success', is_error: true, api_error_status: null, result: 'Not logged in · Please run /login' }], { throwAfter: true });
+  assert.equal(login.s.last.errorClass, 'auth');
+});
+
+test('claude adapter: a non-success result names its errors, cut and without the image', async () => {
+  stubSdk([{ type: 'result', subtype: 'error_during_execution', is_error: true, stop_reason: null, errors: ['stream closed', 'bad ' + IMAGE] }], { throwAfter: true });
+  try {
+    const r = await (await import('../coach/adapters/index.js')).adapterFor('claude').invoke({ prompt: 'p', images: [{ mime: 'image/jpeg', data: IMAGE }], env: {}, timeoutMs: 5000 });
+    assert.equal(r.code, 1);
+    assert.ok(r.stderr.startsWith('the Agent SDK stopped: error_during_execution: stream closed; bad '), r.stderr.slice(0, 120));
+    assert.ok(r.stderr.length < 1100, 'cut');
+    assert.ok(!r.stderr.includes(IMAGE.slice(0, 60)), 'no image bytes');
+  } finally { claudeMod.setSdkForTest(undefined); }
+});
+
+test('claude adapter: an error text that quotes the image has it cut out', async () => {
+  stubSdk([{ type: 'result', subtype: 'success', is_error: true, api_error_status: 400, result: 'bad ' + IMAGE }], { throwAfter: true });
+  try {
+    const r = await (await import('../coach/adapters/index.js')).adapterFor('claude').invoke({ prompt: 'p', images: [{ mime: 'image/jpeg', data: IMAGE }], env: {}, timeoutMs: 5000 });
+    assert.equal(r.code, 1);
+    assert.equal(r.stderr, '400 bad [image]');
+  } finally { claudeMod.setSdkForTest(undefined); }
+});

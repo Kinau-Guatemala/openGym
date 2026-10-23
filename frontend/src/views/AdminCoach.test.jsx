@@ -290,6 +290,18 @@ describe('AdminCoach — switching provider', () => {
     expect(chip('Claude').textContent).toContain('key saved')
     expect(chip('OpenAI').textContent).not.toContain('key saved')
   })
+
+  it('says whether the chosen provider reads routine images', async () => {
+    mocks.routes['/api/admin/coach'] = status({ provider: 'claude', model: null, providers: PROVIDERS.map(p => ({ ...p, images: p.id === 'claude' })) })
+    await mount()
+    expect(host.textContent).toContain('Reads routine images: yes')
+  })
+
+  it('and says so when it does not', async () => {
+    mocks.routes['/api/admin/coach'] = status({ provider: 'claude', model: null })
+    await mount()
+    expect(host.textContent).toContain('Reads routine images: no')
+  })
 })
 
 describe('AdminCoach — the connection test', () => {

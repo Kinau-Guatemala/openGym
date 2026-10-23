@@ -23,7 +23,7 @@ const USER_ERROR = {
   // it. A vaguer message here turns into a support question for the person running the box.
   shared: cfgStore.SHARED_ACCOUNT_REFUSAL,
   unprivileged: 'the Coach is switched off on this instance for safety reasons',
-  unsupported: 'switch the Coach provider to Anthropic, OpenAI or an OpenAI-compatible endpoint to read routine images'
+  unsupported: 'switch the Coach provider to Anthropic, OpenAI, Claude or an OpenAI-compatible endpoint to read routine images'
 };
 const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503, unsupported: 422 };
 
@@ -191,6 +191,8 @@ export function coachRoutes({ json, readBody, readSession, requireAdmin }) {
           setupToken: !!p.setupToken, deviceLogin: !!p.deviceLogin, apiKey: !!p.apiKeyEnv,
           http: !!p.http, baseUrl: !!p.baseUrl, keyOptional: !!p.keyOptional, keyPlaceholder: p.keyPlaceholder || null,
           defaultModel: p.defaultModel || null,
+          // Can it read a routine image (parse-wod)? The same list the job runner enforces.
+          images: jobs.IMAGE_PROVIDERS.includes(id),
           // Which providers already hold a key — so switching chips is visibly not a reset.
           connected: !!(cfgStore.authFor(cfg, id) && cfgStore.authFor(cfg, id).data)
         })),

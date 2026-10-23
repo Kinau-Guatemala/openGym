@@ -147,13 +147,17 @@ small local one).
 
 ### With a runtime in the container (Claude Agent SDK, Codex CLI)
 
-**1. Build the image that has an AI runtime in it.** The default image deliberately has none:
+**1. Build the image that has an AI runtime in it.** The default image deliberately has none.
+Put `API_TARGET=coach` in `.env`, so every later `up` keeps the target, then:
 
 ```bash
-API_TARGET=coach docker compose up -d --build api
+docker compose up -d --build api
 ```
 
-`--build` matters. With a prebuilt `image:` also set, compose would otherwise pull the default.
+`--build` matters. With a prebuilt `image:` also set, compose would otherwise run the published
+default image. For the same reason, update with `git pull && docker compose up -d --build api`,
+never a bare `docker compose pull`: it replaces the built api with the default image, which has no
+runtime (`docker compose pull --ignore-buildable` or `pull web` updates the rest).
 
 **2. Get a credential.** On a trusted machine where you already use Claude Code:
 
@@ -165,11 +169,15 @@ Complete its normal browser sign-in and copy the token it prints. openGym never 
 that flow — it only ever receives the finished token. (Claude also accepts an Anthropic API key
 here, under the same chip; the setup token is the route for a Claude subscription.)
 
+Which account is billed follows the credential: a **setup token** spends the Claude Pro/Max
+subscription it was made on, an **API key** is billed per token to its Anthropic Console
+account. Both read routine images the same way.
+
 **3. Connect it.** In the app: **Settings → Account → Admin dashboard**, the **AI Coach** card.
 
 - Toggle the card on.
 - Pick the **Claude (Anthropic)** provider chip.
-- **Add CLI token** → paste the token, and optionally label whose account it is (that label is
+- **Add Claude Code token** → paste the token, and optionally label whose account it is (that label is
   what both the admin card and each user's Coach screen show when they name the account).
 - **Test the Coach** — a real round trip through the provider with no user data anywhere near it.
   It reports the runtime version on success, and the provider's own error on failure.
@@ -212,9 +220,12 @@ never names a catalogue id here.
   `GET /api/coach/status` — **never** as a proposal, so a plan suggestion waiting for an answer
   is left alone and no "proposal ready" notification is sent. The app clears it with
   `POST /api/coach/parsed/ack`.
-- **Anthropic, OpenAI or an OpenAI-compatible endpoint** (and the fixture, which answers a
-  canned program). Any other provider is refused with `unsupported` before anything is counted
-  against the daily cap. Behind a compatible endpoint the model decides: pick a vision model.
+- **Anthropic, OpenAI, Claude (Anthropic) through the Agent SDK, or an OpenAI-compatible
+  endpoint** (and the fixture, which answers a canned program). Any other provider is refused
+  with `unsupported` before anything is counted against the daily cap. On the Agent SDK the
+  image goes to the runtime's stdin as one streaming-input message (image blocks, then the
+  text) and never into the job directory; a setup token bills the Claude subscription, an API
+  key the Console account. Behind a compatible endpoint the model decides: pick a vision model.
   A refusal of the image (a 4xx saying images aren't supported, or "text-only") and, on a
   compatible endpoint only, an empty program both fail the job with `novision`, since a
   text-only model behind a gateway can drop the image and answer `tracks: []`.

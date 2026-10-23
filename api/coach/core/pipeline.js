@@ -49,7 +49,13 @@ export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutM
     if (invokeOpts.images && /^4\d\d\b/.test(said) && (/text[- ]only|unknown variant `?image_url|at most 0 image/.test(said) || (/image|vision|multimodal/.test(said) && /support/.test(said)))) {
       return { ok: false, errorClass: 'novision', detail: (r.stderr || r.text || '').slice(0, 300) };
     }
-    const authish = /auth|unauthor|api key|credential|token|401|403|login/.test(err);
+    // An answer led by its HTTP status says what it is: only 401/403 is a credential problem.
+    // Without one (a CLI's own words), `token` alone is not enough — "210000 tokens > 200000
+    // maximum" and "input tokens per minute" are a long prompt and a rate limit.
+    const status = /^(\d{3})\b/.exec(err);
+    const authish = status
+      ? status[1] === '401' || status[1] === '403'
+      : /auth|unauthor|api key|credential|(invalid|expired|revoked|missing|bad)\b[^.]{0,30}\btoken\b|\btoken\b[^.]{0,30}\b(invalid|expired|revoked|missing)|401|403|login|logged in/.test(err);
     return { ok: false, errorClass: authish ? 'auth' : 'provider', detail: (r.stderr || r.text || '').slice(0, 300) };
   }
 
