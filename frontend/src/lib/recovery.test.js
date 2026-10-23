@@ -777,3 +777,44 @@ describe('anchorsByWorkout and resolveSetRir', () => {
       .toBeNull()
   })
 })
+
+describe('duration-weighted cardio', () => {
+  const RUN = '0685'   // run: quadriceps, hamstring and calves at 0.4
+  const cardio = (min, extra = {}) => ({ done: true, min, speed: 10, ...extra })
+
+  it('a 45-minute run counts 4.5 sets: about 1.8 effective sets on the legs', () => {
+    const fatigue = fatigueOf([workoutAt(RUN, NOW, [cardio(45)])], NOW)
+    for (const slug of ['quadriceps', 'hamstring', 'calves']) {
+      expect(fatigue[slug]).toBeCloseTo(expectedSets(4.5, 0.4, slug), 10)
+    }
+  })
+
+  it('a row of 10 minutes or less scores exactly the single set it always did', () => {
+    const one = fatigueOf([workoutAt(RUN, NOW, [{ done: true }])], NOW).quadriceps
+    expect(one).toBeCloseTo(expectedSets(1, 0.4, 'quadriceps'), 12)
+    for (const min of [1, 5, 10]) expect(fatigueOf([workoutAt(RUN, NOW, [cardio(min)])], NOW).quadriceps).toBe(one)
+  })
+
+  it('stops counting at 60 minutes', () => {
+    expect(fatigueOf([workoutAt(RUN, NOW, [cardio(180)])], NOW).quadriceps)
+      .toBe(fatigueOf([workoutAt(RUN, NOW, [cardio(60)])], NOW).quadriceps)
+  })
+
+  it('keys on the row mode, not the catalogue: a WOD ski erg row is cardio, a rep row is not', () => {
+    // 2142 ski ergometer is catalogued under triceps, not cardio; the WOD row says cardio itself.
+    const ski = fatigueOf([workoutAt('2142', NOW, [{ done: true, mode: 'cardio', min: 30 }])], NOW)
+    expect(ski.triceps).toBeCloseTo(expectedSets(3, 1, 'triceps'), 10)
+    const reps = fatigueOf([workoutAt('2142', NOW, [{ done: true, mode: 'reps', r: 20, min: 30 }])], NOW)
+    expect(reps.triceps).toBeCloseTo(expectedSets(1, 1, 'triceps'), 10)
+  })
+
+  it('scores the same run alike by hand, from a WOD or from Health Connect', () => {
+    const byHand = workoutAt(RUN, NOW, [cardio(45)])
+    const wod = { ...workoutAt(RUN, NOW, [{ done: true, mode: 'cardio', min: 45 }]), src: 'wod' }
+    const hc = { ...workoutAt(RUN, NOW, [{ min: 45, speed: 12, done: true }]), id: 'hc-1', src: 'hc' }
+    hc.entries[0].target = { mode: 'cardio' }
+    const q = w => fatigueOf([w], NOW).quadriceps
+    expect(q(wod)).toBe(q(byHand))
+    expect(q(hc)).toBe(q(byHand))
+  })
+})

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // (HealthConnectPlugin.java) and the app's data directory are played in memory.
 const h = vi.hoisted(() => {
   vi.stubEnv('VITE_MOBILE', '1')
-  return { files: new Map(), calls: [], status: { status: 'available', granted: false }, grant: true, fail: null }
+  return { files: new Map(), calls: [], status: { status: 'available', granted: false }, grant: true, fail: null, runs: [], readFail: null }
 })
 
 vi.mock('@capacitor/filesystem', () => ({
@@ -29,6 +29,11 @@ vi.mock('@capacitor/core', () => ({
       if (h.fail) throw Object.assign(new Error('refused'), { code: h.fail })
     },
     remove: async arg => { h.calls.push(['remove', arg]) },
+    readSessions: async arg => {
+      h.calls.push(['read', arg])
+      if (h.readFail) throw Object.assign(new Error('refused'), { code: h.readFail })
+      return { sessions: h.runs }
+    },
     openSettings: async () => {},
   }),
 }))
@@ -45,6 +50,7 @@ let hs
 beforeEach(async () => {
   vi.resetModules()
   h.files.clear(); h.calls = []; h.status = { status: 'available', granted: false }; h.grant = true; h.fail = null
+  h.runs = []; h.readFail = null
   hs = await import('./health-sync.js')
 })
 
@@ -141,5 +147,72 @@ describe('turning it off', () => {
     await hs.disableHealth({ removeWritten: true })
     expect(removes()).toEqual([{ sessions: ['opengym-w-w1'], weights: ['opengym-bw-2026-09-17'] }])
     expect(file()).toMatchObject({ on: false, written: {} })
+  })
+})
+
+describe('reading runs back', () => {
+  const run = { id: 'r1', start: at(20, 7), end: at(20, 8), type: 'running', distanceM: 10000, clientRecordId: null, packageName: 'com.strava' }
+  const own = { ...run, id: 'r2', start: at(21, 7), end: at(21, 8), packageName: 'gt.kinau.opengym', clientRecordId: 'opengym-w-w1' }
+  const added = []
+  const add = vi.fn(async records => { added.push(...records.map(r => r.id)); return records.length })
+  beforeEach(() => { added.length = 0; add.mockClear() })
+
+  it('reads nothing while it is off', async () => {
+    h.runs = [run]
+    expect(await hs.importRuns({ getState: () => state([]), add, force: true })).toBe(0)
+    expect(h.calls).toEqual([])
+  })
+  it('reads the last 30 days and hands over only what the log lacks', async () => {
+    await hs.enableHealth(state([]))
+    h.calls = []
+    h.runs = [run, own]
+    const before = Date.now()
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    const [[, arg]] = h.calls.filter(c => c[0] === 'read')
+    expect(arg.since).toBeGreaterThanOrEqual(before - hs.IMPORT_DAYS * 864e5)
+    expect(arg.since).toBeLessThanOrEqual(Date.now() - hs.IMPORT_DAYS * 864e5)
+    expect(added).toEqual(['r1', 'r2'])   // addImported does the filtering, inside the store's update
+    add.mockClear()
+    await hs.importRuns({ getState: () => state([{ id: 'hc-r1', d: '2026-09-20', start: at(20, 7), end: at(20, 8), src: 'hc', entries: [] }]), add, force: true })
+    expect(add).not.toHaveBeenCalled()
+  })
+  it('remembers a refused read for Settings, and forgets it once reading works', async () => {
+    await hs.enableHealth(state([]))
+    h.readFail = 'permission'
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    expect(file().readError).toBe('permission')
+    expect(file().on).toBe(true)
+    h.readFail = null
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    expect(file().readError).toBeNull()
+  })
+  it('reads again on a resume only 15 minutes after the last read, at once when forced', async () => {
+    await hs.enableHealth(state([]))
+    const reads = () => h.calls.filter(c => c[0] === 'read').length
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    expect(reads()).toBe(1)
+    expect(file().importedAt).toBeGreaterThan(0)
+    await hs.importRuns({ getState: () => state([]), add })
+    expect(reads()).toBe(1)
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    expect(reads()).toBe(2)
+    const f = file()
+    h.files.set('opengym-health.json', JSON.stringify({ ...f, importedAt: Date.now() - hs.IMPORT_EVERY_MS - 1 }))
+    vi.resetModules()
+    hs = await import('./health-sync.js')
+    await hs.importRuns({ getState: () => state([]), add })
+    expect(reads()).toBe(3)
+  })
+  it('tells the native side which ids it already knows, present or deleted', async () => {
+    await hs.enableHealth(state([]))
+    const S = { ...state([{ id: 'hc-r1', d: '2026-09-20', entries: [] }]), deleted: { workouts: { 'hc-r9': 5 } } }
+    await hs.importRuns({ getState: () => S, add, force: true })
+    const [[, arg]] = h.calls.filter(c => c[0] === 'read')
+    expect(arg.skip).toEqual(['r1', 'r9'])
+  })
+  it('asks again for reading when only writing was granted', async () => {
+    h.status = { status: 'available', granted: true, read: false }
+    await hs.enableHealth(state([]))
+    expect(h.calls[0]).toEqual(['request'])
   })
 })

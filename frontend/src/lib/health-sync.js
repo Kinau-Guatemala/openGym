@@ -6,15 +6,27 @@
 // data directory, never in S, so it does not sync to a server, ride in a backup, or switch on a
 // second phone. Off until the user turns it on; nothing is asked of Health Connect before that.
 //
+// It also reads back what other apps put there: runs, walks, hikes and rides come into the log on
+// their own (lib/health-import.js), each once, on launch and whenever the app comes back.
+//
 // The web build never gets here (MOBILE is a build-time flag), and iOS answers 'unsupported'.
 import { MOBILE, isAndroid, readJsonFile, writeJsonFile } from './mobile.js'
 import { healthRecords, planSync, writtenIds } from './health-connect.js'
+import { addImported, knownIds, planImport } from './health-import.js'
 import { exerciseNameFor } from './i18n-core.js'
 import { EXIDX } from './exercises.js'
 import { speedUnitOf } from './speed.js'
 
 export const HEALTH_FILE = 'opengym-health.json'
-const OFF = { on: false, written: {}, at: 0, error: null }
+const OFF = { on: false, written: {}, at: 0, error: null, readError: null, importedAt: 0 }
+// How far back runs are read: what can have been missed while the app was not opened.
+export const IMPORT_DAYS = 30
+// The app comes back to the foreground all through a workout (music, messages, the rest timer):
+// reading 30 days each time costs battery and Health Connect's per-app quota, so a resume reads
+// again only this long after the last read. Launch and a just-granted permission read at once.
+export const IMPORT_EVERY_MS = 15 * 60 * 1000
+// What initHealthSync was given: the store's state and how to add runs to it.
+let hooks = null
 
 // Wrapped in an object, as in rest-alert.js: a Capacitor plugin proxy answers `then`, so a
 // promise resolved with the bare proxy never settles.
@@ -36,7 +48,7 @@ export async function loadHealth() {
 }
 const saveHealth = h => { cached = h; return writeJsonFile(HEALTH_FILE, h) }
 
-/** { status: 'available' | 'update' | 'missing' | 'unsupported', granted } */
+/** { status: 'available' | 'update' | 'missing' | 'unsupported', granted, read } — `granted` for writing, `read` for reading runs. */
 export async function healthStatus() {
   if (!MOBILE) return { status: 'unsupported', granted: false }
   try {
@@ -124,20 +136,22 @@ async function syncOnce(S, h) {
 }
 
 /**
- * Turning it on: asks for the two write permissions, then writes the whole log once. Resolves
- * with { ok, reason } — reason 'denied' when the user did not grant both, or the status when
- * Health Connect is not there to ask.
+ * Turning it on: asks for the permissions, then writes the whole log once and reads the runs.
+ * Resolves with { ok, reason } — reason 'denied' when the user did not grant both write
+ * permissions, or the status when Health Connect is not there to ask. Reading is asked for in the
+ * same dialog, but writing does not wait on it: a refused read only leaves the runs out.
  */
 export async function enableHealth(S) {
   const p = await plugin()
   if (!p) return { ok: false, reason: 'unsupported' }
   const st = await p.HC.status().catch(() => ({ status: 'unsupported' }))
   if (st.status !== 'available') return { ok: false, reason: st.status }
-  const granted = st.granted || (await p.HC.requestPermissions().catch(() => ({ granted: false }))).granted
+  const granted = (st.granted && st.read !== false) ? true : (await p.HC.requestPermissions().catch(() => ({ granted: false }))).granted
   if (!granted) return { ok: false, reason: 'denied' }
   const h = await loadHealth()
   await saveHealth({ ...h, on: true, error: null })
   const after = await syncHealth(S)
+  if (hooks) importRuns({ force: true }).catch(() => {})
   return { ok: !after?.error, reason: after?.error || null, health: after }
 }
 
@@ -163,16 +177,72 @@ export async function disableHealth({ removeWritten = false } = {}) {
   return out
 }
 
+// The file as it stands with `patch`, saved and told, when that changes anything. Taken from the
+// copy in memory at the time of the save, so a sync's `written` saved meanwhile is kept.
+const patchHealth = async patch => {
+  const h = await loadHealth()
+  if (Object.entries(patch).every(([k, v]) => h[k] === v)) return h
+  const out = { ...cached, ...patch }
+  await saveHealth(out)
+  told(out)
+  return out
+}
+
+/**
+ * Reads the last IMPORT_DAYS of runs, walks, hikes and rides from Health Connect and hands the
+ * ones the log lacks to `add(records)` (which files them, lib/health-import.js addImported). A
+ * no-op while it is off, and within IMPORT_EVERY_MS of the last read unless `force`d. The ids
+ * already in the log or deleted from it go along, so the native side adds up no distance for
+ * them. A refused read is kept as `readError: 'permission'`, for Settings to offer the
+ * permission again; writing goes on either way. Resolves with how many were added.
+ */
+let importing = null
+export function importRuns({ force = false, getState = hooks?.getState, add = hooks?.add } = {}) {
+  if (!MOBILE || !getState || !add) return Promise.resolve(0)
+  if (importing) return importing
+  importing = (async () => {
+    const h = await loadHealth()
+    if (!h.on) return 0
+    if (!force && Date.now() - (Number(h.importedAt) || 0) < IMPORT_EVERY_MS) return 0
+    const p = await plugin()
+    if (!p) return 0
+    let records
+    try {
+      const since = Date.now() - IMPORT_DAYS * 864e5
+      records = (await p.HC.readSessions({ since, skip: knownIds(getState()) }))?.sessions || []
+    } catch (e) {
+      if (e?.code === 'permission') await patchHealth({ readError: 'permission' })
+      return 0
+    }
+    await patchHealth({ readError: null, importedAt: Date.now() })
+    if (!planImport(records, getState(), { nameOf }).length) return 0
+    return add(records)
+  })().catch(() => 0).finally(() => { importing = null })
+  return importing
+}
+
+// The store's own update, reached only once there is something to add: the store imports this
+// file, so it cannot be imported back at load.
+const addToStore = records => import('../store/useStore.js').then(({ useStore }) => {
+  let n = 0
+  useStore.getState().update(S => { n = addImported(S, records, { nameOf }) })
+  return n
+})
+
 // Back in the foreground: a change synced from another device while the phone was away, or a
-// permission the user granted again in Health Connect's own settings, is picked up then.
+// permission the user granted again in Health Connect's own settings, is picked up then, and so
+// is a run recorded meanwhile.
 let started = false
 export function initHealthSync(getState) {
   if (!MOBILE || started) return
   started = true
+  hooks = { getState, add: addToStore }
   import('@capacitor/app').then(({ App }) => {
-    App.addListener('appStateChange', ({ isActive }) => { if (isActive) syncHealth(getState()).catch(() => {}) })
+    App.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) syncHealth(getState()).catch(() => {}).then(() => importRuns())
+    })
   }).catch(() => {})
   // Once at launch, for a workout finished just before the app was closed. Reading the file here
   // also settles whether it is on, which the saves wait for (syncHealth).
-  setTimeout(() => loadHealth().then(() => syncHealth(getState())).catch(() => {}), 3000)
+  setTimeout(() => loadHealth().then(() => syncHealth(getState())).catch(() => {}).then(() => importRuns({ force: true })), 3000)
 }

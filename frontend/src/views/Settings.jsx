@@ -1433,7 +1433,8 @@ function RegisterInline({ close, setUser, pushState, pullState, toast }) {
 }
 
 // Android app: writing finished workouts and weigh-ins to Health Connect (#200), the phone's
-// own store for health data, where other apps can read them. A fact about this phone, kept in
+// own store for health data, where other apps can read them, and reading back the runs, walks,
+// hikes and rides other apps put there (lib/health-import.js). A fact about this phone, kept in
 // its own file (lib/health-sync.js) and not in S, so it never switches on anywhere else. The card
 // stays out of the way on a phone without Health Connect, and only points to installing it on
 // Android 13 and lower, where it is an app of its own.
@@ -1488,13 +1489,15 @@ function HealthConnectCard({ S, toast }) {
 
   return (
     <Section title={t('Health Connect')}
-      footer={h.on ? t('Workouts and weigh-ins go to Health Connect when you finish or change them. openGym reads nothing back.') : null}>
+      footer={h.on ? t('Workouts and weigh-ins go to Health Connect when you finish or change them. Runs, walks, hikes and rides from other apps come into your history.') : null}>
       <Row icon="heart" iconTint="var(--red)" title={t('Write to Health Connect')}
         subtitle={t('Finished workouts and weigh-ins, from this phone only.')}>
         <Switch checked={!!h.on} disabled={busy} onChange={v => (v ? turnOn() : askOff())} />
       </Row>
       {h.on && h.error === 'permission' && <Row icon="warning" iconTint="var(--orange)"
         title={t('Permission withdrawn. Tap to allow again')} accessory="chevron" onClick={turnOn} />}
+      {h.on && h.error !== 'permission' && h.readError === 'permission' && <Row icon="warning" iconTint="var(--orange)"
+        title={t('Reading runs not allowed. Tap to allow')} accessory="chevron" onClick={turnOn} />}
       {h.on && <Row icon="list" iconTint="var(--blue)" title={t('Open Health Connect')}
         accessory="chevron" onClick={() => openHealthConnect().catch(() => {})} />}
     </Section>
