@@ -1103,6 +1103,7 @@ export default {
   'A routine image you share': 'Изображение тренировки, которым вы делитесь',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': 'Только когда вы просите тренера прочитать опубликованную тренировку: изображение и его дата отправляются провайдеру один раз и никогда не сохраняются.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Этот провайдер тренера не умеет читать изображения. Переключите его на Anthropic или OpenAI.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Эта модель не умеет читать изображения. Администратору экземпляра нужно выбрать модель с поддержкой изображений.',
   'Likes: {0}': 'Нравится: {0}',
   'Limits': 'Ограничения',
   'Limits: {0}': 'Ограничения: {0}',

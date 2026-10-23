@@ -39,6 +39,16 @@ export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutM
   if (r.spawnError) return { ok: false, errorClass: 'missing', detail: r.stderr?.slice(0, 300) };
   if (r.code !== 0) {
     const err = (r.stderr || r.text || '').toLowerCase();
+    // A text-only model refusing the image (OpenAI "image_url is only supported by certain
+    // models", OpenRouter "No endpoints found that support image input", a gateway's "text-only").
+    // A 4xx that names images and support, not one about the image itself (too large, corrupt).
+    // DeepSeek answers "unknown variant `image_url`", vLLM "At most 0 image(s) may be provided".
+    // The model id is cut out first: a gateway often prefixes it, and "…-vision-instruct:
+    // temperature is not supported" is a vision model refusing something else.
+    const said = model ? err.split(model.toLowerCase()).join('') : err;
+    if (invokeOpts.images && /^4\d\d\b/.test(said) && (/text[- ]only|unknown variant `?image_url|at most 0 image/.test(said) || (/image|vision|multimodal/.test(said) && /support/.test(said)))) {
+      return { ok: false, errorClass: 'novision', detail: (r.stderr || r.text || '').slice(0, 300) };
+    }
     const authish = /auth|unauthor|api key|credential|token|401|403|login/.test(err);
     return { ok: false, errorClass: authish ? 'auth' : 'provider', detail: (r.stderr || r.text || '').slice(0, 300) };
   }

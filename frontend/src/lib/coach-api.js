@@ -171,6 +171,8 @@ export const JOB_ERRORS = {
   get unprivileged() { return t('The Coach is switched off on this instance for safety reasons.') },
   // Reading a routine image on a provider that cannot see one (api/coach/jobs.js IMAGE_PROVIDERS).
   get unsupported() { return t('This Coach provider can’t read images. Switch it to Anthropic or OpenAI.') },
+  // The model behind an OpenAI-compatible endpoint refused the image or answered without seeing it.
+  get novision() { return t('This model can’t read images. The instance owner needs to pick a vision model.') },
   get internal() { return t('Something went wrong on the server.') }
 }
 

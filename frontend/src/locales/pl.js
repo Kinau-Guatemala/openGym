@@ -1713,6 +1713,7 @@ export default {
   'The Coach couldn’t read your training data.': 'Trener nie mógł odczytać twoich danych treningowych.',
   'The Coach is switched off on this instance for safety reasons.': 'Trener jest wyłączony na tej instancji ze względów bezpieczeństwa.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Ten dostawca Trenera nie odczytuje obrazów. Przełącz go na Anthropic lub OpenAI.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Ten model nie odczytuje obrazów. Administrator instancji musi wybrać model z obsługą obrazu.',
   'Something went wrong on the server.': 'Coś poszło nie tak na serwerze.',
   'Your AI provider rejected the key on this phone. Check it under Settings → AI Coach.': 'Twój dostawca AI odrzucił klucz z tego telefonu. Sprawdź go w Ustawieniach → Trener AI.',
   'The Coach isn’t set up on this phone. Check Settings → AI Coach.': 'Trener nie jest skonfigurowany na tym telefonie. Zajrzyj do Ustawień → Trener AI.',

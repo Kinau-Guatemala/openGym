@@ -1758,6 +1758,7 @@ export default {
   'The Coach couldn’t read your training data.': 'تعذّر على المدرب قراءة بيانات تدريبك.',
   'The Coach is switched off on this instance for safety reasons.': 'المدرب معطَّل على هذا المثيل لأسباب أمنية.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'مزوّد المدرب هذا لا يستطيع قراءة الصور. غيّره إلى Anthropic أو OpenAI.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'هذا النموذج لا يستطيع قراءة الصور. على مدير الخادم اختيار نموذج يدعم الرؤية.',
   'Something went wrong on the server.': 'حدث خطأ ما على الخادم.',
   'Your AI provider rejected the key on this phone. Check it under Settings → AI Coach.': 'رفض مزود الذكاء الاصطناعي المفتاح على هذا الهاتف. تحقّق منه في الإعدادات ← مدرب الذكاء الاصطناعي.',
   'The Coach isn’t set up on this phone. Check Settings → AI Coach.': 'المدرب غير مُعدّ على هذا الهاتف. تحقّق من الإعدادات ← مدرب الذكاء الاصطناعي.',

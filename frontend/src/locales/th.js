@@ -1211,6 +1211,7 @@ export default {
   'A routine image you share': 'ภาพโปรแกรมที่คุณแชร์',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': 'เฉพาะเมื่อคุณขอให้โค้ชอ่านเวิร์กเอาต์ที่โพสต์ไว้: ภาพและวันที่ ส่งให้ผู้ให้บริการครั้งเดียวและไม่ถูกจัดเก็บ',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'ผู้ให้บริการโค้ชนี้อ่านรูปภาพไม่ได้ เปลี่ยนเป็น Anthropic หรือ OpenAI',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'โมเดลนี้อ่านรูปภาพไม่ได้ ผู้ดูแลอินสแตนซ์ต้องเลือกโมเดลที่รองรับการมองเห็น',
   'Likes: {0}': 'ชอบ: {0}',
   'Limits': 'ข้อจำกัด',
   'Limits: {0}': 'ข้อจำกัด: {0}',

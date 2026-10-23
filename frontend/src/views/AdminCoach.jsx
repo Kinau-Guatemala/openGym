@@ -283,6 +283,7 @@ export default function AdminCoach() {
             : <TextField key={d.provider} defaultValue={chosenModel} placeholder={meta.defaultModel ? `Default: ${meta.defaultModel}` : needsEndpoint ? 'e.g. qwen2.5:3b, or press "List models"' : '(runtime default)'}
               onBlur={e => e.target.value !== chosenModel && patch({ model: e.target.value })} />}
         </div>
+        {d.provider === 'compatible' && <div className="adm-hint" style={{ margin: '6px 0 0' }}>Reading routine images (the CrossFit screen) needs a model that accepts images, a vision model. A text-only one fails with "this model can't read images".</div>}
         {meta.http && <div className="adm-actions">
           <Button size="sm" variant="tinted" icon="reset" disabled={busy} onClick={loadModels}>{models ? 'Refresh list' : 'List models'}</Button>
           {models && models.length ? <span className="dim small" style={{ alignSelf: 'center' }}>{models.length} served by the provider</span> : null}
@@ -431,6 +432,7 @@ const failureTitle = cls => ({
   auth: 'The provider rejected the credential',
   provider: 'The provider returned an error',
   unusable: 'The model answered, but not in a shape the app could use',
+  novision: 'The model could not read the routine image (it refused it, or answered an empty program). Pick a vision model',
   restart: 'The server restarted while a job was running',
   nostate: 'The user\'s training data could not be read',
   off: 'The Coach was off when the job ran',

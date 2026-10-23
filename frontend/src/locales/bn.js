@@ -1758,6 +1758,7 @@ export default {
   'The Coach couldn’t read your training data.': 'কোচ আপনার ট্রেনিং ডেটা পড়তে পারেনি।',
   'The Coach is switched off on this instance for safety reasons.': 'নিরাপত্তার কারণে এই সার্ভারে কোচ বন্ধ রাখা হয়েছে।',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'এই কোচ প্রোভাইডার ছবি পড়তে পারে না। Anthropic বা OpenAI-তে বদলান।',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'এই মডেল ছবি পড়তে পারে না। ইনস্ট্যান্সের মালিককে ভিশন মডেল বেছে নিতে হবে।',
   'Something went wrong on the server.': 'সার্ভারে কিছু একটা ভুল হয়েছে।',
   'Your AI provider rejected the key on this phone. Check it under Settings → AI Coach.': 'আপনার AI প্রদানকারী এই ফোনের কী প্রত্যাখ্যান করেছে। সেটিংস → AI কোচ-এ যাচাই করুন।',
   'The Coach isn’t set up on this phone. Check Settings → AI Coach.': 'এই ফোনে কোচ সেট আপ করা নেই। সেটিংস → AI কোচ দেখুন।',

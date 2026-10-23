@@ -1123,6 +1123,7 @@ export default {
   'A routine image you share': 'Paylaştığın bir antrenman görseli',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': 'Yalnızca Koç’tan paylaşılan bir antrenmanı okumasını istediğinde: görsel ve tarihi, sağlayıcıya bir kez gönderilir ve asla saklanmaz.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Bu Koç sağlayıcısı görsel okuyamıyor. Anthropic veya OpenAI’ye geç.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Bu model görsel okuyamıyor. Sunucuyu yöneten kişinin görsel destekli bir model seçmesi gerekiyor.',
   'Likes: {0}': 'Sevdikleri: {0}',
   'Limits': 'Sınırlar',
   'Limits: {0}': 'Sınırlar: {0}',
