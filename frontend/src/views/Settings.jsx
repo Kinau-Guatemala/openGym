@@ -44,6 +44,7 @@ import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } fro
 import { usePasskeys, PasskeysRow, DeviceLinkRow, openDeviceLinkRedeem } from '../components/Passkeys.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField, SearchField } from '../components/ui.jsx'
 import { PAGES, ROOT_GROUPS, pageVisible, searchSettings, pageTrail } from './settings-pages.js'
+import { CrossFitSettings } from './CrossFit.jsx'
 
 /* Settings (v1.3.11). The root is one screen: an account card, eleven rows that each open a page
    (/settings/<page>), and a search over every row. Rare things live one level further down
@@ -409,6 +410,7 @@ export default function Settings({ page = null, find = null, via = null }) {
     plan: () => (mode === 'rotation' ? t('Rotation') : t('Fixed Week')) + ' · ' + shortWeekday(weekStartOf(S) === SUNDAY ? 0 : 1),
     units: () => (S.unit || 'kg') + ' · ' + (LANGS[lang] || lang),
     equipment: () => (S.equipFilterOn && activeProfile ? activeProfile.name : t('Everything')),
+    crossfit: () => '',
     look: () => themeLabel + ' · ' + accentLabel(S),
     coach: () => (coachLocal?.mode === 'server' ? t('Your server') : coachLocal?.mode === 'byok' ? t('Your API key') : t('Off')),
     data: () => '',
@@ -707,6 +709,8 @@ export default function Settings({ page = null, find = null, via = null }) {
     </>,
 
     equipment: () => <EquipmentCard S={S} update={update} />,
+
+    crossfit: () => <CrossFitSettings S={S} update={update} />,
 
     look: () => <>
       <Section footer={DEMO || MOBILE || !user ? undefined : t('synced with your profile')}>

@@ -15,6 +15,7 @@ export const PAGES = {
   plan: { title: 'Plan & schedule', icon: 'calendar', tint: 'var(--orange)' },
   units: { title: 'Units & language', icon: 'ruler', tint: 'var(--teal)' },
   equipment: { title: 'Equipment', icon: 'kettlebell', tint: 'var(--indigo)' },
+  crossfit: { title: 'CrossFit', icon: 'flame', tint: 'var(--orange)' },
   look: { title: 'Look & Home', icon: 'palette', tint: 'var(--purple)' },
   coach: { title: 'AI Coach', icon: 'sparkles', tint: 'var(--green)' },
   data: { title: 'Data & backup', icon: 'folder', tint: 'var(--blue)' },
@@ -25,7 +26,7 @@ export const PAGES = {
 export const PAGE_IDS = Object.keys(PAGES)
 
 // The root, top to bottom. Whether a row shows is pageVisible's call.
-export const ROOT_GROUPS = [['workout', 'alerts', 'reminders'], ['plan', 'units', 'equipment'], ['look', 'coach'], ['data', 'about']]
+export const ROOT_GROUPS = [['workout', 'alerts', 'reminders'], ['plan', 'crossfit', 'units', 'equipment'], ['look', 'coach'], ['data', 'about']]
 
 /**
  * Whether a page exists for this device and profile. Reminders need a push server (signed in) or
@@ -102,6 +103,9 @@ export const SEARCH = [
   { page: 'equipment', title: 'Filter by equipment', icon: 'kettlebell', tint: 'var(--green)', kw: 'equipment filter home gym', when: c => c.profiles },
   { page: 'equipment', title: 'Active profile', icon: 'house', tint: 'var(--blue)', kw: 'equipment profile home gym', when: c => c.profiles },
   { page: 'equipment', title: 'Add equipment profile', icon: 'plusCircle', tint: 'var(--green)', kw: 'equipment profile home gym hotel' },
+  // CrossFit
+  { page: 'crossfit', title: 'Count warm-ups', icon: 'flame', tint: 'var(--orange)', kw: 'crossfit wod warm up warmup program include' },
+  { page: 'crossfit', title: 'Hard sets per muscle per week', icon: 'target', tint: 'var(--green)', kw: 'hypertrophy volume target gap muscle sets weekly crossfit' },
   // Look & Home
   { page: 'look', title: 'Theme', icon: 'moon', tint: 'var(--indigo)', kw: 'dark mode light mode theme appearance night', opts: ['Dark', 'Light', 'System'] },
   { page: 'look', title: 'Accent color', icon: 'palette', tint: 'var(--purple)', kw: 'color colour accent tint custom own picker hex rgb', opts: [...Object.values(ACCENT_NAMES), 'Your own color'], tkw: () => t('custom color picker') },

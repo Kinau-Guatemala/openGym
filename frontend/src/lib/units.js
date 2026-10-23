@@ -7,7 +7,7 @@ import { workoutVolume } from './history.js'
 import { EXIDX } from './exercises.js'
 import { defaultBarWeight } from './bar.js'
 
-const LB_PER_KG = 2.2046226218
+export const LB_PER_KG = 2.2046226218
 
 export function convertWeight(value, from, to) {
   if (from === to || value == null || value === '' || !Number.isFinite(Number(value))) return value

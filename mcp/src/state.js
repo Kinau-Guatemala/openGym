@@ -161,6 +161,6 @@ function defaultsShape() {
     bodyweight: [], routines: [], week: {}, dayPlan: {},
     exWeights: {}, workouts: [], customEx: [], gifSize: 'full',
     reminder: { on: false, time: '08:00', tz: null },
-    wods: {}, exAliases: {}, hypTarget: 10
+    wods: {}, exAliases: {}, hypTarget: 10, wodWarmup: false
   }
 }

@@ -15,6 +15,8 @@ import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
 import { dayNoteOf } from '../lib/day-notes.js'
+import { wodOf } from '../lib/wods.js'
+import { trackNames } from './CrossFit.jsx'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -36,6 +38,8 @@ export default function Home() {
   // An open editor on a saved workout (lib/session-edit.js) holds S.active too, but it is not a
   // session in progress: the row takes you back to it as an edit, the way the tab bar does.
   const editingSaved = !!S.active?.editingWorkoutId
+  // The program the box posted for today (views/CrossFit.jsx), if one is saved.
+  const wod = wodOf(S, todayISO())
   const bw = lastBW(S)
   const prevBW = S.bodyweight.length > 1 ? S.bodyweight[S.bodyweight.length - 2] : null
   const delta = bw && prevBW ? bw.w - prevBW.w : null
@@ -156,6 +160,27 @@ export default function Home() {
           {t('Choose a different workout')}
         </Button>
       </div>}
+    </div>
+
+    {/* CrossFit: today's posted program, or the way to add it. The list of programs is a tap
+        further. */}
+    <div className="card">
+      <div className="today-row" style={{ marginTop: 0 }} {...tappable(() => nav(wod ? '/crossfit/edit/' + todayISO() : '/crossfit/new?date=' + todayISO()))}>
+        <div className="row" style={{ gap: 9, minWidth: 0 }}>
+          <span className="lrow-i" style={{ background: wod ? 'var(--orange)' : 'var(--surface-3)' }}><Icon name="flame" /></span>
+          <div style={{ minWidth: 0 }}>
+            <div className="lbl2">{t('Today’s WOD')}</div>
+            <div className="ttl">{wod ? (wod.title || trackNames(wod) || t('Program')) : t('Add today’s WOD')}</div>
+            {wod?.title && trackNames(wod) && <div className="ss">{trackNames(wod)}</div>}
+          </div>
+        </div>
+        {/* T08: logging what was done (logWod) starts here. Not wired yet. */}
+        {wod ? <Button size="sm" variant="tinted" disabled data-placeholder="t08-log" style={{ width: 'auto', flex: 'none' }}>{t('Log')}</Button>
+          : <Icon name="plus" className="chev" />}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+        <Button size="sm" variant="ghost" className="dim" trailingIcon="chevronRight" onClick={() => nav('/crossfit')}>{t('All programs')}</Button>
+      </div>
     </div>
 
     {/* Jump to the gym check-in cards (QR membership codes). Shown here as a quick tap on
