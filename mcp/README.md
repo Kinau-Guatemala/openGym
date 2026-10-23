@@ -155,8 +155,13 @@ sessions from the last session (`starts_from`). Ask `preview_session` before nam
   - The change is computed again on the profile as it is when saved, and it is saved only if it
     makes the same diff. Otherwise it answers `ESTALE` and saves nothing. This also applies to the
     re-run after a conflict.
-  - So a write can't happen without a dry run, and an approval covers exactly the diff the user
-    saw. Even a client set to "always allow" can't make a write nobody looked at.
+  - So a write can't happen without a dry run, and what is saved is exactly the diff that dry run
+    showed.
+  - **The token proves the diff is unchanged, not that a person approved it.** The agent receives
+    the token from the dry run itself, so it can dry-run and then write in two calls on its own.
+    The approval is yours to give in the client: leave the write tools on "ask every time" and
+    never "always allow" them. Text from a posted program (`get_wods`) is untrusted, so an agent
+    that has read it is exactly the case this matters for.
 - **HTTP source only.** With `OPENGYM_DATA` the write tools answer `EROFS`: writing state files
   beside the api would race its own writes. Pair and use `OPENGYM_URL` instead.
 - **How a write is saved.** One `GET /api/data` (the document, its revision and write id), the

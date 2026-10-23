@@ -850,9 +850,10 @@ export const crossfitRecords = {
 // Every write tool shows its change first. A dry run (the default) runs the change on the state it
 // reads and returns the diff, saving nothing, plus `confirm`: a hash of that diff. A write
 // (dry_run: false) needs it back, and the change it makes must give the same diff on the profile
-// as it is when saved, or nothing is saved (ESTALE). So an approval covers exactly the diff the
-// user saw: a write with no dry run before it, or over a profile that changed since (another
-// device, a conflict re-run), can't happen. Ids a write creates are left out of a dry run, since
+// as it is when saved, or nothing is saved (ESTALE). So a write with no dry run before it, or over
+// a profile that changed since (another device, a conflict re-run), can't happen. The token binds
+// the write to a diff, not to a person: the agent holds it, so the human approval is the client's
+// per-call permission prompt. Ids a write creates are left out of a dry run, since
 // the real write makes new ones. Writes go through the HTTP source (state.js writeState).
 const dryRun = () => z.boolean().optional().describe('Defaults to true: return the change as a diff, and its `confirm` token, saving nothing. Set false, with that `confirm`, only after the user has seen this exact diff and approved it.')
 const confirmArg = () => z.string().min(1).max(64).optional().describe('Required with dry_run: false: the `confirm` token from the dry run of this same change, after the user approved its diff.')
