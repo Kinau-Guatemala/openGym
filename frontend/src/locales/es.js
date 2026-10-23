@@ -2328,4 +2328,5 @@ export default {
   'Enter manually': 'Escribirlo a mano',
   'Give the Coach the go-ahead': 'Darle permiso al Coach',
   'Read the image again': 'Leer la imagen otra vez',
+  'Your image was read. Review it': 'Tu imagen ya se leyó. Revísala',
 }

@@ -2328,4 +2328,5 @@ export default {
   'Enter manually': '手动输入',
   'Give the Coach the go-ahead': '同意教练使用',
   'Read the image again': '重新读取图片',
+  'Your image was read. Review it': '图片已读取，请查看',
 }

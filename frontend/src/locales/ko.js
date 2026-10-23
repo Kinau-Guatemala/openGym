@@ -2328,4 +2328,5 @@ export default {
   'Enter manually': '직접 입력',
   'Give the Coach the go-ahead': '코치에게 동의하기',
   'Read the image again': '이미지 다시 읽기',
+  'Your image was read. Review it': '이미지를 읽었습니다. 확인하세요',
 }

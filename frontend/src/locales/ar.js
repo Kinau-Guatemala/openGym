@@ -2383,4 +2383,5 @@ export default {
   'Enter manually': 'أدخله يدويًا',
   'Give the Coach the go-ahead': 'امنح المدرب الموافقة',
   'Read the image again': 'اقرأ الصورة مرة أخرى',
+  'Your image was read. Review it': 'تمت قراءة صورتك. راجعها',
 }

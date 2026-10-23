@@ -2331,4 +2331,5 @@ export default {
   'Enter manually': 'Kézi bevitel',
   'Give the Coach the go-ahead': 'Engedély megadása a Coachnak',
   'Read the image again': 'Kép újraolvasása',
+  'Your image was read. Review it': 'A képed beolvasva. Nézd át',
 }

@@ -2328,4 +2328,5 @@ export default {
   'Enter manually': 'हाथ से दर्ज करें',
   'Give the Coach the go-ahead': 'कोच को अनुमति दें',
   'Read the image again': 'छवि फिर से पढ़ें',
+  'Your image was read. Review it': 'आपकी छवि पढ़ ली गई। इसकी समीक्षा करें',
 }

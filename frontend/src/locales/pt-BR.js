@@ -1489,6 +1489,7 @@ export const PT_BR_OVERRIDES = {
   'Enter manually': 'Digitar à mão',
   'Give the Coach the go-ahead': 'Dar autorização ao Coach',
   'Read the image again': 'Ler a imagem de novo',
+  'Your image was read. Review it': 'Sua imagem foi lida. Revise',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

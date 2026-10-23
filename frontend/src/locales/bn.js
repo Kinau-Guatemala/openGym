@@ -2407,4 +2407,5 @@ export default {
   'Enter manually': 'হাতে লিখুন',
   'Give the Coach the go-ahead': 'কোচকে অনুমতি দিন',
   'Read the image again': 'ছবিটি আবার পড়ুন',
+  'Your image was read. Review it': 'আপনার ছবি পড়া হয়েছে। দেখে নিন',
 }

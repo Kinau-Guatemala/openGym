@@ -15,6 +15,9 @@ const LONG_SIDE = 1600
 const QUALITY = 0.85
 const POLL_MS = 3000
 const GIVE_UP_MS = 4 * 60 * 1000   // a parse is one provider call; past this it is not coming
+// A small file can declare huge dimensions; decoding 30000×30000 is ~3.6 GB of RGBA and takes the
+// WebView down. No posted routine comes near this (a 12 MP phone photo is 12e6).
+const MAX_PIXELS = 50e6
 
 /** The day a posted program is for, unless the person says otherwise: the box posts the evening before. */
 export const tomorrowISO = (now = new Date()) => { const d = new Date(now); d.setDate(d.getDate() + 1); return isoOf(d) }
@@ -40,7 +43,9 @@ const loadImage = src => new Promise((resolve, reject) => {
  */
 export async function downscale(src, { load = loadImage, canvas = () => document.createElement('canvas') } = {}) {
   const img = await load(src)
-  const { w, h } = fitSize(img.naturalWidth || img.width, img.naturalHeight || img.height)
+  const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height
+  if (!(w0 * h0 <= MAX_PIXELS)) throw new Error('image too large')
+  const { w, h } = fitSize(w0, h0)
   const c = canvas()
   c.width = w
   c.height = h
@@ -73,7 +78,7 @@ const classOf = e => {
  *   { program, jobId }  — a program with at least one track
  *   { manual: cls }     — the Coach can't read it here (off, no consent, provider): type it in
  *   { failed: cls }     — this try failed ('empty' = no routine in the image): retry or type it
- *   { cancelled: true } — nobody is waiting for it any more
+ *   { cancelled: true } — a newer image replaced it
  * `io` is { parse(date, image), status(), sleep(ms), now(), alive(), onPhase(phase) }.
  */
 export async function readProgram(image, date, io) {
@@ -145,7 +150,9 @@ export function setIntakeImage(image, date) {
 
 /**
  * Starts the handed-over run, once: a second call (StrictMode's second effect) finds it started.
- * It polls while a screen watches; once nobody does (the person went back) it stops at its next poll.
+ * It polls to its own end (at most GIVE_UP_MS) whether or not a screen watches: the server job runs
+ * and is charged either way, so a program read while the person was elsewhere is kept here and
+ * offered from the CrossFit list (readyIntake) instead of being read, and paid for, again.
  */
 export function beginIntake(io) {
   if (run?.phase !== 'pending') return
@@ -156,7 +163,7 @@ export function beginIntake(io) {
     sleep: ms => new Promise(r => setTimeout(r, ms)),
     now: () => Date.now(),
     ...io,
-    alive: () => mine() && watchers.size > 0,
+    alive: mine,
     onPhase: phase => { if (mine()) emit({ phase }) },
   }).catch(() => ({ failed: 'internal' }))
     .then(result => { if (mine()) emit({ phase: 'done', result }) })
@@ -171,6 +178,15 @@ export function takeIntake() {
   run.taken = true
   return run
 }
+
+/** How a finished run ended badly, or null: a `cancelled` one counts as a failure, never as still reading. */
+export function failureOf(r) {
+  if (r?.phase !== 'done') return null
+  return r.result?.failed || (r.result?.cancelled ? 'internal' : null)
+}
+
+/** A run whose program was read and not yet opened in the editor (the person left while it read). */
+export const readyIntake = r => (r?.phase === 'done' && r.result?.program && !r.taken ? r : null)
 
 /* ---------- Share → openGym (Android) ---------- */
 

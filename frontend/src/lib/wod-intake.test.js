@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { beginIntake, currentIntake, downscale, fitSize, fromDataUrl, readProgram, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from './wod-intake.js'
+import { beginIntake, currentIntake, downscale, failureOf, fitSize, fromDataUrl, readProgram, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from './wod-intake.js'
 
 // A canvas that records what it was asked for and "encodes" the type it was given.
 const fakeCanvas = () => {
@@ -29,6 +29,16 @@ describe('downscale', () => {
     const c = fakeCanvas()
     await downscale('x', { load: async () => ({ width: 720, height: 1280 }), canvas: () => c })
     expect([c.width, c.height]).toEqual([720, 1280])
+  })
+
+  it('refuses a decompression bomb before drawing it', async () => {
+    const canvas = vi.fn(fakeCanvas)
+    await expect(downscale('x', { load: async () => ({ naturalWidth: 30000, naturalHeight: 30000 }), canvas })).rejects.toThrow()
+    await expect(downscale('x', { load: async () => ({ naturalWidth: 0, naturalHeight: 0 }), canvas })).rejects.toThrow()
+    expect(canvas).not.toHaveBeenCalled()
+    // a 48 MP phone photo is still fine
+    await downscale('x', { load: async () => ({ naturalWidth: 8000, naturalHeight: 6000 }), canvas })
+    expect(canvas).toHaveBeenCalledTimes(1)
   })
 
   it('fitSize keeps both sides at least 1 px', () => {
@@ -144,7 +154,7 @@ describe('readProgram', () => {
     expect(io.calls.status).toBeGreaterThan(10)
   })
 
-  it('stops when nobody waits for it any more', async () => {
+  it('stops when a newer image replaced it', async () => {
     const io = server({ status: [{ job: { id: 'j1' } }] })
     io.alive = () => false
     expect(await readProgram(IMG, 'd', io)).toEqual({ cancelled: true })
@@ -165,6 +175,30 @@ describe('the run', () => {
     expect(takeIntake()).toMatchObject({ date: '2026-10-23', image: IMG })
     expect(takeIntake()).toBe(null)
     unsub()
+  })
+
+  it('finishes with nobody watching, and keeps the program to offer later', async () => {
+    setIntakeImage(IMG, '2026-10-24')   // no subscriber: the person went back mid-read
+    const io = server({ status: [
+      { job: { id: 'j1' }, parsed: null },
+      { job: null, parsed: { jobId: 'j1', program: PROGRAM }, last: { id: 'j1', outcome: 'ready' } },
+    ] })
+    beginIntake(io)
+    expect(readyIntake(currentIntake())).toBe(null)   // still reading
+    await vi.waitFor(() => expect(currentIntake().phase).toBe('done'))
+    expect(io.calls.status).toBe(2)
+    expect(readyIntake(currentIntake())).toMatchObject({ date: '2026-10-24', result: { program: PROGRAM, jobId: 'j1' } })
+    expect(failureOf(currentIntake())).toBe(null)
+    takeIntake()
+    expect(readyIntake(currentIntake())).toBe(null)   // opened once, offered no more
+  })
+
+  it('failureOf: a cancelled run is a failure, never still reading', () => {
+    expect(failureOf({ phase: 'done', result: { cancelled: true } })).toBe('internal')
+    expect(failureOf({ phase: 'done', result: { failed: 'empty' } })).toBe('empty')
+    expect(failureOf({ phase: 'done', result: { program: PROGRAM } })).toBe(null)
+    expect(failureOf({ phase: 'reading', result: null })).toBe(null)
+    expect(readyIntake({ phase: 'done', result: { failed: 'cap' } })).toBe(null)
   })
 
   it('a newer image replaces the run, and the older answer is dropped', async () => {

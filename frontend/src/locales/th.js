@@ -2339,4 +2339,5 @@ export default {
   'Enter manually': 'ป้อนเอง',
   'Give the Coach the go-ahead': 'อนุญาตให้โค้ช',
   'Read the image again': 'อ่านรูปภาพอีกครั้ง',
+  'Your image was read. Review it': 'อ่านรูปภาพของคุณแล้ว ตรวจสอบเลย',
 }

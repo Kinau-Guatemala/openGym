@@ -51,6 +51,16 @@ public class ShareIntakePlugin extends Plugin {
         if (uri == null) return;
         // Read once: a configuration change re-creating the activity must not share it again.
         intent.setAction(null);
+        // The activity is exported, so any app can send this intent, and the read below runs with
+        // openGym's own rights: a file:// path or one of openGym's own providers would have it
+        // open its private files (progress photos, exercise media) and send them to the Coach's
+        // provider. Only another app's content is read.
+        if (!sharedByAnotherApp(uri)) {
+            JSObject refused = new JSObject();
+            refused.put("error", true);
+            notifyListeners("shared", refused, true);
+            return;
+        }
         io.execute(() -> {
             JSObject ev = new JSObject();
             try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
@@ -71,6 +81,15 @@ public class ShareIntakePlugin extends Plugin {
             }
             notifyListeners("shared", ev, true);
         });
+    }
+
+    private boolean sharedByAnotherApp(Uri uri) {
+        String authority = uri.getAuthority();
+        if (!"content".equals(uri.getScheme()) || authority == null) return false;
+        // "10@authority" names the same provider for another user; the user is not the point.
+        authority = authority.substring(authority.indexOf('@') + 1);
+        // Every provider of this app (the FileProvider is ${applicationId}.fileprovider) starts with it.
+        return !authority.startsWith(getContext().getPackageName());
     }
 
     @SuppressWarnings("deprecation")

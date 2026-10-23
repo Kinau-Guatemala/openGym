@@ -2348,4 +2348,5 @@ export default {
   'Enter manually': 'Von Hand eingeben',
   'Give the Coach the go-ahead': 'Dem Coach die Freigabe geben',
   'Read the image again': 'Bild erneut lesen',
+  'Your image was read. Review it': 'Dein Bild wurde gelesen. Jetzt prüfen',
 }

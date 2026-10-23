@@ -2332,4 +2332,5 @@ export default {
   'Enter manually': 'Ввести вручную',
   'Give the Coach the go-ahead': 'Дать Коучу согласие',
   'Read the image again': 'Прочитать изображение снова',
+  'Your image was read. Review it': 'Изображение прочитано. Проверьте его',
 }

@@ -27,7 +27,7 @@ import { exercisePicker, confirmSheet } from '../sheets.jsx'
 import { DEMO } from '../lib/demo.js'
 import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod } from '../lib/coach-api.js'
-import { INTAKE_ROUTE, beginIntake, currentIntake, downscale, fromDataUrl, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
+import { INTAKE_ROUTE, beginIntake, currentIntake, downscale, failureOf, fromDataUrl, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Row, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
 
@@ -61,6 +61,8 @@ export default function CrossFit() {
   const upcoming = dates.filter(d => d >= today).sort()
   const recent = dates.filter(d => d < today).sort().reverse()
   const file = useRef(null)
+  // An image read while the person was elsewhere: the job ran and was charged, so it is offered here.
+  const read = readyIntake(useSyncExternalStore(subscribeIntake, currentIntake))
   // The box's image, picked from the device: read into a program on the intake screen.
   const upload = async e => {
     const f = e.target.files?.[0]
@@ -94,6 +96,16 @@ export default function CrossFit() {
       <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
       <Button icon="camera" onClick={() => file.current?.click()}>{t('Upload image')}</Button>
     </div>
+    {read && <div className="list" style={{ marginBottom: 18 }}>
+      <div className="item" {...tappable(() => { const r = takeIntake(); if (r) openRead(nav, r) })}>
+        <span className="lrow-i" style={{ background: 'var(--green)' }}><Icon name="image" /></span>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="tt">{t('Your image was read. Review it')}</div>
+          <div className="ss">{fmtDate(read.date, true)}</div>
+        </div>
+        <Icon name="chevronRight" className="chev" />
+      </div>
+    </div>}
     {!dates.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
     {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(row)}</div></>}
     {recent.length > 0 && <><h4 className="sec">{t('Recent')}</h4><div className="list">{recent.map(row)}</div></>}
@@ -113,6 +125,12 @@ export function CrossFitEdit() {
 }
 
 /* ============================ reading an image ============================ */
+
+// A taken run's program into the review screen, and the server's slot cleared.
+const openRead = (nav, r, opts) => {
+  nav('/crossfit/new', { ...opts, state: { draft: r.result.program, date: r.date, image: r.image.url } })
+  ackParsed(r.result.jobId).catch(() => {})
+}
 
 // What the person reads for a failure or a refusal (lib/wod-intake.js readProgram).
 const intakeErrorText = cls => cls === 'empty' ? t('No routine found in this image.')
@@ -137,16 +155,14 @@ function Intake() {
       beginIntake({ parse: parseWod, status: parseStatus })
       return
     }
-    const r = run.phase === 'done' && !run.result.failed && takeIntake()
+    const r = run.phase === 'done' && !failureOf(run) && takeIntake()
     if (!r) return
-    if (r.result.program) {
-      nav('/crossfit/new', { replace: true, state: { draft: r.result.program, date: r.date, image: r.image.url } })
-      ackParsed(r.result.jobId).catch(() => {})
-    } else if (r.result.manual) manual(r, r.result.manual)
+    if (r.result.program) openRead(nav, r, { replace: true })
+    else if (r.result.manual) manual(r, r.result.manual)
   }, [run, ready])
 
   if (!run) return null
-  const failed = run.phase === 'done' ? run.result.failed : null
+  const failed = failureOf(run)
   return <div className="narrow">
     <div className="hdr">
       <button className="iconbtn" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>

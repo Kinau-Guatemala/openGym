@@ -2328,4 +2328,5 @@ export default {
   'Enter manually': 'Elle gir',
   'Give the Coach the go-ahead': 'Koç’a onay ver',
   'Read the image again': 'Görseli yeniden oku',
+  'Your image was read. Review it': 'Görselin okundu. Gözden geçir',
 }
