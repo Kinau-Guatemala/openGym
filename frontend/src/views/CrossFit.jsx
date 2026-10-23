@@ -10,7 +10,9 @@
 //
 // The editor works on a draft (lib/wod-draft.js) and writes nothing until Save. A movement's
 // exercise chip opens the exercise picker; the pick is remembered for that printed name
-// (S.exAliases), so the same name resolves by itself in every later program.
+// (S.exAliases), so the same name resolves by itself in every later program. A misspelled name
+// arrives as a best guess ("Did you mean?", one tap confirms it) or with suggestions to choose
+// from (lib/crossfit-resolve.js); confirming or choosing is a pick like any other.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
@@ -19,9 +21,9 @@ import { exOr } from '../lib/exercises.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum, isoOf, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
-import { norm, rawNameOf, resolveMovement } from '../lib/crossfit-resolve.js'
+import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
 import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
-import { applyPick, includeOf, movementFromText, nextId, prepareDraft } from '../lib/wod-draft.js'
+import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
 import { exercisePicker, confirmSheet } from '../sheets.jsx'
 import { DEMO } from '../lib/demo.js'
@@ -264,18 +266,20 @@ function Editor() {
     onConfirm: () => { goBack(nav); store().clearWod(editDate); toast(t('Program deleted')) },
   })
 
-  // The picker for one movement or alternative. The pick is remembered for its printed name and
-  // applied to every movement of that name in this program; one with no name keeps it to itself.
+  // An exercise for one movement or alternative: picked, a guess confirmed or a suggestion taken.
+  // It is remembered for the printed name and applied to every movement of that name in this
+  // program; one with no name keeps it to itself.
+  const choose = (where, item, exId) => {
+    const key = norm(item.rawName)
+    if (key) {
+      store().setAlias(key, exId)
+      setDirty(true)
+      setDraft(d => applyPick(d, key, exId))
+    } else edit(d => { const x = at(d, where); x.exId = exId; delete x.via; delete x.candidates })
+  }
   const pickExercise = (where, item) => {
-    const picker = exercisePicker(ex => {
-      picker.close()
-      const key = norm(item.rawName)
-      if (key) {
-        store().setAlias(key, ex.id)
-        setDirty(true)
-        setDraft(d => applyPick(d, key, ex.id))
-      } else edit(d => { at(d, where).exId = ex.id })
-    }, { title: t('Pick exercise'), like: item.exId || undefined })
+    const picker = exercisePicker(ex => { picker.close(); choose(where, item, ex.id) },
+      { title: t('Pick exercise'), like: item.exId || undefined })
   }
 
   const addTrack = () => {
@@ -351,7 +355,8 @@ function Editor() {
           const ms = d.tracks[ti].blocks[bi].movements
           ms.push({ ...saved, id: nextId(ms, 'm') })
         }))}
-        onPick={(mi, ai, item) => pickExercise({ ti, bi, mi, ai }, item)} />)}
+        onPick={(mi, ai, item) => pickExercise({ ti, bi, mi, ai }, item)}
+        onChoose={(mi, ai, item, exId) => choose({ ti, bi, mi, ai }, item, exId)} />)}
       <Button icon="plus" onClick={addBlock}>{t('Add block')}</Button>
     </>}
 
@@ -368,7 +373,7 @@ const at = (d, { ti, bi, mi, ai }) => {
   return ai == null ? m : m.alts[ai]
 }
 
-function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMovement, onPick }) {
+function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMovement, onPick, onChoose }) {
   const on = includeOf(track, block, S)
   const meta = [
     formatLabel(block.format),
@@ -393,7 +398,7 @@ function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMoveme
       </label>
     </div>
     {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} onEdit={() => onMovement(mi)}
-      onPick={(ai, item) => onPick(mi, ai, item)} />)}
+      onPick={(ai, item) => onPick(mi, ai, item)} onChoose={(ai, item, exId) => onChoose(mi, ai, item, exId)} />)}
     <div style={{ marginTop: 6 }}>
       <Button size="sm" variant="ghost" icon="plus" onClick={onAddMovement}>{t('Add movement')}</Button>
     </div>
@@ -410,7 +415,31 @@ function ExChip({ item, onClick }) {
   </button>
 }
 
-function MovementRow({ S, m, onEdit, onPick }) {
+// A movement's exercise. Certain: the chip that opens the picker. A best guess: marked "Did you
+// mean?" (a tap confirms it), the runners-up beside it and the picker's search after them. Nothing
+// to go on: the ranked suggestions, then the picker's chip.
+function ExChoice({ item, onPick, onChoose }) {
+  const others = (item.candidates || []).filter(c => c.exId !== item.exId)
+  const option = c => <button key={c.exId} className="chip nocap" style={{ background: 'var(--surface-2)' }}
+    onClick={() => onChoose(c.exId)}>{exerciseNameFor(exOr(c.exId))}</button>
+  if (item.exId && item.via === 'guess') return <>
+    <span className="small" style={{ color: 'var(--orange)' }}>{t('Did you mean?')}</span>
+    <button className="chip nocap" onClick={() => onChoose(item.exId)} aria-label={t('Confirm {0}', exerciseNameFor(exOr(item.exId)))}
+      style={{ background: 'var(--surface-2)', boxShadow: 'inset 0 0 0 1px var(--orange)' }}>
+      <Icon name="check" style={CHIP_ICON} />{exerciseNameFor(exOr(item.exId))}</button>
+    {others.slice(0, 2).map(option)}
+    <button className="chip nocap" onClick={onPick} aria-label={t('Pick exercise')} style={{ background: 'var(--surface-2)' }}>
+      <Icon name="magnifier" style={{ ...CHIP_ICON, marginInlineEnd: 0 }} /></button>
+  </>
+  if (!item.exId && others.length) return <>
+    <span className="small muted">{t('Suggestions')}</span>
+    {others.map(option)}
+    <ExChip item={item} onClick={onPick} />
+  </>
+  return <ExChip item={item} onClick={onPick} />
+}
+
+function MovementRow({ S, m, onEdit, onPick, onChoose }) {
   const rx = rxFor(m, S)
   const dose = fmtDose(doseFor(m, S))
   const line = [dose + (dose && m.perSide ? ' ' + t('each side') : ''), rx ? `${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
@@ -423,9 +452,10 @@ function MovementRow({ S, m, onEdit, onPick }) {
       {line && <div className="small muted" style={{ marginTop: 2 }}>{line}{rx && <span className="dim"> · Rx</span>}</div>}
     </div>
     <div className="chips" style={{ margin: '8px 0 0', flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', alignItems: 'center' }}>
-      <ExChip item={m} onClick={() => onPick(null, m)} />
-      {(m.alts || []).map((a, ai) => <span key={ai} className="row" style={{ gap: 6 }}>
-        <span className="small dim">{t('or')}</span><ExChip item={a} onClick={() => onPick(ai, a)} />
+      <ExChoice item={m} onPick={() => onPick(null, m)} onChoose={exId => onChoose(null, m, exId)} />
+      {(m.alts || []).map((a, ai) => <span key={ai} className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+        <span className="small dim">{t('or')}</span>
+        <ExChoice item={a} onPick={() => onPick(ai, a)} onChoose={exId => onChoose(ai, a, exId)} />
       </span>)}
     </div>
   </div>
@@ -500,7 +530,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
     const changed = text !== (m0.raw || m0.rawName || '')
     // A new line is a new name to resolve: the parser's English name no longer describes it.
     const base = !movement ? movementFromText(text, null, S.exAliases)
-      : changed ? { ...m0, raw: text, rawName: rawNameOf(text), name: undefined, exId: resolveMovement({ rawName: rawNameOf(text) }, S.exAliases).exId }
+      : changed ? resolveInto({ ...m0, raw: text, rawName: rawNameOf(text), name: undefined }, S.exAliases)
       : m0
     const d = dose ? { [kind]: dose, ...(kind === 'reps' && doseMax > dose ? { repsMax: doseMax } : {}) } : {}
     const out = { ...base, dose: d, perSide,
@@ -514,7 +544,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
   const addAlt = () => {
     const rawName = rawNameOf(altText.trim()) || altText.trim().toLowerCase()
     if (!rawName) return
-    setAlts(a => [...a, { rawName, exId: resolveMovement({ rawName }, S.exAliases).exId, dose: {} }])
+    setAlts(a => [...a, { ...resolveInto({ rawName }, S.exAliases), dose: {} }])
     setAltText('')
   }
   const field = (label, value, onChange, unit, decimal = true) => <label className="measure-field"><span>{label}</span>

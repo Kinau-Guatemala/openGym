@@ -2396,4 +2396,8 @@ export default {
   'Handstand push-up': 'Отжимание в стойке на руках',
   'Double-unders': 'Двойные прыжки',
   'Pull-up': 'Подтягивание',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Возможно, вы имели в виду?',
+  'Confirm {0}': 'Подтвердить: {0}',
 }

@@ -2447,4 +2447,8 @@ export default {
   'Handstand push-up': 'ضغط الوقوف على اليدين',
   'Double-unders': 'Double-under',
   'Pull-up': 'العقلة',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'هل تقصد؟',
+  'Confirm {0}': 'تأكيد {0}',
 }

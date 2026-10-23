@@ -25,9 +25,22 @@ const withIds = (items, prefix) => {
   return out
 }
 
-// A movement (or an alternative) without an exercise gets one from the user's picks, the shipped
-// table or a clear catalogue hit; one already resolved keeps it.
-const resolved = (m, aliases) => (m.exId ? m : { ...m, exId: resolveMovement(m, aliases).exId })
+// A movement's guess and suggestions, gone once its exercise is certain (a pick).
+const settled = ({ via, candidates, ...m }) => m
+
+/**
+ * `m` (a movement or an alternative) resolved afresh (lib/crossfit-resolve.js): its exercise, and
+ * while that is only a best guess or still to choose, `via` ('guess' or null) and the ranked
+ * `candidates` the editor offers. A certain exercise carries neither.
+ */
+export function resolveInto(m, userAliases = {}) {
+  const r = resolveMovement(m, userAliases)
+  return { ...settled(m), exId: r.exId, ...(r.candidates.length ? { via: r.via, candidates: r.candidates } : {}) }
+}
+
+// One already resolved keeps its exercise; one without, or with only a guess, is resolved again,
+// so a pick made since (here or on another device) settles it.
+const resolved = (m, aliases) => (m.exId && m.via !== 'guess' ? m : resolveInto(m, aliases))
 
 /** `program` (or nothing, for a hand-entered one) as an editable draft: ids filled, exercises resolved. */
 export function prepareDraft(program, userAliases = {}) {
@@ -63,12 +76,15 @@ export function includeOf(track, block, S) {
 /** A movement typed by hand: its alias key comes off the text the way the parser's would. */
 export const movementFromText = (raw, id, userAliases = {}) => {
   const rawName = rawNameOf(raw)
-  return { id, raw, rawName, exId: resolveMovement({ rawName }, userAliases).exId, dose: {}, perSide: false, rx: null, alts: [] }
+  return { id, raw, rawName, ...resolveInto({ rawName }, userAliases), dose: {}, perSide: false, rx: null, alts: [] }
 }
 
-/** `draft` with every movement and alternative printed as `key` (already norm()-ed) set to `exId`. */
+/**
+ * `draft` with every movement and alternative printed as `key` (already norm()-ed) set to `exId`,
+ * their guesses and suggestions settled: what a pick, or confirming a guess, does.
+ */
 export function applyPick(draft, key, exId) {
-  const pick = m => (norm(m.rawName) === key ? { ...m, exId } : m)
+  const pick = m => (norm(m.rawName) === key ? { ...settled(m), exId } : m)
   return {
     ...draft,
     tracks: list(draft?.tracks).map(tr => ({

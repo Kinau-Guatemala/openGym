@@ -331,7 +331,7 @@ function corpusOf(e) {
 
 // How many single-character edits (insert, delete, substitute, swap two neighbours) apart two
 // words are, or `max + 1` as soon as it is clear they are further apart than `max`.
-function editDistance(a, b, max) {
+export function editDistance(a, b, max) {
   if (Math.abs(a.length - b.length) > max) return max + 1
   let prev2 = null, prev = Array.from({ length: b.length + 1 }, (_, j) => j)
   for (let i = 1; i <= a.length; i++) {
@@ -584,6 +584,12 @@ function rankByRelevance(found, tokens) {
 // similar. For the "Similar exercises" section under the results, so a search almost never ends
 // on "No match". `exclude` holds what the exact search already listed. Best first, at most `limit`.
 export function similarExercises(list, query, exclude = [], limit = 30) {
+  return scoredSimilar(list, query, exclude).slice(0, limit).map(x => x.e)
+}
+
+// The same with each one's score ({ e, score }, best first): crossfit-resolve.js ranks a misspelled
+// name's likely exercises with it ("pull ups estrcitos" is most of "pull up").
+export function scoredSimilar(list, query, exclude = []) {
   const tokens = queryTokens(query)
   if (!tokens.length) return []
   resetNearCache()
@@ -613,5 +619,5 @@ export function similarExercises(list, query, exclude = [], limit = 30) {
     out.push({ e, i, score: score + found * 30 + priorOf(e) + (mainTg && e.tg === mainTg ? 40 : 0), len: entry.nameWords.length })
   }
   out.sort((a, b) => b.score - a.score || a.len - b.len || a.i - b.i)
-  return out.slice(0, limit).map(x => x.e)
+  return out
 }

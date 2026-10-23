@@ -2392,4 +2392,8 @@ export default {
   'Handstand push-up': 'Pompka w staniu na rękach',
   'Double-unders': 'Double-under',
   'Pull-up': 'Podciągnięcie',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Czy chodziło o?',
+  'Confirm {0}': 'Potwierdź: {0}',
 }

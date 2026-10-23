@@ -2403,4 +2403,8 @@ export default {
   'Handstand push-up': 'Handstand push-up',
   'Double-unders': 'Double-under',
   'Pull-up': 'ดึงข้อ',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'หมายถึงสิ่งนี้หรือเปล่า?',
+  'Confirm {0}': 'ยืนยัน {0}',
 }

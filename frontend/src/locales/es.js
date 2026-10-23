@@ -2392,4 +2392,8 @@ export default {
   'Handstand push-up': 'Flexión en parada de manos',
   'Double-unders': 'Double-unders',
   'Pull-up': 'Dominada',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': '¿Quisiste decir?',
+  'Confirm {0}': 'Confirmar {0}',
 }

@@ -2395,4 +2395,8 @@ export default {
   'Handstand push-up': 'Kézenállós fekvőtámasz',
   'Double-unders': 'Double-under',
   'Pull-up': 'Húzódzkodás',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Erre gondoltál?',
+  'Confirm {0}': '{0} megerősítése',
 }

@@ -2392,4 +2392,8 @@ export default {
   'Handstand push-up': 'Amuda kalkış şınavı',
   'Double-unders': 'Double-under',
   'Pull-up': 'Barfiks',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Bunu mu demek istediniz?',
+  'Confirm {0}': '{0} seçimini onayla',
 }
