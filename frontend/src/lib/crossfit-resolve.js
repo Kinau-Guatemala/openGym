@@ -79,9 +79,10 @@ export function resolveMovement({ rawName, name } = {}, userAliases = {}) {
 // 0 to 1, by how close its name is to what was printed, letter by letter with the spaces left out
 // (1 - edit distance / length): "walball" is one letter from "wallball", "kettlebellgobletlunge"
 // seven from "kettlebellgobletcurtseylunge", "airsquat" none from "air squat".
-//   - The name is compared with and without its equipment word, and matching only without it costs
-//     ASSUMED_EQUIP when nothing printed says so ("russian twsit" is the russian twist before the
-//     dumbbell one; "hang clean" stays a three-way tie, as in the exact tier).
+//   - The name is compared with and without its equipment word ("bodyweight" counts as one), and
+//     matching only without it costs ASSUMED_EQUIP when nothing printed says so ("russian twsit"
+//     is the russian twist before the dumbbell one; "hang clean" stays a three-way tie, as in the
+//     exact tier; "overhead squats" is a choice, bodyweight or barbell).
 //   - A printed DB/KB/BB that the candidate's equipment contradicts costs EQUIP_COST.
 //
 // ponytail: thresholds calibrated by hand on the 18 sample programs (crossfit-resolve.test.js):
@@ -103,7 +104,8 @@ function fitOf(printed, e, printedEquip) {
   const names = plain(e.n).split(' ')
   const equipment = new Set([...plain(e.eq).split(' '), 'bodyweight'])
   const bare = names.filter(w => !equipment.has(w))
-  const assumed = !printedEquip && bare.length < names.length && e.eq !== 'body weight' ? ASSUMED_EQUIP : 0
+  // "bodyweight" too: hand-typed "overhead squats" is as likely loaded as not, so it is a choice.
+  const assumed = !printedEquip && bare.length < names.length ? ASSUMED_EQUIP : 0
   let best = 0
   for (const p of printed) {
     for (const n of spellings(names)) best = Math.max(best, similarity(p, n))
@@ -112,8 +114,25 @@ function fitOf(printed, e, printedEquip) {
   return best
 }
 
+// Worked out once per name: about 25 ms each (four catalogue searches), and the editor resolves
+// every unsure movement again on each opening. The catalogue never changes, and the user's picks
+// are looked up before this tier, so a name's guess is always the same.
+// ponytail: cleared whole past MEMO_MAX names, an LRU if programs ever print that many.
+const memo = new Map()
+const MEMO_MAX = 500
+
 /** The guess tier alone: what resolveMovement falls back to when nothing matched exactly. */
 export function guessMovement({ rawName, name } = {}) {
+  const at = String(name || '') + '|' + String(rawName || '')
+  let r = memo.get(at)
+  if (!r) {
+    if (memo.size >= MEMO_MAX) memo.clear()
+    memo.set(at, r = guessOf(rawName, name))
+  }
+  return r
+}
+
+function guessOf(rawName, name) {
   const key = norm(rawName)
   const queries = [...new Set([plain(name), plain(rawName)].filter(Boolean))]
   const want = PRINTED_EQUIP[key.split(' ')[0]]

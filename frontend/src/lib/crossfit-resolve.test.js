@@ -524,6 +524,20 @@ describe('crossfit resolve: misspellings', () => {
     }
   })
 
+  it('leaves a hand-typed loaded movement to choose, not the bodyweight version', () => {
+    for (const rawName of ['overhead squats', 'good mornings']) {
+      const r = resolveMovement({ rawName })
+      expect([r.exId, r.via], rawName).toEqual([null, null])
+      expect(r.candidates.some(c => EXIDX[c.exId].eq === 'barbell'), rawName).toBe(true)
+    }
+  })
+
+  it('works a name out once', () => {
+    const a = guessMovement({ rawName: 'wal balls' })
+    expect(guessMovement({ rawName: 'wal balls' })).toBe(a)
+    expect(guessMovement({ rawName: 'wal balls', name: 'wall ball' })).not.toBe(a)
+  })
+
   it('a printed DB/KB/BB puts that equipment first', () => {
     expect(EXIDX[guessMovement({ rawName: 'kb hang cleen' }).candidates[0].exId].eq).toBe('kettlebell')
     expect(EXIDX[guessMovement({ rawName: 'db hang cleen' }).candidates[0].exId].eq).toBe('dumbbell')
