@@ -7,7 +7,7 @@
    `node src/index.js pair <URL> <CODE>` redeems a pairing code and exits. */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { TOOLS } from './tools.js'
+import { TOOLS, writesEnabled } from './tools.js'
 import { init, getUser } from './state.js'
 import { pair, tokenFile } from './remote.js'
 
@@ -38,7 +38,7 @@ const server = new McpServer({
 try {
   await init()
   const u = await getUser()
-  console.error(`[opengym-mcp] serving profile ${u.name} (${u.id})`)
+  console.error(`[opengym-mcp] serving profile ${u.name} (${u.id}), ${writesEnabled() ? 'write tools on (OPENGYM_MCP_WRITES=1)' : 'read-only (OPENGYM_MCP_WRITES=1 adds the write tools)'}`)
 } catch (e) {
   console.error(`[opengym-mcp] ${e.message}`)
   // Don't exit — keep the tool listings up so the user sees a useful error after fixing their

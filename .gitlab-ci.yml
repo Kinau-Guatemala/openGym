@@ -207,7 +207,7 @@ test:mcp:
       - mcp/.npm
   script:
     # test/write-api.test.js boots the real api to write against.
-    - (cd api && npm ci --cache ../mcp/.npm --prefer-offline --ignore-scripts)
+    - (cd api && npm ci --cache ../mcp/.npm --prefer-offline --ignore-scripts --omit=optional)
     - cd mcp
     - npm ci --cache .npm --prefer-offline --ignore-scripts
     - npx vitest run

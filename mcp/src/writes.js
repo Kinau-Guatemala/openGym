@@ -45,8 +45,10 @@ function planned(item, S, base = null) {
   if (item.sets != null) cfg.sets = item.sets
   if (mode === 'reps') {
     if (item.reps != null) cfg.reps = item.reps
-    if (item.reps_min != null && item.reps_min < cfg.reps) cfg.repsMin = item.reps_min
-    else if (item.reps != null || item.reps_min != null) delete cfg.repsMin
+    // A range stays a range when only its top moves ("raise the top to 15"): it goes when a new
+    // bottom is given, or when the new top is no longer above the bottom.
+    if (item.reps_min != null) { if (item.reps_min < cfg.reps) cfg.repsMin = item.reps_min; else delete cfg.repsMin }
+    else if (cfg.repsMin != null && cfg.repsMin >= cfg.reps) delete cfg.repsMin
     if (item.weight != null) cfg.weight = item.weight
   }
   if (mode === 'time') {
@@ -162,6 +164,9 @@ export function logWorkout(S, { date, start_time, duration_min, name, note, entr
   // Today with no time given: it just ended, as the app's own backfill of today assumes.
   const start = (start_time || date !== today) ? backfillStart(date, start_time || '18:00') : now - minutes * 60000
   const end = start + minutes * 60000
+  // The app never files a session that hasn't ended (endsInFuture): today at a later hour is not
+  // something already done.
+  if (end > now) throw fail('EINVAL', 'this session would end later than now: only sessions already done can be logged (give an earlier start_time or a shorter duration)')
   const rows = entries.map(x => {
     const id = exerciseId(x.id, S)
     // Minutes logged make it cardio, a hold makes it timed, whatever the exercise usually is.
@@ -190,7 +195,8 @@ export function logWorkout(S, { date, start_time, duration_min, name, note, entr
   return {
     state,
     diff: [
-      `+ workout ${date} "${filed.name}" ${hhmm(start)}–${hhmm(end)}`,
+      // "Just finished" moves with the clock; said in words, the diff stays the one approved.
+      `+ workout ${date} "${filed.name}" ${start_time || date !== today ? `${hhmm(start)}–${hhmm(end)}` : `just finished, ${minutes} min`}`,
       ...filed.entries.map(e => `  + ${e.id} ${nameOf(e.id, S)}: ${e.sets.map(s => setText(s, e.target?.mode)).join(', ')}`),
       ...(filed.prs?.length ? [`  PRs: ${filed.prs.map(id => nameOf(id, S)).join(', ')}`] : [])
     ],

@@ -1,14 +1,14 @@
 // The write tools' pure changes (src/writes.js) and the tools around them on the file source:
 // what each change produces, what it refuses, and that a dry run saves nothing. The HTTP write
 // path against a real api is test/write-api.test.js.
-import { describe, test, expect, beforeEach } from 'vitest'
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
 import { buildDemoState } from '../../frontend/src/lib/demoSeed.js'
 import { anchorsByWorkout } from '../../frontend/src/lib/recovery.js'
 import { buildSessionEntries } from '../../frontend/src/lib/session-start.js'
 import { isWarmupRow } from '../../frontend/src/lib/workout-model.js'
 import { createRoutine, updateRoutine, assignWeekday, logWorkout } from '../src/writes.js'
-import { _seedStateForTests } from '../src/state.js'
-import { TOOLS } from '../src/tools.js'
+import { _seedStateForTests, _useSourceForTests } from '../src/state.js'
+import { WRITE_TOOLS, confirmOf } from '../src/tools.js'
 
 const SQUAT = '0043', PUSHUP = '0662', RUN = '0685', CURL = '0294'
 let S
@@ -73,6 +73,17 @@ describe('updateRoutine', () => {
     expect(diff.some(l => l.startsWith(`  + ${CURL}`))).toBe(true)
     expect(diff.some(l => l.startsWith(`  ~ ${keep.id}`))).toBe(true)
     expect(state.routines.filter(x => x.id !== r0.id)).toEqual(S.routines.filter(x => x.id !== r0.id))
+  })
+
+  test('raising only the top of a rep range keeps the range; a top at or below the bottom ends it', () => {
+    const r0 = S.routines[0]
+    r0.ex[0] = { ...r0.ex[0], mode: 'reps', reps: 12, repsMin: 8 }
+    const id = r0.ex[0].id
+    const ex = args => updateRoutine(S, { routine_id: r0.id, exercises: [{ id, ...args }] }).state.routines[0].ex[0]
+    expect(ex({ reps: 15 })).toMatchObject({ reps: 15, repsMin: 8 })
+    expect(ex({ reps: 8 }).repsMin).toBeUndefined()
+    expect(ex({ reps: 15, reps_min: 10 })).toMatchObject({ reps: 15, repsMin: 10 })
+    expect(ex({ sets: 4 })).toMatchObject({ sets: 4, reps: 12, repsMin: 8 })
   })
 
   test('an unknown routine or exercise is refused', () => {
@@ -140,9 +151,20 @@ describe('logWorkout', () => {
   })
 
   test('today with no time is a session that just ended; the future is refused', () => {
-    const { state, result } = logWorkout(S, { date: TODAY, duration_min: 30, entries: [{ id: RUN, sets: [{ min: 30 }] }] }, NOW)
+    const { state, result, diff } = logWorkout(S, { date: TODAY, duration_min: 30, entries: [{ id: RUN, sets: [{ min: 30 }] }] }, NOW)
     expect(state.workouts.find(x => x.id === result.workout_id)).toMatchObject({ start: NOW - 30 * 60000, end: NOW })
+    // said in words, so the approved diff doesn't move with the clock
+    expect(diff[0]).toBe(`+ workout ${TODAY} "Freestyle" just finished, 30 min`)
+    expect(logWorkout(S, { date: TODAY, duration_min: 30, entries: [{ id: RUN, sets: [{ min: 30 }] }] }, NOW + 120000).diff).toEqual(diff)
     expect(() => logWorkout(S, { date: iso(NOW + 86400000), entries: [{ id: RUN, sets: [{ min: 30 }] }] }, NOW)).toThrow(/in the future/)
+  })
+
+  test('a session that ends after now is refused, today at a later hour included', () => {
+    const at10 = new Date(NOW); at10.setHours(10, 0, 0, 0)
+    const args = start_time => ({ date: iso(at10.getTime()), start_time, entries: [{ id: RUN, sets: [{ min: 30 }] }] })
+    expect(() => logWorkout(S, args('23:00'), at10.getTime())).toThrow(/later than now/)
+    expect(() => logWorkout(S, args('09:30'), at10.getTime())).toThrow(/later than now/)    // 09:30 + 60 min
+    expect(logWorkout(S, { ...args('08:00'), duration_min: 90 }, at10.getTime()).state.workouts.length).toBe(S.workouts.length + 1)
   })
 
   test('sets with no work in them are refused', () => {
@@ -152,7 +174,23 @@ describe('logWorkout', () => {
 })
 
 describe('the write tools', () => {
-  const tool = name => TOOLS.find(t => t.name === name).handler
+  const tool = name => WRITE_TOOLS.find(t => t.name === name).handler
+  // A source that writes the way remote.js write() does: the mutator on the stored document, and
+  // `next` (when given) the document a 409 handed back, for the one re-run.
+  let doc, saves
+  const fakeSource = (next = null) => ({
+    read: async () => doc,
+    user: async () => ({ id: 'u', name: 'U' }),
+    write: async mutator => {
+      let out = mutator(doc)
+      if (next) out = mutator(next)
+      doc = out.state
+      saves++
+      return { ...out, rev: 2 }
+    }
+  })
+  beforeEach(() => { doc = S; saves = 0 })
+  afterEach(() => { _useSourceForTests(null) })
 
   test('a dry run (the default) returns the diff and saves nothing', async () => {
     _seedStateForTests(S)
@@ -160,22 +198,98 @@ describe('the write tools', () => {
     const r = await tool('create_routine')({ name: 'Upper A', exercises: [{ id: PUSHUP }] })
     expect(r).toMatchObject({ dry_run: true, saved: false, diff: ['+ routine "Upper A"', expect.stringMatching(/^ {2}\+ 0662 push-up/)] })
     expect(r).not.toHaveProperty('routine_id')
+    expect(r.confirm).toBe(confirmOf(r.diff))
+    expect(r.confirm).toMatch(/^[0-9a-f]{16}$/)
     expect(r.note).toMatch(/Nothing was saved/)
     expect(JSON.stringify(S)).toBe(before)
   })
 
   test('the file source refuses to save, saying how to write', async () => {
     _seedStateForTests(S)
-    const err = await tool('assign_weekday')({ weekday: 1, routine_ids: [], dry_run: false }).catch(e => e)
+    const err = await tool('assign_weekday')({ weekday: 1, routine_ids: [], dry_run: false, confirm: 'x' }).catch(e => e)
     expect(err.code).toBe('EROFS')
     expect(err.message).toMatch(/OPENGYM_URL/)
   })
 
-  test('every write tool takes dry_run, and describes it', () => {
+  test('every write tool takes dry_run and confirm, and describes them', () => {
     for (const name of ['create_routine', 'update_routine', 'assign_weekday', 'log_workout']) {
-      const t = TOOLS.find(x => x.name === name)
+      const t = WRITE_TOOLS.find(x => x.name === name)
       expect(t.schema.dry_run.isOptional()).toBe(true)
-      expect(t.description).toMatch(/dry run/)
+      expect(t.schema.confirm.isOptional()).toBe(true)
+      expect(t.description).toMatch(/dry run.*confirm/)
     }
+  })
+
+  describe('a write saves only the diff the user approved', () => {
+    const args = () => ({ weekday: 2, routine_ids: [S.routines[0].id] })
+
+    test('the approved diff is saved', async () => {
+      _useSourceForTests(fakeSource())
+      const dry = await tool('assign_weekday')(args())
+      const r = await tool('assign_weekday')({ ...args(), dry_run: false, confirm: dry.confirm })
+      expect(r).toMatchObject({ saved: true, diff: dry.diff, weekday: 2 })
+      expect(doc.week[2]).toEqual([S.routines[0].id])
+      expect(saves).toBe(1)
+    })
+
+    test('no confirm: refused, nothing saved', async () => {
+      _useSourceForTests(fakeSource())
+      const err = await tool('assign_weekday')({ ...args(), dry_run: false }).catch(e => e)
+      expect(err.code).toBe('EINVAL')
+      expect(err.message).toMatch(/confirm.*dry-run it first/i)
+      expect(saves).toBe(0)
+    })
+
+    test('a confirm for another diff: ESTALE, nothing saved', async () => {
+      _useSourceForTests(fakeSource())
+      const other = await tool('assign_weekday')({ weekday: 3, routine_ids: [S.routines[0].id] })
+      const err = await tool('assign_weekday')({ ...args(), dry_run: false, confirm: other.confirm }).catch(e => e)
+      expect(err.code).toBe('ESTALE')
+      expect(saves).toBe(0)
+    })
+
+    test('the profile changed since the dry run: ESTALE, with what it would be now', async () => {
+      _useSourceForTests(fakeSource())
+      const dry = await tool('assign_weekday')(args())
+      doc = { ...S, routines: S.routines.map((r, i) => (i ? r : { ...r, name: 'Renamed' })) }
+      const err = await tool('assign_weekday')({ ...args(), dry_run: false, confirm: dry.confirm }).catch(e => e)
+      expect(err.code).toBe('ESTALE')
+      expect(err.message).toMatch(/Dry-run it again[\s\S]*Tuesday: rest → Renamed/)
+      expect(saves).toBe(0)
+    })
+
+    test('a conflict re-run that would save a different diff: ESTALE, never a silent other write', async () => {
+      const elsewhere = { ...S, week: { ...S.week, 2: [S.routines[1].id] } }     // another device filled Tuesday
+      _useSourceForTests(fakeSource(elsewhere))
+      const dry = await tool('assign_weekday')(args())
+      const err = await tool('assign_weekday')({ ...args(), dry_run: false, confirm: dry.confirm }).catch(e => e)
+      expect(err.code).toBe('ESTALE')
+      expect(saves).toBe(0)
+    })
+
+    test('a conflict re-run with the same diff still saves', async () => {
+      const elsewhere = { ...S, bodyweight: [...S.bodyweight, { d: '2026-10-02', w: 80 }] }
+      _useSourceForTests(fakeSource(elsewhere))
+      const dry = await tool('assign_weekday')(args())
+      expect((await tool('assign_weekday')({ ...args(), dry_run: false, confirm: dry.confirm })).saved).toBe(true)
+      expect(doc.bodyweight.at(-1)).toEqual({ d: '2026-10-02', w: 80 })
+    })
+  })
+})
+
+describe('the write tools are off unless OPENGYM_MCP_WRITES=1', () => {
+  afterEach(() => { vi.unstubAllEnvs() })
+  const names = async () => { vi.resetModules(); return (await import('../src/tools.js')).TOOLS.map(t => t.name) }
+
+  test('read-only by default', async () => {
+    vi.stubEnv('OPENGYM_MCP_WRITES', '')
+    const ns = await names()
+    expect(ns).toContain('muscle_gap')
+    for (const w of ['create_routine', 'update_routine', 'assign_weekday', 'log_workout']) expect(ns).not.toContain(w)
+  })
+
+  test('registered with OPENGYM_MCP_WRITES=1', async () => {
+    vi.stubEnv('OPENGYM_MCP_WRITES', '1')
+    expect(await names()).toEqual(expect.arrayContaining(['muscle_gap', 'create_routine', 'update_routine', 'assign_weekday', 'log_workout']))
   })
 })

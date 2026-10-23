@@ -112,8 +112,9 @@ describe('MCP writes against the api', () => {
     expect(state.bodyweight.some(b => b.d === '2026-10-02' && b.w === 80.9)).toBe(true)
   })
 
-  test('a dry run never writes', async () => {
+  test('a dry run never writes; its approved diff does', async () => {
     vi.stubEnv('OPENGYM_URL', url)
+    vi.stubEnv('OPENGYM_MCP_WRITES', '1')
     vi.resetModules()
     const { _useSourceForTests } = await import('../src/state.js')
     _useSourceForTests(null)
@@ -131,7 +132,9 @@ describe('MCP writes against the api', () => {
     expect((await api('GET', '/api/data/rev')).data).toEqual(before.data)
     // …and dry_run: false through the same tool does
     const rid = (await stored()).state.routines[0].id
-    const saved = await TOOLS.find(t => t.name === 'assign_weekday').handler({ weekday: 2, routine_ids: [rid], mode: 'add', dry_run: false })
+    const assign = TOOLS.find(t => t.name === 'assign_weekday').handler
+    const { confirm } = await assign({ weekday: 2, routine_ids: [rid], mode: 'add' })
+    const saved = await assign({ weekday: 2, routine_ids: [rid], mode: 'add', dry_run: false, confirm })
     expect(saved).toMatchObject({ dry_run: false, saved: true })
     expect((await api('GET', '/api/data/rev')).data.rev).toBeGreaterThan(before.data.rev)
     expect([].concat((await stored()).state.week[2])).toContain(rid)

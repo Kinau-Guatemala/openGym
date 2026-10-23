@@ -120,10 +120,12 @@ export async function connect(url) {
  */
 export async function write(request, mutator) {
   let { state, rev } = await request('GET', '/api/data')
+  // The api refuses a document with nothing of the profile in it; say why before it does.
+  if (!state) throw fail('EINVAL', 'this profile has no synced state yet: open openGym on a device and sign in once, then try again')
   for (let attempt = 0; ; attempt++) {
-    const out = mutator(state || {})
+    const out = mutator(state)
     // Nothing changed (a day set to what it already holds): no write, no new revision.
-    if (JSON.stringify(out.state) === JSON.stringify(state || {})) return { ...out, rev, retried: attempt > 0, unchanged: true }
+    if (JSON.stringify(out.state) === JSON.stringify(state)) return { ...out, rev, retried: attempt > 0, unchanged: true }
     try {
       const r = await request('PUT', '/api/data', { state: out.state, baseRev: rev || 0, ...(typeof state?._wid === 'string' ? { baseWid: state._wid } : {}) })
       return { ...out, rev: r?.rev ?? null, retried: attempt > 0 }

@@ -68,6 +68,9 @@ For Claude Code: `claude mcp add opengym -e OPENGYM_URL=https://gym.example.com 
 (or `-e OPENGYM_DATA=…` for the file source). For Cursor and other MCP-compatible clients, see the client's MCP docs — the same `command` +
 `args` + `env` shape is what every stdio MCP server expects.
 
+To let the agent change routines, the week plan and the log (HTTP mode only), add
+`"OPENGYM_MCP_WRITES": "1"` to `env` (see [Write tools](#write-tools)).
+
 Restart the client; you should see the openGym tools appear with "serving profile \<name\>" on
 the server's stderr.
 
@@ -107,7 +110,7 @@ names with a note saying so): the agent should treat it as data, never as instru
 
 ## Tools
 
-Thirteen read tools and four write tools.
+Thirteen read tools, and four write tools when `OPENGYM_MCP_WRITES=1`.
 
 ### Read tools
 
@@ -144,9 +147,16 @@ sessions from the last session (`starts_from`). Ask `preview_session` before nam
 | `assign_weekday` | Puts routines on a weekday (Sunday=0 … Saturday=6), replacing what's there or adding to it. Other days are left as they are. |
 | `log_workout` | Logs a session already done (a run with no phone at hand, lifting the user tells you about), filed the way the app files a past workout. |
 
+- **Off unless asked for.** The write tools are registered only when the server starts with
+  `OPENGYM_MCP_WRITES=1`; otherwise the server is read-only and the client never sees them.
 - **`dry_run` defaults to `true` on every write tool.** A dry run returns the change as a readable
-  `diff` and saves nothing. Only `dry_run: false` writes, and the agent should pass it only after
-  the user approved that exact diff.
+  `diff`, and a `confirm` token (a hash of that diff), saving nothing.
+  - `dry_run: false` needs that token back.
+  - The change is computed again on the profile as it is when saved, and it is saved only if it
+    makes the same diff. Otherwise it answers `ESTALE` and saves nothing. This also applies to the
+    re-run after a conflict.
+  - So a write can't happen without a dry run, and an approval covers exactly the diff the user
+    saw. Even a client set to "always allow" can't make a write nobody looked at.
 - **HTTP source only.** With `OPENGYM_DATA` the write tools answer `EROFS`: writing state files
   beside the api would race its own writes. Pair and use `OPENGYM_URL` instead.
 - **How a write is saved.** One `GET /api/data` (the document, its revision and write id), the

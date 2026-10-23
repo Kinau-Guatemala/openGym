@@ -1,6 +1,7 @@
 # Playbook: a 2-day hypertrophy plan around CrossFit
 
-For an agent connected to openGym through this MCP server (HTTP mode, so it can write). The
+For an agent connected to openGym through this MCP server in HTTP mode, with the write tools
+switched on (`OPENGYM_MCP_WRITES=1`; without it the server is read-only and only steps 1–2 apply). The
 athlete does CrossFit classes and runs. The goal is two weekly lifting sessions that close the
 hypertrophy gap the classes leave, on days that don't collide with runs or leg-heavy WODs.
 Nothing is saved until the athlete has seen the exact change and said yes.
@@ -45,14 +46,20 @@ Nothing is saved until the athlete has seen the exact change and said yes.
    - Use **catalogue exercise ids only**: ids that `get_wods`, `get_routine` or `get_workout`
      report, or ones you have already used successfully. Never invent an id or pass a name.
      `create_routine` refuses anything it doesn't know.
-3. **Dry run.** Call `create_routine` for each routine with no `dry_run` (it defaults to true), and
-   show the athlete both diffs together with the days you would put them on.
-4. **Approval.** Write nothing until the athlete approves this specific change. If they change
-   something, dry-run it again and show the new diff.
+3. **Dry run.** Call `create_routine` for each routine with no `dry_run` (it defaults to true).
+   Show the athlete both **diffs**, word for word, together with the days you would put them on.
+   Each dry run also returns a `confirm` token for that exact diff.
+4. **Approval.** Write nothing until the athlete approves these specific diffs. If they change
+   something, dry-run again and show the new diff; the old token no longer fits.
 5. **Write.**
-   - `create_routine` × 2 with `dry_run: false`, keeping the `routine_id` each one returns.
-   - `assign_weekday` × 2 with `dry_run: false` and those ids, using `mode: "add"` if the day
-     already has something the athlete wants to keep.
+   - `create_routine` × 2: the same arguments, `dry_run: false` and that dry run's `confirm`. Keep
+     the `routine_id` each one returns.
+   - `assign_weekday` × 2 with those ids, using `mode: "add"` if the day already has something the
+     athlete wants to keep. It needs its own dry run, since the ids only exist now. Show its
+     one-line diff, or, if the athlete already approved these days in step 4, say what you're
+     doing, then pass its `confirm`.
+   - If a write answers `ESTALE`, the profile changed since the dry run (another device synced) and
+     nothing was saved. Dry-run again and get it approved again.
    - The routines show up in Plan on the phone at its next sync.
 6. **Review after a week.**
    - Run `muscle_gap` again (and `list_workouts` to see what was actually done).
@@ -68,8 +75,9 @@ Nothing is saved until the athlete has seen the exact change and said yes.
 - **A guessed exercise is not the exercise.** A movement with `exercise_guess: true` is the app's
   best guess for a misspelled name that the athlete hasn't confirmed. Don't count it as that
   exercise, and don't build on it. Say it's a guess, look at its `candidates`, and ask.
-- **`dry_run` is the default for a reason.** Never pass `dry_run: false` for a change the athlete
-  hasn't seen in this conversation.
+- **`dry_run` is the default for a reason.** A write needs the `confirm` token of a dry run, and
+  saves only if it would make exactly that diff. Pass a token back only after the athlete has seen
+  that diff and approved it in this conversation.
 - **`log_workout` is only for what the athlete says they did** (a run with no phone at hand, a
   session they tell you about). Never invent numbers for it. It counts for progression and PRs like
   any logged session.
