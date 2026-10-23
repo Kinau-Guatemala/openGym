@@ -1981,7 +1981,7 @@ export default {
   'Another device synced while you were importing, so its changes were kept next to the backup.': 'Un autre appareil a synchronisé pendant l’import, ses changements sont gardés à côté de la sauvegarde.',
   'Save as a backup file': 'Enregistrer comme fichier de sauvegarde',
   'Add this device\'s plan to your profile?': 'Ajouter le programme de cet appareil à ton profil ?',
-  'Your plan, notes or gym cards on this device were set up while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'Ton programme, tes notes ou tes cartes de salle sur cet appareil ont été créés sans connexion. Ajoute-les à ton profil ou garde le profil exactement tel qu’il est sur le serveur.',
+  'Your plan, notes, gym cards or CrossFit programs on this device were set up while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': 'Ton programme, tes notes, tes cartes de salle ou tes programmes CrossFit sur cet appareil ont été créés sans connexion. Ajoute-les à ton profil ou garde le profil exactement tel qu’il est sur le serveur.',
   '{0} routine was made on this device while signed out. Add it to your profile, or keep the profile exactly as it is on the server.': '{0} routine a été créée sur cet appareil sans connexion. Ajoute-la à ton profil ou garde le profil exactement tel qu’il est sur le serveur.',
   '{0} routines were made on this device while signed out. Add them to your profile, or keep the profile exactly as it is on the server.': '{0} routines ont été créées sur cet appareil sans connexion. Ajoute-les à ton profil ou garde le profil exactement tel qu’il est sur le serveur.',
   'This device, before signing in': 'Cet appareil, avant la connexion',
