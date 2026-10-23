@@ -7,9 +7,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { tempData, writeState, sampleState } from './helpers.mjs';
+import { pinToday, tempData, writeState, sampleState } from './helpers.mjs';
 
 const DIR = tempData();
+pinToday();   // sampleState's history is dated for SAMPLE_TODAY (helpers.mjs)
 const cfg = await import('../coach/config.js');
 const jobs = await import('../coach/jobs.js');
 const cadence = await import('../coach/cadence.js');
