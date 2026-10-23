@@ -65,6 +65,21 @@ function ladderMachine(m, exId, dose, block) {
 export const isCardioRow = (m, exId, dose, block) =>
   !!ladderMachine(m, exId, dose, block) || isCardioMove(dose, exId, !!ladderOf(block?.scheme))
 
+// The score a block asks for until another is picked: rounds+reps for an AMRAP, a time for a For
+// time, a load for a strength block, none for the rest. The log screen's selector shows it.
+export const SCORE_OF = { amrap: 'rounds', fortime: 'time', strength: 'load' }
+
+/**
+ * A block's score as saved: of the type the selector shows (the format's default when it was
+ * never touched), or `{ type: 'none' }` when no value was entered for it.
+ */
+export function scoreFor(block, score) {
+  const s = { ...(score || {}) }
+  if (!s.type) s.type = SCORE_OF[block?.format] || 'none'
+  const entered = s.type === 'time' ? pos(s.sec) : s.type === 'rounds' ? pos(s.rounds) || pos(s.reps) : s.type === 'load' ? pos(s.w) : 0
+  return entered ? s : { type: 'none' }
+}
+
 // What one round of a movement counts towards a rounds+reps score.
 const unitsOf = dose => pos(dose.reps) || pos(dose.cal) || 0
 
@@ -108,6 +123,7 @@ export function wodToSession(program, choice, logged, S) {
       const inc = choice?.include?.[ref]
       if (!(typeof inc === 'boolean' ? inc : includeOf(track, block, S))) continue
       const lb = logged?.blocks?.[ref] || {}
+      const score = scoreFor(block, lb.score)
       const metcon = isMetcon(block)
       const moves = list(block.movements)
       const doses = moves.map(m => {
@@ -116,7 +132,7 @@ export function wodToSession(program, choice, logged, S) {
         for (const k of ['r', 'cal', 'm', 'sec']) if (lm[k] != null) d[k === 'r' ? 'reps' : k] = Number(lm[k]) || 0
         return d
       })
-      const plan = setsPlan(block, doses, lb.score)
+      const plan = setsPlan(block, doses, score)
       moves.forEach((m, i) => {
         const lm = logged?.moves?.[`${ref}/${m.id}`] || {}
         const exId = lm.exId || m.exId
@@ -157,7 +173,7 @@ export function wodToSession(program, choice, logged, S) {
         if (entry.sets.length) entries.push(entry)
       })
       capMin += pos(block.capMin)
-      blocks.push({ ref, format: block.format, score: lb.score || { type: 'none' }, rx: !!lb.rx, ...(block.benchmark ? { benchmark: block.benchmark } : {}) })
+      blocks.push({ ref, format: block.format, score, rx: !!lb.rx, ...(block.benchmark ? { benchmark: block.benchmark } : {}) })
     }
   }
   return { entries, wod: { tracks: [...chosen].filter(id => list(program?.tracks).some(t => t.id === id)), blocks }, capMin }
@@ -212,7 +228,8 @@ function movesOf(logged) {
  */
 export function relogState(program, w) {
   const blocks = {}, include = {}
-  for (const b of list(w?.wod?.blocks)) blocks[b.ref] = { score: b.score, rx: !!b.rx }
+  // A block saved without a score opens on its format's default again, not on "none".
+  for (const b of list(w?.wod?.blocks)) blocks[b.ref] = { ...(b.score?.type && b.score.type !== 'none' ? { score: b.score } : {}), rx: !!b.rx }
   const tracks = list(w?.wod?.tracks)
   for (const tr of list(program?.tracks)) {
     if (!tracks.includes(tr.id)) continue

@@ -13,7 +13,7 @@ import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
 import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
 import { includeOf } from '../lib/wod-draft.js'
-import { isCardioRow, isMetcon, ladderOf, relogState, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, isCardioRow, isMetcon, ladderOf, relogState, wodStart } from '../lib/wod-log.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Segmented, Switch } from '../components/ui.jsx'
@@ -25,9 +25,6 @@ const pad = n => String(n).padStart(2, '0')
 const hhmm = ms => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()) }
 const atTime = (date, time) => { const [h, m] = time.split(':').map(Number); const d = new Date(date + 'T12:00:00'); d.setHours(h || 0, m || 0, 0, 0); return d.getTime() }
 
-// The score a block asks for by default: rounds+reps for an AMRAP, a time for a For time, a load
-// for a strength block, nothing for the rest.
-const SCORE_OF = { amrap: 'rounds', fortime: 'time', strength: 'load' }
 
 export default function CrossFitLog() {
   const nav = useNavigate()

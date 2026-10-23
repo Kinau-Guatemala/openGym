@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow } from './wod-log.js'
+import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -254,6 +254,32 @@ describe('buildWodWorkout + fileBackfill (logWod)', () => {
     expect(again.w.entries.map(e => e.id)).toEqual([BURPEE, PUSHUP, ROW])
     expect(again.w.entries[0].sets.map(x => x.r)).toEqual([11, 11, 11])
     expect(again.w.entries[2].sets).toEqual([{ mode: 'cardio', cal: 36, min: 4, done: true }])
+  })
+
+  it('a score saves as the type the selector shows: the format default when never touched', () => {
+    const p = program([
+      block('b1', 'fortime', [mv('m0', BURPEE, { reps: 10 })], { rounds: 3, capMin: 12, benchmark: 'Fran' }),
+      block('b2', 'amrap', [mv('m0', PUSHUP, { reps: 10 })], { capMin: 8 }),
+      block('b3', 'strength', [mv('m0', CJ, {})]),
+      block('b4', 'emom', [mv('m0', CJ, { reps: 2 })], { capMin: 10 }),
+    ])
+    const S = S0()
+    // untouched selectors: only the values typed are sent
+    const logged = { blocks: { 'full/b1': { score: { sec: 512 }, rx: true }, 'full/b2': { score: { rounds: 4, reps: 3 } }, 'full/b3': { score: { w: 90 } } } }
+    const { active, w } = buildWodWorkout(S, DATE, p, all, logged, Date.parse('2026-10-20T12:00:00Z'))
+    fileBackfill(S, active, w)
+    expect(S.workouts[0].wod.blocks.map(b => b.score)).toEqual([
+      { type: 'time', sec: 512 }, { type: 'rounds', rounds: 4, reps: 3 }, { type: 'load', w: 90 }, { type: 'none' },
+    ])
+    // re-opened, it shows what was saved; a block saved without a score opens on its default
+    const state = relogState(p, S.workouts[0])
+    expect(state.logged.blocks['full/b1']).toEqual({ score: { type: 'time', sec: 512 }, rx: true })
+    expect(state.logged.blocks['full/b4']).toEqual({ rx: false })
+    // a type picked with nothing entered, or none picked, is none
+    expect(scoreFor(p.tracks[0].blocks[0], { type: 'time' })).toEqual({ type: 'none' })
+    expect(scoreFor(p.tracks[0].blocks[0], { type: 'none', sec: 30 })).toEqual({ type: 'none' })
+    expect(scoreFor(p.tracks[0].blocks[0], undefined)).toEqual({ type: 'none' })
+    expect(scoreFor(p.tracks[0].blocks[0], { type: 'rounds', rounds: 2, reps: 0 })).toEqual({ type: 'rounds', rounds: 2, reps: 0 })
   })
 
   it('an older log without the typed values is read back off its rows', () => {
