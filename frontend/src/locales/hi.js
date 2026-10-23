@@ -2320,4 +2320,13 @@ export default {
   'or': 'या',
   '{0} already has a program. Saving replaces it.': '{0} के लिए पहले से एक प्रोग्राम है। सहेजने पर वह बदल जाएगा।',
   '{0} rounds': '{0} राउंड',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'यह छवि खोली नहीं जा सकी।',
+  'No routine found in this image.': 'इस छवि में कोई वर्कआउट नहीं मिला।',
+  'The Coach is busy. Reading the image as soon as it is done…': 'कोच व्यस्त है। काम पूरा होते ही वह छवि पढ़ेगा…',
+  'Reading the image…': 'छवि पढ़ी जा रही है…',
+  'Enter manually': 'हाथ से दर्ज करें',
+  'Give the Coach the go-ahead': 'कोच को अनुमति दें',
+  'Read the image again': 'छवि फिर से पढ़ें',
+  'Your image was read. Review it': 'आपकी छवि पढ़ ली गई। इसकी समीक्षा करें',
 }

@@ -57,6 +57,9 @@ export default function CoachIntake() {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const editing = params.get('edit') === '1'
+  // Asked for from elsewhere (reading a routine image, views/CrossFit.jsx): the go-ahead alone,
+  // then back to where it was asked for.
+  const consentOnly = params.get('consent') === '1'
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
   const config = useStore(s => s.config)
@@ -67,7 +70,7 @@ export default function CoachIntake() {
   // An athlete who already answered the intake and only lacks the CURRENT consent (the wording
   // changed and CONSENT_VERSION moved) reads the new terms and goes back to the Coach. Without
   // this the redirect from the chat replayed all seven questions and ended in a new plan request.
-  const [reconsentOnly] = useState(() => !editing && !hasConsent(S) && !!S.coach?.profile)
+  const [reconsentOnly] = useState(() => consentOnly || (!editing && !hasConsent(S) && !!S.coach?.profile))
   const STEPS = reconsentOnly ? ['consent'] : [...(needConsent ? ['consent'] : []), 'goal', 'experience', 'days', 'length', 'equipment', 'limits', 'extras']
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -87,11 +90,12 @@ export default function CoachIntake() {
   const optional = ['equipment', 'limits', 'extras'].includes(key)
 
   const next = () => (last ? finish() : setStep(step + 1))
-  const back = () => (step ? setStep(step - 1) : nav(editing ? '/coach' : '/plan'))
+  const back = () => (step ? setStep(step - 1) : consentOnly ? nav(-1) : nav(editing ? '/coach' : '/plan'))
 
   const agree = () => {
     update(s => { s.coach = { ...(s.coach || emptyCoach()), consent: { agreedAt: new Date().toISOString(), version: CONSENT_VERSION } } })
-    if (reconsentOnly) nav('/coach', { replace: true })
+    if (consentOnly) nav(-1)
+    else if (reconsentOnly) nav('/coach', { replace: true })
     else setStep(step + 1)
   }
 
@@ -139,7 +143,7 @@ export default function CoachIntake() {
     </div>
 
     <div className="ob-body">
-      {key === 'consent' && <Consent onAgree={agree} onDecline={() => nav('/plan')} />}
+      {key === 'consent' && <Consent onAgree={agree} onDecline={() => (consentOnly ? nav(-1) : nav('/plan'))} />}
 
       {key === 'goal' && <>
         <div className="ob-eyebrow">{t('Your goal')}</div>

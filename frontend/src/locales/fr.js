@@ -2320,4 +2320,13 @@ export default {
   'or': 'ou',
   '{0} already has a program. Saving replaces it.': '{0} a déjà un programme. Enregistrer le remplace.',
   '{0} rounds': '{0} tours',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Impossible d’ouvrir cette image.',
+  'No routine found in this image.': 'Aucune séance trouvée dans cette image.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'Le Coach est occupé. Il lira l’image dès qu’il aura fini…',
+  'Reading the image…': 'Lecture de l’image…',
+  'Enter manually': 'Saisir à la main',
+  'Give the Coach the go-ahead': 'Donner le feu vert au Coach',
+  'Read the image again': 'Relire l’image',
+  'Your image was read. Review it': 'Ton image a été lue. Vérifie-la',
 }

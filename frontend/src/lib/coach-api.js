@@ -76,6 +76,13 @@ export const resolvePending = async body => DEMO ? (await demo()).demoResolve() 
 export const forgetCoach = async () => DEMO ? (await demo()).demoResolve() : LOCAL() ? (await local()).localForget() : api('/api/coach/forget', { method: 'POST', body: '{}' })
 export const disclosure = async () => DEMO ? (await demo()).demoDisclosure() : LOCAL() ? (await local()).localDisclosure() : api('/api/coach/disclosure')
 
+// Reading a routine image (lib/wod-intake.js). Server only, whatever the Coach mode: the demo has
+// no server and a phone's own key does not read images, so these always go to api(), and the
+// status poll with them — coachStatus() would ask the phone's local Coach instead.
+export const parseWod = (date, image) => api('/api/coach/parse-wod', { method: 'POST', body: JSON.stringify({ date, mime: image.mime, image: image.data, lang: getLang() }) })
+export const parseStatus = () => api('/api/coach/status')
+export const ackParsed = jobId => api('/api/coach/parsed/ack', { method: 'POST', body: JSON.stringify({ jobId }) })
+
 /* Whose provider account this profile is about to spend. Its own call because the constraint is
    that the Coach screen states it too, not just the admin card — and because in instance mode a
    second profile is refused outright, which is something the user has to be able to read before

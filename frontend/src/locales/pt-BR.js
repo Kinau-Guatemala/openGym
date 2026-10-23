@@ -1481,6 +1481,15 @@ export const PT_BR_OVERRIDES = {
   'or': 'ou',
   '{0} already has a program. Saving replaces it.': '{0} já tem um programa. Salvar substitui ele.',
   '{0} rounds': '{0} rodadas',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Não foi possível abrir esta imagem.',
+  'No routine found in this image.': 'Nenhum treino encontrado nesta imagem.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'O Coach está ocupado. Vai ler a imagem assim que terminar…',
+  'Reading the image…': 'Lendo a imagem…',
+  'Enter manually': 'Digitar à mão',
+  'Give the Coach the go-ahead': 'Dar autorização ao Coach',
+  'Read the image again': 'Ler a imagem de novo',
+  'Your image was read. Review it': 'Sua imagem foi lida. Revise',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

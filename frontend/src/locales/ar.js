@@ -2375,4 +2375,13 @@ export default {
   'or': 'أو',
   '{0} already has a program. Saving replaces it.': '{0} لديه برنامج بالفعل. الحفظ يستبدله.',
   '{0} rounds': '{0} جولات',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'تعذّر فتح هذه الصورة.',
+  'No routine found in this image.': 'لم يُعثر على أي تمرين في هذه الصورة.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'المدرب مشغول. سيقرأ الصورة فور انتهائه…',
+  'Reading the image…': 'جارٍ قراءة الصورة…',
+  'Enter manually': 'أدخله يدويًا',
+  'Give the Coach the go-ahead': 'امنح المدرب الموافقة',
+  'Read the image again': 'اقرأ الصورة مرة أخرى',
+  'Your image was read. Review it': 'تمت قراءة صورتك. راجعها',
 }

@@ -2331,4 +2331,13 @@ export default {
   'or': 'หรือ',
   '{0} already has a program. Saving replaces it.': '{0} มีโปรแกรมอยู่แล้ว การบันทึกจะแทนที่',
   '{0} rounds': '{0} รอบ',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'ไม่สามารถเปิดรูปภาพนี้ได้',
+  'No routine found in this image.': 'ไม่พบโปรแกรมฝึกในรูปภาพนี้',
+  'The Coach is busy. Reading the image as soon as it is done…': 'โค้ชกำลังยุ่งอยู่ จะอ่านรูปภาพทันทีที่เสร็จ…',
+  'Reading the image…': 'กำลังอ่านรูปภาพ…',
+  'Enter manually': 'ป้อนเอง',
+  'Give the Coach the go-ahead': 'อนุญาตให้โค้ช',
+  'Read the image again': 'อ่านรูปภาพอีกครั้ง',
+  'Your image was read. Review it': 'อ่านรูปภาพของคุณแล้ว ตรวจสอบเลย',
 }

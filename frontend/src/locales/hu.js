@@ -2323,4 +2323,13 @@ export default {
   'or': 'vagy',
   '{0} already has a program. Saving replaces it.': '{0} napra már van program. A mentés lecseréli.',
   '{0} rounds': '{0} kör',
+  // T05 · image intake (Share / upload → parse → review)
+  'This image could not be opened.': 'Ezt a képet nem sikerült megnyitni.',
+  'No routine found in this image.': 'Ezen a képen nem található edzés.',
+  'The Coach is busy. Reading the image as soon as it is done…': 'A Coach éppen dolgozik. Amint végzett, beolvassa a képet…',
+  'Reading the image…': 'A kép beolvasása…',
+  'Enter manually': 'Kézi bevitel',
+  'Give the Coach the go-ahead': 'Engedély megadása a Coachnak',
+  'Read the image again': 'Kép újraolvasása',
+  'Your image was read. Review it': 'A képed beolvasva. Nézd át',
 }
