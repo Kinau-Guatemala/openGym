@@ -16,8 +16,8 @@ describe('benchmarks', () => {
     expect(out).toHaveLength(1)
     const [fran] = out
     expect(fran).toMatchObject({ name: 'Fran', type: 'time', last: '2026-10-10' })
-    expect(fran.rx).toEqual({ d: '2026-10-10', score: time(495), value: -495 })
-    expect(fran.scaled).toEqual({ d: '2026-09-15', score: time(380), value: -380 })
+    expect(fran.rx).toEqual({ d: '2026-10-10', score: time(495), value: 1e9 - 495 })
+    expect(fran.scaled).toEqual({ d: '2026-09-15', score: time(380), value: 1e9 - 380 })
     expect(fran.history.map(h => h.d)).toEqual(['2026-10-10', '2026-10-01', '2026-09-15', '2026-09-01'])
     expect(fran.history[0]).toMatchObject({ wid: 'wod-2026-10-10', rx: true })
   })
@@ -31,6 +31,15 @@ describe('benchmarks', () => {
     expect(cindy.type).toBe('rounds')
     expect(cindy.rx.d).toBe('2026-09-20')
     expect(cindy.scaled).toBeNull()
+  })
+
+  it('ranks any finished time above a capped rounds+reps score, whichever came last', () => {
+    const [fran] = benchmarks([
+      wod('2026-09-01', [{ ref: 'full/b1', benchmark: 'Fran', score: time(300), rx: true }]),
+      wod('2026-10-01', [{ ref: 'full/b1', benchmark: 'Fran', score: rounds(2, 10), rx: true }]),
+    ])
+    expect(fran.rx).toMatchObject({ d: '2026-09-01', score: time(300) })
+    expect(scoreValue(time(5999)) > scoreValue(rounds(999, 99))).toBe(true)
   })
 
   it('compares loads across units, read in the profile unit', () => {

@@ -32,6 +32,12 @@ describe('skills', () => {
     expect(hspu).toMatchObject({ maxReps: 8, perSide: true, volume: 20 })
   })
 
+  it('counts an Rx block once, however many of its movements are the skill', () => {
+    const [t2b] = skillStats([{ id: 'wod-2026-10-20', d: '2026-10-20', src: 'wod', wod: { blocks: [{ ref: 'full/b1', rx: true }] },
+      entries: [{ id: '3891', wodBlock: 'full/b1', sets: [reps(10)] }, { id: '3891', wodBlock: 'full/b1', sets: [reps(8)] }] }], NOW, [SKILLS.find(s => s.key === 't2b')])
+    expect(t2b).toMatchObject({ rxDone: 1, volume: 18 })
+  })
+
   it('does not credit Rx to a swapped-in movement', () => {
     const [mu] = skillStats([{ d: '2026-10-20', src: 'wod', wod: { blocks: [{ ref: 'full/b1', rx: true }] },
       entries: [{ id: '0631', wodBlock: 'full/b1', swappedFrom: '5194', sets: [reps(2)] }] }], NOW, [SKILLS.find(s => s.key === 'rmu')])

@@ -38,6 +38,7 @@ export function skillStats(workouts, now = Date.now(), skills = SKILLS) {
   return skills.map(sk => {
     const ids = new Set(sk.ids)
     let last = ''
+    const rxBlocks = new Set()
     const out = { key: sk.key, name: sk.name, ids: sk.ids, exId: null, first: null, maxReps: 0, perSide: false, volume: 0, rxDone: 0 }
     for (const w of list(workouts)) {
       for (const e of list(w?.entries)) {
@@ -55,9 +56,10 @@ export function skillStats(workouts, now = Date.now(), skills = SKILLS) {
         if (!did) continue
         if (!out.first || w.d < out.first) out.first = w.d
         if (w.d >= last) { last = w.d; out.exId = e.id }
-        if (!e.swappedFrom && list(w.wod?.blocks).some(b => b.ref === e.wodBlock && b.rx)) out.rxDone++
+        if (!e.swappedFrom && list(w.wod?.blocks).some(b => b.ref === e.wodBlock && b.rx)) rxBlocks.add((w.id ?? w.d) + '/' + e.wodBlock)
       }
     }
+    out.rxDone = rxBlocks.size
     return out
   })
 }
