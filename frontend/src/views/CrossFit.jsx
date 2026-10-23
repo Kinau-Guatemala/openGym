@@ -32,6 +32,7 @@ import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod } from '../lib/coach-api.js'
 import { INTAKE_ROUTE, beginIntake, currentIntake, downscale, failureOf, fromDataUrl, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
+import CrossFitRecords from './CrossFitRecords.jsx'
 import { Button, NumberField, Row, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
 
 const ui = () => useUI.getState()
@@ -115,6 +116,7 @@ export default function CrossFit() {
     {!dates.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
     {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(row)}</div></>}
     {recent.length > 0 && <><h4 className="sec">{t('Recent')}</h4><div className="list">{recent.map(row)}</div></>}
+    <CrossFitRecords S={S} />
   </div>
 }
 

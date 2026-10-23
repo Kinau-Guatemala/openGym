@@ -35,6 +35,7 @@ import { importHevyData, HevyApiError, HEVY_DEV_SETTINGS, mergeHevyRoutines } fr
 import { buildPlanBundle, parsePlan, mergePlan, printPlan, planPrintHTML } from './lib/plan-share.js'
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP, formulaOf, FORMULA_NAMES } from './lib/onerm.js'
 import { exerciseHistory } from './lib/exercise-history.js'
+import { rxHistory } from './lib/rx-history.js'
 import { isBellEx, dbLoadOf, dbLoadFor, withDbLoad, withMeaning, historyAs, entryDbLoad, currentDbLoad, isOneArm, ownedWeightsFor, dumbbellsOf, ownsDumbbells, withDumbbells, presetWeights, cleanWeights } from './lib/dumbbells.js'
 import { policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS, MAX_TRIPLE_SETS, weightIncrement } from './lib/progression.js'
 import { normalizeRepRange } from './lib/rep-range.js'
@@ -1041,6 +1042,8 @@ function ExerciseHistory({ exId }) {
   const onE1 = curve === 'e1rm' && h.e1rmPoints.length > 0
   const unit = h.metric === 'weight' ? st.unit : h.metric === 'reps' ? t('reps') : h.metric === 'sec' ? 's' : t('min')
   const e1Best = useMemo(() => Math.max(0, ...h.e1rmPoints.map(p => p.y)), [h])
+  // Logged WODs that programmed it with a load (lib/rx-history.js): the Rx line under Best.
+  const rx = useMemo(() => rxHistory(st.workouts, exId, st.unit), [st.workouts, exId, st.unit])
   if (!h.total) return <>
     <h3 className={exerciseNameClass(ex)}>{exerciseNameFor(ex)}</h3>
     <div className="empty"><div className="ico"><Icon name="history" /></div>{t('No sessions logged yet')}</div>
@@ -1062,6 +1065,7 @@ function ExerciseHistory({ exId }) {
       <Icon name="trophy" style={{ fontSize: 14, color: 'var(--yellow)' }} />
       {t('Best:')} <b className="accent">{fmtNum(onE1 ? e1Best : h.best)} {onE1 ? st.unit : unit}</b>
     </div>
+    {rx.length > 0 && <RxLine rx={rx} unit={st.unit} />}
     <h4 className="sec">{h.sessions.length < h.total ? t('Last {0} sessions', h.sessions.length) : t('Sessions')}</h4>
     <div className="list">
       {h.sessions.map(s => <div key={s.id} className="item" style={{ alignItems: 'flex-start' }}>
@@ -1074,6 +1078,19 @@ function ExerciseHistory({ exId }) {
       </div>)}
     </div>
   </>
+}
+// How the last WOD's load sat against its Rx, how often it was done at Rx, and the swaps, which
+// are counted apart and never as a ratio.
+function RxLine({ rx, unit }) {
+  const rated = rx.filter(x => !x.swapped)
+  const last = rated[rated.length - 1]
+  const swaps = rx.length - rated.length
+  return <div className="small row" style={{ margin: '0 0 4px', gap: 5 }} data-rx-line>
+    <span className="tag acc">Rx</span>
+    {[last && t('{0} of {1} {2}', fmtNum(last.used), fmtNum(last.rx), unit) + ` (${Math.round(last.ratio * 100)}%)`,
+      rated.length > 0 && t('{0} of {1} at Rx', rated.filter(x => x.ratio >= 1).length, rated.length),
+      swaps > 0 && t('swapped {0}×', swaps)].filter(Boolean).join(' · ')}
+  </div>
 }
 export const exerciseHistorySheet = exId => ui().openSheet(close => <ExerciseHistory exId={exId} close={close} />)
 
