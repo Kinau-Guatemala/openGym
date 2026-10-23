@@ -530,6 +530,17 @@ test('claude: an API error refusing the image is novision, and its text never ca
   assert.equal(login.s.last.errorClass, 'auth');
 });
 
+test('claude adapter: a non-success result names its errors, cut and without the image', async () => {
+  stubSdk([{ type: 'result', subtype: 'error_during_execution', is_error: true, stop_reason: null, errors: ['stream closed', 'bad ' + IMAGE] }], { throwAfter: true });
+  try {
+    const r = await (await import('../coach/adapters/index.js')).adapterFor('claude').invoke({ prompt: 'p', images: [{ mime: 'image/jpeg', data: IMAGE }], env: {}, timeoutMs: 5000 });
+    assert.equal(r.code, 1);
+    assert.ok(r.stderr.startsWith('the Agent SDK stopped: error_during_execution: stream closed; bad '), r.stderr.slice(0, 120));
+    assert.ok(r.stderr.length < 1100, 'cut');
+    assert.ok(!r.stderr.includes(IMAGE.slice(0, 60)), 'no image bytes');
+  } finally { claudeMod.setSdkForTest(undefined); }
+});
+
 test('claude adapter: an error text that quotes the image has it cut out', async () => {
   stubSdk([{ type: 'result', subtype: 'success', is_error: true, api_error_status: 400, result: 'bad ' + IMAGE }], { throwAfter: true });
   try {

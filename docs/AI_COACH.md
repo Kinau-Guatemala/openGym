@@ -147,13 +147,17 @@ small local one).
 
 ### With a runtime in the container (Claude Agent SDK, Codex CLI)
 
-**1. Build the image that has an AI runtime in it.** The default image deliberately has none:
+**1. Build the image that has an AI runtime in it.** The default image deliberately has none.
+Put `API_TARGET=coach` in `.env`, so every later `up` keeps the target, then:
 
 ```bash
-API_TARGET=coach docker compose up -d --build api
+docker compose up -d --build api
 ```
 
-`--build` matters. With a prebuilt `image:` also set, compose would otherwise pull the default.
+`--build` matters. With a prebuilt `image:` also set, compose would otherwise run the published
+default image. For the same reason, update with `git pull && docker compose up -d --build api`,
+never a bare `docker compose pull`: it replaces the built api with the default image, which has no
+runtime (`docker compose pull --ignore-buildable` or `pull web` updates the rest).
 
 **2. Get a credential.** On a trusted machine where you already use Claude Code:
 
@@ -173,7 +177,7 @@ account. Both read routine images the same way.
 
 - Toggle the card on.
 - Pick the **Claude (Anthropic)** provider chip.
-- **Add CLI token** → paste the token, and optionally label whose account it is (that label is
+- **Add Claude Code token** → paste the token, and optionally label whose account it is (that label is
   what both the admin card and each user's Coach screen show when they name the account).
 - **Test the Coach** — a real round trip through the provider with no user data anywhere near it.
   It reports the runtime version on success, and the provider's own error on failure.

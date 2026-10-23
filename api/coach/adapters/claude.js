@@ -57,6 +57,10 @@ async function sdk() {
   try { cached = await import(PKG); } catch { cached = null; }
   return cached;
 }
+// Every whole copy of an image in `text` becomes "[image]". Run before any cut: a cut first
+// would leave a partial copy this cannot recognise.
+const scrub = (text, images) => (images || []).reduce((t, i) => (i.data && t ? t.split(i.data).join('[image]') : t), text);
+
 /** Tests only: stand a stub in for the SDK module (undefined resolves the real one again). */
 export function setSdkForTest(m) { cached = m; }
 
@@ -118,7 +122,7 @@ export default {
   async invoke(opts) {
     const r = await this.run(opts);
     // Whatever the runtime said back, the image is not in it.
-    for (const i of opts.images || []) if (i.data && r.stderr) r.stderr = r.stderr.split(i.data).join('[image]');
+    r.stderr = scrub(r.stderr, opts.images);
     return r;
   },
 
@@ -154,8 +158,9 @@ export default {
         if (message.subtype === 'success' && message.is_error) failure = `${message.api_error_status || ''} ${message.result || 'the Agent SDK reported an error'}`.trim();
         else if (message.subtype === 'success') text = message.result;
         // A non-success result carries its reason in `subtype` (error_during_execution,
-        // error_max_turns, …) and `stop_reason`. There is no error list on it — do not invent one.
-        else failure = `the Agent SDK stopped: ${message.subtype}${message.stop_reason ? ` (${message.stop_reason})` : ''}`;
+        // error_max_turns, …), `stop_reason` and an `errors` list (SDKResultError), which is
+        // what the SDK builds its own thrown text from. Cut, and scrubbed of the image in invoke.
+        else failure = `the Agent SDK stopped: ${message.subtype}${message.stop_reason ? ` (${message.stop_reason})` : ''}${message.errors?.length ? ': ' + scrub(message.errors.join('; '), images).slice(0, 1000) : ''}`;
       }
     } catch (e) {
       if (timedOut) return { code: -1, text: '', stderr: 'the Agent SDK timed out', timedOut: true, spawnError: false };

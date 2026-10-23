@@ -232,6 +232,28 @@ test('401 and 403 reach the pipeline as "auth"; other statuses as "provider"', a
   }
 });
 
+test('"token" in an error is not a credential problem unless the error says so', async () => {
+  const payload = { plan: { routines: [], week: {} } };
+  for (const [stderr, expect] of [
+    ['400 prompt is too long: 210000 tokens > 200000 maximum', 'provider'],
+    ['429 This request would exceed the rate limit for your organization of 30,000 input tokens per minute', 'provider'],
+    ['400 invalid api key', 'provider'],   // a status says what it is: only 401/403 is auth
+    ['401 invalid x-api-key', 'auth'],
+    ['403 permission denied', 'auth'],
+    // Without a status, a runtime's own words.
+    ['prompt is too long: 210000 tokens > 200000 maximum', 'provider'],
+    ['rate limit: 30000 input tokens per minute', 'provider'],
+    ['Not logged in · Please run /login', 'auth'],
+    ['OAuth token has expired', 'auth'],
+    ['invalid bearer token', 'auth'],
+    ['the token was revoked', 'auth']
+  ]) {
+    const adapter = { spawns: false, invoke: async () => ({ code: 1, text: '', stderr }) };
+    const cls = await attemptOnce({ adapter, cfg: {}, kind: 'review', payload }, null);
+    assert.equal(cls.errorClass, expect, stderr);
+  }
+});
+
 test('a transient status (429, 5xx, 529) is retried twice with the same request, then given up on', async () => {
   const ok200 = ok({ choices: [{ message: { content: ANSWER }, finish_reason: 'stop' }] });
   // Overloaded once, then fine: the job succeeds and the caller never hears about it.
