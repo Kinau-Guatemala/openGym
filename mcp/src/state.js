@@ -95,7 +95,15 @@ export async function init() {
   const url = (process.env.OPENGYM_URL || '').trim()
   if (url) {
     const remote = await connect(url)
-    _source = { read: async () => withDefaults(await remote.read()), user: remote.user, remote }
+    // A refused token drops the source, so the next call connects again with whatever `pair`
+    // stored meanwhile: re-pairing needs no restart of the MCP.
+    const read = async () => {
+      try { return withDefaults(await remote.read()) } catch (e) {
+        if (e.code === 'EAUTH' && _source?.read === read) _source = null
+        throw e
+      }
+    }
+    _source = { read, user: remote.user, remote }
     return
   }
   initFile()

@@ -81,22 +81,28 @@ the server's stderr.
    ```
 
    This calls `POST /api/pair/redeem` and stores `{ token, user }` in
-   `~/.config/opengym-mcp/<host>.json` (`$XDG_CONFIG_HOME` is honoured), mode `0600`.
+   `~/.config/opengym-mcp/<host>[_<path>].json` (`$XDG_CONFIG_HOME` is honoured), mode `0600`.
 3. Start the server with `OPENGYM_URL=https://gym.example.com` instead of `OPENGYM_DATA`.
 
 Every start calls `GET /api/me`. Once the token is past half its life (`SESSION_DAYS`, 90 by
 default) the api hands back a fresh one, which replaces the stored token, so a server you use
 at least every few weeks never expires. Reads are `GET /api/data`, one per tool call. If the
 token is refused (90 idle days, or *Sign out everywhere*), every tool answers with an `EAUTH`
-error that says to pair again.
+error that says to pair again; once you have, the next tool call picks up the new token, with no
+restart. A request that gets no answer within 20 s fails (`OPENGYM_TIMEOUT_MS` to change it).
 
 **Security.** The token is a **full session of that profile**, the same the mobile app holds:
 whoever has the file can read and change everything in it, and if the profile is an admin, the
 admin dashboard too. Keep the file private (it is created `0600` in a `0700` directory; don't
 sync it, commit it or paste it anywhere). To revoke it, use *Sign out everywhere* in Settings,
-which ends every session of the profile, the phone's included. Text in a posted program came from
-a photo and is returned as `raw_untrusted`: the agent should treat it as data, never as
-instructions.
+which ends every session of the profile, the phone's included. The token (and the pairing code)
+only travel over **HTTPS**: an `http://` URL is refused unless it points at this machine
+(`localhost`, `127.0.0.1`, `::1`), or you set `OPENGYM_ALLOW_HTTP=1` because the network in between
+is trusted. Redirects are not followed (they would drop the token): use the final `https://`
+address.
+
+Text in a posted program came from a photo and is returned as `raw_untrusted` (and benchmark
+names with a note saying so): the agent should treat it as data, never as instructions.
 
 ## Tools
 

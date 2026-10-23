@@ -2,10 +2,11 @@
 // token looks like. Against the stub api in test/source.js; temp config dirs only.
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest'
 import fs from 'node:fs'
+import http from 'node:http'
 import os from 'node:os'
 import path from 'node:path'
 import { stubApi, TOKEN } from './source.js'
-import { pair, connect, tokenFile, saveToken, loadToken } from '../src/remote.js'
+import { pair, connect, tokenFile, saveToken, loadToken, checkUrl } from '../src/remote.js'
 
 const USER = { id: 'u1', name: 'Diego', admin: true }
 let dir, api
@@ -105,5 +106,72 @@ describe('state.js picks the HTTP source from OPENGYM_URL', () => {
     expect(S.unit).toBe('lb')
     expect(S.workouts).toEqual([])
     expect((await getUser()).name).toBe('Test')
+  })
+})
+
+describe('the token only travels over HTTPS', () => {
+  test('plain HTTP is refused for anything but this machine, before any request', async () => {
+    for (const url of ['http://192.168.1.20:8080', 'http://gym.example.com']) {
+      expect(() => checkUrl(url)).toThrow(/over plain HTTP/)
+      await expect(pair(url, 'abc')).rejects.toMatchObject({ code: 'EINSECURE' })
+      await expect(connect(url)).rejects.toMatchObject({ code: 'EINSECURE' })
+    }
+    for (const url of ['https://gym.example.com', 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:3000']) expect(() => checkUrl(url)).not.toThrow()
+    expect(() => checkUrl('ftp://gym.example.com')).toThrow(/must be https/)
+  })
+
+  test('OPENGYM_ALLOW_HTTP=1 lets a trusted network through', () => {
+    vi.stubEnv('OPENGYM_ALLOW_HTTP', '1')
+    expect(() => checkUrl('http://192.168.1.20:8080')).not.toThrow()
+  })
+})
+
+// A server written by hand: the stub api can't redirect or hang.
+function rawServer(handler) {
+  const server = http.createServer(handler)
+  return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve({
+    url: `http://127.0.0.1:${server.address().port}`,
+    close: () => { server.closeAllConnections(); return new Promise(r => server.close(r)) }
+  })))
+}
+
+describe('requests', () => {
+  test('a redirect is a clear error, not a stripped token read as "pair again"', async () => {
+    api = await rawServer((req, res) => { res.writeHead(301, { location: 'https://gym.example.com' + req.url }); res.end() })
+    saveToken(api.url, { url: api.url, token: TOKEN })
+    const err = await connect(api.url).catch(e => e)
+    expect(err.code).toBe('EHTTP')
+    expect(err.message).toMatch(/redirect/)
+  })
+
+  test('a server that never answers times out as ENET', async () => {
+    vi.stubEnv('OPENGYM_TIMEOUT_MS', '200')
+    api = await rawServer(() => {})
+    saveToken(api.url, { url: api.url, token: TOKEN })
+    const err = await connect(api.url).catch(e => e)
+    expect(err.code).toBe('ENET')
+    expect(err.message).toMatch(/did not answer within 0.2 s/)
+  })
+
+  test('two instances on one host keep their own token file', () => {
+    expect(tokenFile('https://h.example/gym')).not.toBe(tokenFile('https://h.example/other'))
+    expect(path.basename(tokenFile('https://h.example/gym/'))).toBe('h.example_gym.json')
+    expect(path.basename(tokenFile('https://h.example:8443'))).toBe('h.example_8443.json')
+  })
+})
+
+describe('re-pairing needs no restart', () => {
+  test('after a refused token, the next call connects again with the newly paired one', async () => {
+    const accepted = [TOKEN]
+    api = await stubApi({ 'GET /api/data': () => [200, { state: { unit: 'lb' }, rev: 1 }] }, accepted)
+    saveToken(api.url, { url: api.url, token: TOKEN })
+    vi.resetModules()
+    vi.stubEnv('OPENGYM_URL', api.url)
+    const { getState } = await import('../src/state.js')
+    expect((await getState()).unit).toBe('lb')
+    accepted.splice(0, 1, 'fresh')                       // "sign out everywhere", then pair again
+    await expect(getState()).rejects.toMatchObject({ code: 'EAUTH' })
+    saveToken(api.url, { url: api.url, token: 'fresh' })
+    expect((await getState()).unit).toBe('lb')
   })
 })
