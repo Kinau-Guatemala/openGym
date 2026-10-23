@@ -67,7 +67,7 @@ import org.json.JSONObject;
  *   await HC.requestPermissions();  // { granted, read }
  *   await HC.write({ sessions: [...], weights: [...] });
  *   await HC.remove({ sessions: [ids], weights: [ids] });
- *   await HC.readSessions({ since }); // { sessions: [{ id, start, end, type, distanceM, clientRecordId, packageName }] }
+ *   await HC.readSessions({ since, skip: [ids] }); // { sessions: [{ id, start, end, type, distanceM, clientRecordId, packageName }] }
  *   await HC.openSettings();        // Health Connect's data screen, or its store page
  */
 @CapacitorPlugin(name = "HealthConnect")
@@ -239,6 +239,9 @@ public class HealthConnectPlugin extends Plugin {
     // The runs, walks, hikes and rides that ended after `since` (ms), from every app, openGym
     // included: what to skip is lib/health-import.js's call. Each with the distance Health Connect
     // holds for its time from the same app, or null when there is none (or it may not be read).
+    // `skip` names the ids openGym already has or deleted: they come back too (their times still
+    // tell a second app's copy of the same run apart), but without a distance, which costs one
+    // aggregate call each against Health Connect's quota.
     @PluginMethod
     public void readSessions(PluginCall call) {
         if (!"available".equals(sdkStatus())) {
@@ -246,8 +249,10 @@ public class HealthConnectPlugin extends Plugin {
             return;
         }
         long since = call.getLong("since", System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000);
+        JSArray skipArray = call.getArray("skip", new JSArray());
         worker.execute(() -> {
             try {
+                Set<String> skip = new HashSet<>(ids(skipArray));
                 JSArray out = new JSArray();
                 String page = null;
                 do {
@@ -267,7 +272,10 @@ public class HealthConnectPlugin extends Plugin {
                         o.put("start", s.getStartTime().toEpochMilli());
                         o.put("end", s.getEndTime().toEpochMilli());
                         o.put("type", type);
-                        o.put("distanceM", distance(s));
+                        // openGym's own records are never imported either: their distance is not needed.
+                        boolean known = skip.contains(m.getId())
+                                || (m.getClientRecordId() != null && m.getClientRecordId().startsWith("opengym-w-"));
+                        o.put("distanceM", known ? JSONObject.NULL : distance(s));
                         o.put("clientRecordId", m.getClientRecordId());
                         o.put("packageName", m.getDataOrigin().getPackageName());
                         out.put(o);

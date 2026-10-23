@@ -152,14 +152,14 @@ describe('turning it off', () => {
 
 describe('reading runs back', () => {
   const run = { id: 'r1', start: at(20, 7), end: at(20, 8), type: 'running', distanceM: 10000, clientRecordId: null, packageName: 'com.strava' }
-  const own = { ...run, id: 'r2', packageName: 'gt.kinau.opengym', clientRecordId: 'opengym-w-w1' }
+  const own = { ...run, id: 'r2', start: at(21, 7), end: at(21, 8), packageName: 'gt.kinau.opengym', clientRecordId: 'opengym-w-w1' }
   const added = []
   const add = vi.fn(async records => { added.push(...records.map(r => r.id)); return records.length })
   beforeEach(() => { added.length = 0; add.mockClear() })
 
   it('reads nothing while it is off', async () => {
     h.runs = [run]
-    expect(await hs.importRuns(() => state([]), add)).toBe(0)
+    expect(await hs.importRuns({ getState: () => state([]), add, force: true })).toBe(0)
     expect(h.calls).toEqual([])
   })
   it('reads the last 30 days and hands over only what the log lacks', async () => {
@@ -167,24 +167,48 @@ describe('reading runs back', () => {
     h.calls = []
     h.runs = [run, own]
     const before = Date.now()
-    await hs.importRuns(() => state([]), add)
+    await hs.importRuns({ getState: () => state([]), add, force: true })
     const [[, arg]] = h.calls.filter(c => c[0] === 'read')
     expect(arg.since).toBeGreaterThanOrEqual(before - hs.IMPORT_DAYS * 864e5)
     expect(arg.since).toBeLessThanOrEqual(Date.now() - hs.IMPORT_DAYS * 864e5)
     expect(added).toEqual(['r1', 'r2'])   // addImported does the filtering, inside the store's update
     add.mockClear()
-    await hs.importRuns(() => state([{ id: 'hc-r1', d: '2026-09-20', start: at(20, 7), end: at(20, 8), src: 'hc', entries: [] }]), add)
+    await hs.importRuns({ getState: () => state([{ id: 'hc-r1', d: '2026-09-20', start: at(20, 7), end: at(20, 8), src: 'hc', entries: [] }]), add, force: true })
     expect(add).not.toHaveBeenCalled()
   })
   it('remembers a refused read for Settings, and forgets it once reading works', async () => {
     await hs.enableHealth(state([]))
     h.readFail = 'permission'
-    await hs.importRuns(() => state([]), add)
+    await hs.importRuns({ getState: () => state([]), add, force: true })
     expect(file().readError).toBe('permission')
     expect(file().on).toBe(true)
     h.readFail = null
-    await hs.importRuns(() => state([]), add)
+    await hs.importRuns({ getState: () => state([]), add, force: true })
     expect(file().readError).toBeNull()
+  })
+  it('reads again on a resume only 15 minutes after the last read, at once when forced', async () => {
+    await hs.enableHealth(state([]))
+    const reads = () => h.calls.filter(c => c[0] === 'read').length
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    expect(reads()).toBe(1)
+    expect(file().importedAt).toBeGreaterThan(0)
+    await hs.importRuns({ getState: () => state([]), add })
+    expect(reads()).toBe(1)
+    await hs.importRuns({ getState: () => state([]), add, force: true })
+    expect(reads()).toBe(2)
+    const f = file()
+    h.files.set('opengym-health.json', JSON.stringify({ ...f, importedAt: Date.now() - hs.IMPORT_EVERY_MS - 1 }))
+    vi.resetModules()
+    hs = await import('./health-sync.js')
+    await hs.importRuns({ getState: () => state([]), add })
+    expect(reads()).toBe(3)
+  })
+  it('tells the native side which ids it already knows, present or deleted', async () => {
+    await hs.enableHealth(state([]))
+    const S = { ...state([{ id: 'hc-r1', d: '2026-09-20', entries: [] }]), deleted: { workouts: { 'hc-r9': 5 } } }
+    await hs.importRuns({ getState: () => S, add, force: true })
+    const [[, arg]] = h.calls.filter(c => c[0] === 'read')
+    expect(arg.skip).toEqual(['r1', 'r9'])
   })
   it('asks again for reading when only writing was granted', async () => {
     h.status = { status: 'available', granted: true, read: false }

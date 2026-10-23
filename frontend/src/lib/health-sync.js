@@ -12,15 +12,19 @@
 // The web build never gets here (MOBILE is a build-time flag), and iOS answers 'unsupported'.
 import { MOBILE, isAndroid, readJsonFile, writeJsonFile } from './mobile.js'
 import { healthRecords, planSync, writtenIds } from './health-connect.js'
-import { addImported, planImport } from './health-import.js'
+import { addImported, knownIds, planImport } from './health-import.js'
 import { exerciseNameFor } from './i18n-core.js'
 import { EXIDX } from './exercises.js'
 import { speedUnitOf } from './speed.js'
 
 export const HEALTH_FILE = 'opengym-health.json'
-const OFF = { on: false, written: {}, at: 0, error: null, readError: null }
+const OFF = { on: false, written: {}, at: 0, error: null, readError: null, importedAt: 0 }
 // How far back runs are read: what can have been missed while the app was not opened.
 export const IMPORT_DAYS = 30
+// The app comes back to the foreground all through a workout (music, messages, the rest timer):
+// reading 30 days each time costs battery and Health Connect's per-app quota, so a resume reads
+// again only this long after the last read. Launch and a just-granted permission read at once.
+export const IMPORT_EVERY_MS = 15 * 60 * 1000
 // What initHealthSync was given: the store's state and how to add runs to it.
 let hooks = null
 
@@ -147,7 +151,7 @@ export async function enableHealth(S) {
   const h = await loadHealth()
   await saveHealth({ ...h, on: true, error: null })
   const after = await syncHealth(S)
-  if (hooks) importRuns().catch(() => {})
+  if (hooks) importRuns({ force: true }).catch(() => {})
   return { ok: !after?.error, reason: after?.error || null, health: after }
 }
 
@@ -187,25 +191,30 @@ const patchHealth = async patch => {
 /**
  * Reads the last IMPORT_DAYS of runs, walks, hikes and rides from Health Connect and hands the
  * ones the log lacks to `add(records)` (which files them, lib/health-import.js addImported). A
- * no-op while it is off. A refused read is kept as `readError: 'permission'`, for Settings to
- * offer the permission again; writing goes on either way. Resolves with how many were added.
+ * no-op while it is off, and within IMPORT_EVERY_MS of the last read unless `force`d. The ids
+ * already in the log or deleted from it go along, so the native side adds up no distance for
+ * them. A refused read is kept as `readError: 'permission'`, for Settings to offer the
+ * permission again; writing goes on either way. Resolves with how many were added.
  */
 let importing = null
-export function importRuns(getState = hooks?.getState, add = hooks?.add) {
+export function importRuns({ force = false, getState = hooks?.getState, add = hooks?.add } = {}) {
   if (!MOBILE || !getState || !add) return Promise.resolve(0)
   if (importing) return importing
   importing = (async () => {
-    if (!(await loadHealth()).on) return 0
+    const h = await loadHealth()
+    if (!h.on) return 0
+    if (!force && Date.now() - (Number(h.importedAt) || 0) < IMPORT_EVERY_MS) return 0
     const p = await plugin()
     if (!p) return 0
     let records
     try {
-      records = (await p.HC.readSessions({ since: Date.now() - IMPORT_DAYS * 864e5 }))?.sessions || []
+      const since = Date.now() - IMPORT_DAYS * 864e5
+      records = (await p.HC.readSessions({ since, skip: knownIds(getState()) }))?.sessions || []
     } catch (e) {
       if (e?.code === 'permission') await patchHealth({ readError: 'permission' })
       return 0
     }
-    await patchHealth({ readError: null })
+    await patchHealth({ readError: null, importedAt: Date.now() })
     if (!planImport(records, getState(), { nameOf }).length) return 0
     return add(records)
   })().catch(() => 0).finally(() => { importing = null })
@@ -235,5 +244,5 @@ export function initHealthSync(getState) {
   }).catch(() => {})
   // Once at launch, for a workout finished just before the app was closed. Reading the file here
   // also settles whether it is on, which the saves wait for (syncHealth).
-  setTimeout(() => loadHealth().then(() => syncHealth(getState())).catch(() => {}).then(() => importRuns()), 3000)
+  setTimeout(() => loadHealth().then(() => syncHealth(getState())).catch(() => {}).then(() => importRuns({ force: true })), 3000)
 }
