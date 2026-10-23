@@ -22,7 +22,11 @@ const LIB = new URL('../../frontend/src/lib/', import.meta.url)
 // which one, rather than which import chain.
 const MODULES = [
   'i18n-core.js', 'format.js', 'exercises.js', 'exercises-data.js',
-  'history.js', 'muscles.js', 'onerm.js', 'progression.js', 'queue.js'
+  'history.js', 'muscles.js', 'onerm.js', 'progression.js', 'queue.js',
+  // The CrossFit tools (get_wods, muscle_gap, suggest_lift_days, crossfit_records), and the two
+  // the write tools build on (sync-merge, routines).
+  'recovery.js', 'muscle-gap.js', 'bodyweight.js', 'interference.js', 'wods.js', 'wod-draft.js',
+  'rx.js', 'crossfit-records.js', 'rx-history.js', 'skills.js', 'sync-merge.js', 'routines.js'
 ]
 
 let failed = 0

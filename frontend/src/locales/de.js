@@ -2416,4 +2416,6 @@ export default {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': 'Meintest du?',
   'Confirm {0}': '{0} bestätigen',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Krafttage rund um Läufe und WODs: Beine {0} · Oberkörper {1}',
+  'none this week': 'diese Woche keiner',
 }

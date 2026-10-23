@@ -1557,6 +1557,8 @@ export const PT_BR_OVERRIDES = {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': 'Você quis dizer?',
   'Confirm {0}': 'Confirmar {0}',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Dias de musculação conforme suas corridas e WODs: pernas {0} · parte superior {1}',
+  'none this week': 'nenhum nesta semana',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

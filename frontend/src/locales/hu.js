@@ -2399,4 +2399,6 @@ export default {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': 'Erre gondoltál?',
   'Confirm {0}': '{0} megerősítése',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Edzésnapok a futások és WOD-ok körül: láb {0} · felsőtest {1}',
+  'none this week': 'ezen a héten nincs',
 }

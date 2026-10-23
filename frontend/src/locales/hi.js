@@ -2396,4 +2396,6 @@ export default {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': 'क्या आपका मतलब था?',
   'Confirm {0}': '{0} की पुष्टि करें',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': 'दौड़ और WOD के हिसाब से लिफ्ट के दिन: पैर {0} · ऊपरी शरीर {1}',
+  'none this week': 'इस हफ़्ते कोई नहीं',
 }

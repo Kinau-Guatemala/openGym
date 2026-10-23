@@ -1,21 +1,25 @@
 # openGym MCP server
 
 A [Model Context Protocol](https://modelcontextprotocol.io) bridge that lets an external LLM
-application (Claude Desktop, Cursor, Cline, Continue, etc.) read your openGym profile —
-routines, workouts, body-weight log, estimated 1RMs, and muscle balance — directly from your
-self-hosted `./data` directory.
+application (Claude Desktop, Claude Code, Cursor, Cline, Continue, etc.) read your openGym
+profile — routines, workouts, body-weight log, estimated 1RMs, muscle balance, and the CrossFit
+side: posted programs, the hypertrophy gap, lift-day suggestions and records.
 
-It is read-only, runs locally as a stdio process spawned by the LLM client, adds no new
-container, and requires no extra authentication. The LLM never sees passkeys, VAPID keys, or
-session secrets — it can only read the same `state-<uid>.json` files the openGym api already
-writes.
+It reads from one of two sources:
+
+- **file** (`OPENGYM_DATA`): your self-hosted `./data` directory, when the MCP runs on the
+  same machine as the api. No extra authentication: it reads the same `state-<uid>.json` files
+  the api writes, and never sees passkeys, VAPID keys or session secrets.
+- **HTTP** (`OPENGYM_URL`): your instance's own api, for when the data is somewhere the MCP has
+  no disk access to (a Railway deploy, a home server). It signs in with a pairing code, like the
+  mobile app — see [HTTP mode](#http-mode-pairing).
+
+It is read-only, runs locally as a stdio process spawned by the LLM client and adds no new
+container.
 
 The numbers it answers with are computed by the **same pure functions the React UI uses**
 (`frontend/src/lib/*.js`) — `estimate1RM`, `loadOfWorkouts`, `effectiveRoutine`, etc. — so a
 "what's my bench 1RM?" answer matches the Stats screen exactly.
-
-> Phase 1 of a multi-phase plan. Read-only today; long-lived token auth + write tools are
-> planned but not shipped yet. See **Roadmap** below.
 
 ## Quick start
 
@@ -59,15 +63,50 @@ Add the server to your LLM client's MCP config. For Claude Desktop, edit
 }
 ```
 
-For Cursor and other MCP-compatible clients, see the client's MCP docs — the same `command` +
+For Claude Code: `claude mcp add opengym -e OPENGYM_URL=https://gym.example.com -- node /absolute/path/to/openGym/mcp/src/index.js`
+(or `-e OPENGYM_DATA=…` for the file source). For Cursor and other MCP-compatible clients, see the client's MCP docs — the same `command` +
 `args` + `env` shape is what every stdio MCP server expects.
 
 Restart the client; you should see the openGym tools appear with "serving profile \<name\>" on
 the server's stderr.
 
+## HTTP mode (pairing)
+
+1. In openGym, signed in as the profile the agent should read, open **Settings → Account →
+   Pair the mobile app**. It shows a one-time code, valid for 5 minutes.
+2. Redeem it from the machine the LLM client runs on:
+
+   ```bash
+   node src/index.js pair https://gym.example.com ABCD1234
+   ```
+
+   This calls `POST /api/pair/redeem` and stores `{ token, user }` in
+   `~/.config/opengym-mcp/<host>[_<path>].json` (`$XDG_CONFIG_HOME` is honoured), mode `0600`.
+3. Start the server with `OPENGYM_URL=https://gym.example.com` instead of `OPENGYM_DATA`.
+
+Every start calls `GET /api/me`. Once the token is past half its life (`SESSION_DAYS`, 90 by
+default) the api hands back a fresh one, which replaces the stored token, so a server you use
+at least every few weeks never expires. Reads are `GET /api/data`, one per tool call. If the
+token is refused (90 idle days, or *Sign out everywhere*), every tool answers with an `EAUTH`
+error that says to pair again; once you have, the next tool call picks up the new token, with no
+restart. A request that gets no answer within 20 s fails (`OPENGYM_TIMEOUT_MS` to change it).
+
+**Security.** The token is a **full session of that profile**, the same the mobile app holds:
+whoever has the file can read and change everything in it, and if the profile is an admin, the
+admin dashboard too. Keep the file private (it is created `0600` in a `0700` directory; don't
+sync it, commit it or paste it anywhere). To revoke it, use *Sign out everywhere* in Settings,
+which ends every session of the profile, the phone's included. The token (and the pairing code)
+only travel over **HTTPS**: an `http://` URL is refused unless it points at this machine
+(`localhost`, `127.0.0.1`, `::1`), or you set `OPENGYM_ALLOW_HTTP=1` because the network in between
+is trusted. Redirects are not followed (they would drop the token): use the final `https://`
+address.
+
+Text in a posted program came from a photo and is returned as `raw_untrusted` (and benchmark
+names with a note saying so): the agent should treat it as data, never as instructions.
+
 ## Tools
 
-Nine read-only tools in v1:
+Thirteen read-only tools:
 
 | Tool | What it answers |
 |---|---|
@@ -80,6 +119,10 @@ Nine read-only tools in v1:
 | `get_bodyweight` | Weigh-ins with the latest weight, the goal line, and deltas vs goal. |
 | `estimate_1rm` | All-time best 1RM for an exercise + the trend, or a PR table across all exercises. |
 | `muscle_balance` | Which muscles I've trained this week/month/all-time, ranked + which I've neglected. |
+| `get_wods` | The CrossFit programs saved for a date range: tracks, blocks, movements with the resolved exercise (an unconfirmed best guess is flagged `exercise_guess`, with its candidates), dose and Rx. Image text is marked untrusted. |
+| `muscle_gap` | The hypertrophy gap: effective sets per week per muscle against the target, split into WOD / Pump / own lifting. |
+| `suggest_lift_days` | Which of the next 7 days suit lower- and upper-body lifting around the usual runs and the posted WODs. |
+| `crossfit_records` | Benchmark scores (Rx and scaled), lift PRs from WODs, the movements furthest from Rx, and gymnastics skills. |
 
 `get_routine` and `preview_session` answer two different questions, and confusing them is the
 easiest way for a coach to give wrong advice. `get_routine` reports what the routine *stores*.
@@ -110,10 +153,10 @@ dependencies landed in `frontend/`, no public exports changed.
 - **One runtime dependency beyond the MCP SDK:** none. No database driver, no HTTP framework.
 - **No new container.** stdio transport is spawned by the LLM client; nothing to add to
   `docker-compose.yml`.
-- **No new auth.** The filesystem is the boundary — same as `docker compose` running on the
-  user's box. No passkey material, VAPID keys, or session secrets ever cross it.
-- **No telemetry, no network.** Reads `./data/*.json` and exits when the LLM client
-  disconnects.
+- **No new auth.** File mode: the filesystem is the boundary — same as `docker compose` running
+  on the user's box. HTTP mode: the mobile app's pairing, with no new server code.
+- **No telemetry.** File mode makes no network calls; HTTP mode talks only to `OPENGYM_URL`.
+  Either exits when the LLM client disconnects.
 
 ## Tests
 
@@ -121,8 +164,9 @@ dependencies landed in `frontend/`, no public exports changed.
 cd mcp && npm test
 ```
 
-58 cases seeding state from `frontend/src/lib/demoSeed.js` (the same deterministic fixture
-the public demo runs on). Pins JSON shape and the user-facing edge cases: rest-day override,
+The tool tests seed state from `frontend/src/lib/demoSeed.js` (the same deterministic fixture
+the public demo runs on) and run twice (vitest projects `file` and `http`): once against the file
+source and once against a stub api over real HTTP (`test/source.js`). Pins JSON shape and the user-facing edge cases: rest-day override,
 missing routine, zero-workout history, no synced state, superset links, three 1RM formulas.
 "Today" is pinned via `vi.useFakeTimers({ now: ..., toFake: ['Date'] })` so date-dependent
 tools see consistent values regardless of when the suite runs. The pure lib functions have
@@ -133,10 +177,9 @@ their own 92 tests in `frontend/src/lib/*.test.js`.
 - **Done (Phase 1):** read-only stdio, 8 tools, direct `./data` access.
 - **Done (Phase 1.5):** `preview_session` — the policy's next prescription, the opening set
   rows it produces, and which of plan / confirmed weight / history each number came from.
-- **Phase 2:** read+write over stdio. Requires a long-lived token auth path minted from the
-  admin dashboard (new `./data/tokens.json`) and a write-lock against the web UI's read-modify-
-  write of `state-<uid>.json`. Tools: `log_workout`, `add_bodyweight`, `edit_routine`,
-  `assign_weekday`, `override_day`.
+- **Done:** the HTTP source with pairing, and the CrossFit read tools.
+- **Next:** write tools over the HTTP source (`PUT /api/data` with `baseRev`, server-stamped,
+  `dry_run` by default): `create_routine`, `update_routine`, `assign_weekday`, `log_workout`.
 - **Phase 3:** Streamable HTTP transport, opt-in 4th container in `docker-compose.yml`. Same
   tool implementations, second transport — the MCP SDK supports both behind one tool registration.
 

@@ -1,8 +1,12 @@
-/* opengym-mcp state — reads ./data/state-<uid>.json + db.json (read-only). Cached with an
-   fs.watch + mtime fallback so a session the api server just wrote is visible on the next
-   tool call without a restart. */
+/* opengym-mcp state — one async interface, `source.read()` / `source.user()`, over two sources:
+   - file (OPENGYM_DATA): reads ./data/state-<uid>.json + db.json (read-only). Cached with an
+     fs.watch + mtime fallback so a session the api server just wrote is visible on the next
+     tool call without a restart.
+   - HTTP (OPENGYM_URL): GET /api/data with the token `pair` stored (remote.js), for an instance
+     the MCP has no disk access to (Railway). Writes (T13) go through the same source object. */
 import fs from 'node:fs'
 import path from 'node:path'
+import { connect } from './remote.js'
 
 const DATA_DIR = process.env.OPENGYM_DATA || path.join(process.cwd(), 'data')
 
@@ -81,16 +85,40 @@ function ambiguousUid(ids) {
   return err
 }
 
-// Idempotent. Picks the uid, loads db.json, attaches the watcher, primes state.
-export function init() {
+// The source every read goes through; null until init() succeeds, so a failed start (a stale
+// token, an unreachable server) is retried on the next tool call and reported there.
+let _source = null
+
+// Idempotent. Picks the source: OPENGYM_URL is the HTTP source, else the data directory.
+export async function init() {
+  if (_source) return
+  const url = (process.env.OPENGYM_URL || '').trim()
+  if (url) {
+    const remote = await connect(url)
+    // A refused token drops the source, so the next call connects again with whatever `pair`
+    // stored meanwhile: re-pairing needs no restart of the MCP.
+    const read = async () => {
+      try { return withDefaults(await remote.read()) } catch (e) {
+        if (e.code === 'EAUTH' && _source?.read === read) _source = null
+        throw e
+      }
+    }
+    _source = { read, user: remote.user, remote }
+    return
+  }
+  initFile()
+  _source = FILE
+}
+
+// Picks the uid, loads db.json, attaches the watcher, primes state.
+function initFile() {
   if (_uid !== null) return
   if (!fs.existsSync(DATA_DIR)) throw new Error(`OPENGYM_DATA dir does not exist: ${DATA_DIR}`)
   _uid = resolveUid()
   reloadDb()
   const file = stateFile(_uid)
   if (fs.existsSync(file)) {
-    _state = readJsonOrNull(file)
-    if (_state) _state = Object.assign({}, defaultsShape(), _state)
+    _state = withDefaults(readJsonOrNull(file))
     try { _loadedMtime = fs.statSync(file).mtimeMs } catch {}
   }
   if (_watcher) _watcher.close()
@@ -113,8 +141,20 @@ export function init() {
 }
 
 // Returns the state object, or null for a fresh account that never signed in on a device.
-export function getState() {
-  init()
+export async function getState() {
+  await init()
+  return _source.read()
+}
+
+// Returns the user record (id + name). No passkey material, no VAPID keys, no push subs.
+export async function getUser() {
+  await init()
+  return _source.user()
+}
+
+const FILE = { read: async () => readFile(), user: async () => fileUser() }
+
+function readFile() {
   const file = stateFile(_uid)
   // Re-read if the file's mtime changed since our last load — covers watcher omissions and
   // platforms with no fs.watch.
@@ -125,9 +165,7 @@ export function getState() {
   if (_state === undefined || mtime !== _loadedMtime) {
     const fresh = readJsonOrNull(file)
     if (fresh) {
-      // Same shape the frontend builds on pullState — defaults merged with stored state so any
-      // field the app added since the snapshot was last saved shows up undefined-safe.
-      _state = Object.assign({}, defaultsShape(), fresh)
+      _state = withDefaults(fresh)
       _loadedMtime = mtime
     } else if (_state === undefined) {
       _state = null  // no state file at all — never signed in on a device
@@ -136,9 +174,7 @@ export function getState() {
   return _state
 }
 
-// Returns the user record (id + name). No passkey material, no VAPID keys, no push subs.
-export function getUser() {
-  init()
+function fileUser() {
   const u = _db.users.find(x => x.id === _uid) || { id: _uid, name: 'Profile', created: null }
   return { id: u.id, name: u.name, created: u.created || null }
 }
@@ -152,7 +188,15 @@ export function _seedStateForTests(state) {
   _state = state
   _loadedMtime = Number.MAX_SAFE_INTEGER   // never re-read from disk in a test
   if (_watcher) { _watcher.close(); _watcher = null }
+  _source = FILE
 }
+
+// Test-only: answer from `source`, or null to pick it again from the env on the next read.
+export function _useSourceForTests(source) { _source = source }
+
+// Same shape the frontend builds on pullState — defaults merged with stored state so any
+// field the app added since the snapshot was last saved shows up undefined-safe.
+const withDefaults = S => (S ? Object.assign({}, defaultsShape(), S) : null)
 
 function defaultsShape() {
   return {

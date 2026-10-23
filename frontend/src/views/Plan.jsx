@@ -22,6 +22,7 @@ import { coachAvailable } from '../lib/coach.js'
 import { queueOf, queueView } from '../lib/queue.js'
 import { deriveSessionName } from '../lib/session-merge.js'
 import { markUndone, undoMarks } from '../lib/sync-merge.js'
+import { liftDays } from '../lib/interference.js'
 import {
   scheduleModeOf, queueRecovery, rotationIds, saveRotation, startNewPass, startPass, stopPass,
   chooseRotation, chooseFixedWeek,
@@ -366,6 +367,8 @@ function Schedule({ S, update, nav, mode }) {
       </>}
     </div>}
 
+    <LiftDaysHint S={S} />
+
     {/* Weekly muscle volume is analysis: it moved to Stats, next to Muscle balance. Stats only
         shows that card once there is a routine, so the link waits for one too. */}
     {S.routines.length > 0 && <Section className="plan-link">
@@ -373,6 +376,16 @@ function Schedule({ S, update, nav, mode }) {
         accessory="chevron" onClick={() => nav('/stats?focus=weekly-volume')} />
     </Section>}
   </>
+}
+
+/* Which of the next seven days suit legs and upper body around the usual runs and the posted
+   WODs (lib/interference.js). Only shown once something is in the way: with no runs and no
+   programs every day is fine, and saying so is noise. */
+function LiftDaysHint({ S }) {
+  const days = liftDays(S.workouts, S.wods, Date.now(), S)
+  if (!days.some(d => d.reasons.length)) return null
+  const list = ok => days.filter(ok).map(d => t(DAYS[new Date(d.date + 'T12:00:00').getDay()])).join(', ') || t('none this week')
+  return <p className="sect-f plan-lift-days">{t('Lift days around your runs and WODs: legs {0} · upper body {1}', list(d => d.lowerOk), list(d => d.upperOk))}</p>
 }
 
 /* ================================ Routines ================================ */
