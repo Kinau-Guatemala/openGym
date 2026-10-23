@@ -165,6 +165,10 @@ Complete its normal browser sign-in and copy the token it prints. openGym never 
 that flow — it only ever receives the finished token. (Claude also accepts an Anthropic API key
 here, under the same chip; the setup token is the route for a Claude subscription.)
 
+Which account is billed follows the credential: a **setup token** spends the Claude Pro/Max
+subscription it was made on, an **API key** is billed per token to its Anthropic Console
+account. Both read routine images the same way.
+
 **3. Connect it.** In the app: **Settings → Account → Admin dashboard**, the **AI Coach** card.
 
 - Toggle the card on.
@@ -212,9 +216,12 @@ never names a catalogue id here.
   `GET /api/coach/status` — **never** as a proposal, so a plan suggestion waiting for an answer
   is left alone and no "proposal ready" notification is sent. The app clears it with
   `POST /api/coach/parsed/ack`.
-- **Anthropic, OpenAI or an OpenAI-compatible endpoint** (and the fixture, which answers a
-  canned program). Any other provider is refused with `unsupported` before anything is counted
-  against the daily cap. Behind a compatible endpoint the model decides: pick a vision model.
+- **Anthropic, OpenAI, Claude (Anthropic) through the Agent SDK, or an OpenAI-compatible
+  endpoint** (and the fixture, which answers a canned program). Any other provider is refused
+  with `unsupported` before anything is counted against the daily cap. On the Agent SDK the
+  image goes to the runtime's stdin as one streaming-input message (image blocks, then the
+  text) and never into the job directory; a setup token bills the Claude subscription, an API
+  key the Console account. Behind a compatible endpoint the model decides: pick a vision model.
   A refusal of the image (a 4xx saying images aren't supported, or "text-only") and, on a
   compatible endpoint only, an empty program both fail the job with `novision`, since a
   text-only model behind a gateway can drop the image and answer `tracks: []`.

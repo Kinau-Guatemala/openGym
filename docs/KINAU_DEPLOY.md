@@ -47,7 +47,7 @@ Release tags follow upstream with a counter: `v1.4.1-kinau.1`, `v1.4.1-kinau.2`,
    FIRST_USER_ADMIN=1      # the first profile created becomes admin
    ```
 
-   Leave `API_TARGET` unset. The Anthropic and OpenAI coach providers are plain HTTPS calls and need no `coach` image.
+   Leave `API_TARGET` unset for the Anthropic, OpenAI or OpenAI-compatible coach providers: they are plain HTTPS calls and need no `coach` image. Set `API_TARGET=coach` and build (`docker compose up -d --build api`) only to run the Coach on a Claude subscription through the Agent SDK (see [The AI Coach](#the-ai-coach-both-targets)).
 
 4. Start the stack and create the profile:
 
@@ -117,11 +117,18 @@ Redeploy `web`. Every `/api` call hanging is the symptom of a wrong resolver.
 
 ## The AI Coach (both targets)
 
-The CrossFit module's image parsing runs on the Coach with Anthropic or OpenAI.
+The CrossFit module's image parsing runs on the Coach with Anthropic, OpenAI, an OpenAI-compatible endpoint (pick a vision model), or **Claude (Anthropic)** through the Agent SDK.
 
 1. **Settings → Account → Admin dashboard → AI Coach:**
    - **Set up the Coach**, turn the master switch on, and pick **Anthropic** or **OpenAI**;
    - paste the API key, **List models**, choose a vision-capable model, then **Test the Coach**.
+
+   **Or on a Claude subscription** (Pro/Max), with no per-token key:
+   - build the api with the runtime in it: `API_TARGET=coach docker compose up -d --build api` (`--build` matters: with a prebuilt `image:` set, compose would pull the default image, which has no runtime);
+   - on a machine where you use Claude Code, run `claude setup-token`, finish the browser sign-in and copy the token;
+   - pick **Claude (Anthropic)**, **Add CLI token**, paste it, then **Test the Coach**.
+
+   Who pays follows the credential: a setup token spends the Claude subscription it was made on, an Anthropic API key pasted under the same chip is billed to its Console account. A setup token binds to the first profile that uses it (see AI_COACH.md, *Whose account pays*). Use your own account, not a work subscription, unless your employer agrees.
 2. Open **Plan → Coach** once and accept the consent screen. It lists the shared image.
 3. Share a routine image to openGym (Android APK) or upload it on the CrossFit screen. It parses into the review screen.
 

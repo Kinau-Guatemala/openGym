@@ -2614,8 +2614,8 @@ paths:
 
         The result arrives as `parsed` on `GET /api/coach/status`, never as a proposal, and
         a proposal already waiting is left alone. Needs consent at the current version (it
-        names the `image` category) and a provider that sends images: Anthropic, OpenAI or an
-        OpenAI-compatible endpoint (or the fixture). Any other provider is refused with
+        names the `image` category) and a provider that sends images: Anthropic, OpenAI, Claude
+        (Agent SDK) or an OpenAI-compatible endpoint (or the fixture). Any other provider is refused with
         `unsupported`. A model that refuses the image, or (compatible only) answers an empty
         program, fails the job with `novision`.
       requestBody:
@@ -4023,6 +4023,7 @@ components:
               keyOptional: { type: boolean }
               keyPlaceholder: { oneOf: [{ type: string }, { type: 'null' }] }
               defaultModel: { oneOf: [{ type: string }, { type: 'null' }] }
+              images: { type: boolean, description: Whether it reads routine images (parse-wod). }
               connected: { type: boolean, description: Whether a credential is already filed for it. }
         model: { type: string, description: The model in force for the active provider. }
         models: { type: object, description: Model per provider. Switching provider keeps them all. }

@@ -57,6 +57,29 @@ async function sdk() {
   try { cached = await import(PKG); } catch { cached = null; }
   return cached;
 }
+/** Tests only: stand a stub in for the SDK module (undefined resolves the real one again). */
+export function setSdkForTest(m) { cached = m; }
+
+/* What query() is asked. Without images it is the plain string it always was. With them (a
+   parse-wod job) it is the SDK's streaming-input mode: an async iterable yielding one
+   SDKUserMessage whose content is the image blocks, then the text, as the Messages API takes
+   them (sdk.d.ts: `prompt: string | AsyncIterable<SDKUserMessage>`). The base64 goes from here
+   to the runtime's stdin and nowhere else: no file, no log line, no error text. */
+export function promptFor(prompt, images) {
+  if (!images || !images.length) return prompt;
+  const message = {
+    type: 'user',
+    parent_tool_use_id: null,
+    message: {
+      role: 'user',
+      content: [
+        ...images.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.mime, data: i.data } })),
+        { type: 'text', text: prompt }
+      ]
+    }
+  };
+  return (async function* () { yield message; })();
+}
 
 /* The package does not expose ./package.json through its exports map, so ask the resolver where
    the entry point landed and read the manifest sitting next to it. Best-effort by design: the
@@ -92,7 +115,14 @@ export default {
     return { ok: true, version: v ? `Claude Agent SDK ${v}` : 'Claude Agent SDK' };
   },
 
-  async invoke({ prompt, jobDir, env, model, timeoutMs }) {
+  async invoke(opts) {
+    const r = await this.run(opts);
+    // Whatever the runtime said back, the image is not in it.
+    for (const i of opts.images || []) if (i.data && r.stderr) r.stderr = r.stderr.split(i.data).join('[image]');
+    return r;
+  },
+
+  async run({ prompt, images, jobDir, env, model, timeoutMs }) {
     const m = await sdk();
     if (!m) return { code: -1, text: '', stderr: `${PKG} is not installed`, timedOut: false, spawnError: true };
 
@@ -102,7 +132,7 @@ export default {
 
     try {
       for await (const message of m.query({
-        prompt,
+        prompt: promptFor(prompt, images),
         options: {
           ...LOCKDOWN,
           abortController,
@@ -118,13 +148,20 @@ export default {
         }
       })) {
         if (message.type !== 'result') continue;
-        if (message.subtype === 'success') text = message.result;
+        // An API refusal arrives as a "success" flagged is_error, its words in `result`. Led by
+        // the status, like the HTTPS adapters' stderr, so the pipeline classifies it the same
+        // way (a 400 refusing an image is `novision`) instead of parsing it as the answer.
+        if (message.subtype === 'success' && message.is_error) failure = `${message.api_error_status || ''} ${message.result || 'the Agent SDK reported an error'}`.trim();
+        else if (message.subtype === 'success') text = message.result;
         // A non-success result carries its reason in `subtype` (error_during_execution,
         // error_max_turns, …) and `stop_reason`. There is no error list on it — do not invent one.
         else failure = `the Agent SDK stopped: ${message.subtype}${message.stop_reason ? ` (${message.stop_reason})` : ''}`;
       }
     } catch (e) {
       if (timedOut) return { code: -1, text: '', stderr: 'the Agent SDK timed out', timedOut: true, spawnError: false };
+      // query() throws after an is_error result ("Claude Code returned an error result"); the
+      // result's own words are the failure, not a runtime that failed to start.
+      if (failure) return { code: 1, text: '', stderr: failure, timedOut: false, spawnError: false };
       return { code: -1, text: '', stderr: stderr || (e instanceof Error ? e.message : String(e)), timedOut: false, spawnError: true };
     } finally {
       clearTimeout(timer);
