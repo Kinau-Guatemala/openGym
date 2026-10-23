@@ -1,8 +1,10 @@
-/* The read-only tools. Each handler returns JSON; labels.js pre-substitutes any
+/* The tools: the read tools, and four write tools that only save with dry_run: false. Each handler returns JSON; labels.js pre-substitutes any
    {0}/{1} template the lib returns so the LLM gets final text, not template strings.
    ISO dates are validated on the way in; the handlers never see 'yesterday'. */
+import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { getState } from './state.js'
+import { getState, writeState } from './state.js'
+import { createRoutine, updateRoutine, assignWeekday, logWorkout } from './writes.js'
 import {
   fmt, setLabel, exLine, muscleName, policyName, friendlyDuration, ratio, muscleOrder
 } from './labels.js'
@@ -16,7 +18,7 @@ import {
   bestSetOf, best1RM, e1rmSeries, DEFAULT_FORMULA, REP_CAP
 } from '../../frontend/src/lib/onerm.js'
 import { loadOfWorkouts, rankOf, levelsOf } from '../../frontend/src/lib/muscles.js'
-import { policyFor } from '../../frontend/src/lib/progression.js'
+import { policyFor, POLICIES } from '../../frontend/src/lib/progression.js'
 import { buildSessionEntries, startsFromLast } from '../../frontend/src/lib/session-start.js'
 import { wodOf } from '../../frontend/src/lib/wods.js'
 import { includeOf } from '../../frontend/src/lib/wod-draft.js'
@@ -843,12 +845,125 @@ export const crossfitRecords = {
   }
 }
 
+/* ---------- writes ---------- */
+
+// Every write tool shows its change first. A dry run (the default) runs the change on the state it
+// reads and returns the diff, saving nothing, plus `confirm`: a hash of that diff. A write
+// (dry_run: false) needs it back, and the change it makes must give the same diff on the profile
+// as it is when saved, or nothing is saved (ESTALE). So an approval covers exactly the diff the
+// user saw: a write with no dry run before it, or over a profile that changed since (another
+// device, a conflict re-run), can't happen. Ids a write creates are left out of a dry run, since
+// the real write makes new ones. Writes go through the HTTP source (state.js writeState).
+const dryRun = () => z.boolean().optional().describe('Defaults to true: return the change as a diff, and its `confirm` token, saving nothing. Set false, with that `confirm`, only after the user has seen this exact diff and approved it.')
+const confirmArg = () => z.string().min(1).max(64).optional().describe('Required with dry_run: false: the `confirm` token from the dry run of this same change, after the user approved its diff.')
+const DRY_NOTE = 'Nothing was saved. Show this diff to the user; only once they approve it, call again with the same arguments, dry_run: false and this confirm token.'
+export const confirmOf = diff => createHash('sha256').update(JSON.stringify(diff)).digest('hex').slice(0, 16)
+const fail = (code, message) => Object.assign(new Error(message), { code })
+
+async function runWrite(change, args, dry_run, confirm) {
+  if (dry_run !== false) {
+    const S = await getState()
+    if (!S) throw fail('EINVAL', 'this profile has no synced state yet: open openGym on a device and sign in once, then try again')
+    const { diff } = change(S, args)
+    return { dry_run: true, saved: false, diff, confirm: confirmOf(diff), note: DRY_NOTE }
+  }
+  if (!confirm) throw fail('EINVAL', 'dry_run: false needs the `confirm` token from a dry run of this change that the user approved. Dry-run it first and show the user the diff')
+  const out = await writeState(S => {
+    const res = change(S, args)
+    if (confirmOf(res.diff) !== confirm) throw fail('ESTALE', `nothing was saved: on the profile as it is now this change is not the one approved (the profile changed since the dry run, or the arguments differ). Dry-run it again and get it approved again. It would now be:\n${res.diff.join('\n')}`)
+    return res
+  })
+  return { dry_run: false, saved: true, diff: out.diff, ...out.result, rev: out.rev }
+}
+
+const plannedExercise = () => z.object({
+  id: z.string().min(1).describe('A catalogue exercise id (as get_wods, get_routine and get_workout report them), or one of the profile\'s custom exercises. Never a name.'),
+  sets: z.number().int().min(1).max(20).optional().describe('Working sets. Defaults to 3 (1 for cardio).'),
+  reps: z.number().int().min(1).max(100).optional().describe('Reps per set (the top of a range). Defaults to 10.'),
+  reps_min: z.number().int().min(1).max(100).optional().describe('Bottom of a rep range ("8–12" is reps_min 8, reps 12), for double progression.'),
+  weight: z.number().min(0).max(1000).optional().describe('Starting weight in the profile\'s unit. Usually leave it out: the first session takes it from the lifting history of this exercise, never from a metcon row.'),
+  sec: z.number().int().min(1).max(3600).optional().describe('Hold length, for a timed exercise.'),
+  min: z.number().min(1).max(600).optional().describe('Minutes, for a cardio exercise.'),
+  rest_sec: z.number().int().min(0).max(900).optional().describe('This exercise\'s own rest; 0 or absent uses the global rest timer.')
+})
+
+export const createRoutineTool = {
+  name: 'create_routine',
+  description: 'Create a routine in the user\'s plan from catalogue exercise ids, with the app\'s defaults for anything not given (3 × 10 for weights). Defaults to a dry run that returns the diff and a confirm token, saving nothing; save with dry_run: false and that confirm only after the user approved the diff. The saved result carries the new routine_id, for assign_weekday. Unknown ids are refused. Needs the HTTP source (OPENGYM_URL).',
+  schema: {
+    name: z.string().min(1).max(60),
+    exercises: z.array(plannedExercise()).min(1).max(30),
+    progression: z.enum(POLICIES).optional().describe('The routine\'s progression policy. Defaults to the app\'s (linear for weights).'),
+    dry_run: dryRun(),
+    confirm: confirmArg()
+  },
+  handler: async ({ dry_run, confirm, ...args }) => runWrite(createRoutine, args, dry_run, confirm)
+}
+
+export const updateRoutineTool = {
+  name: 'update_routine',
+  description: 'Rename a routine and/or replace its exercise list (the list given becomes the routine, in that order). An exercise that stays keeps its other settings (rest, increment, superset); only the fields given change. Defaults to a dry run that returns the diff and a confirm token; save with dry_run: false and that confirm only after the user approved the diff. Needs the HTTP source (OPENGYM_URL).',
+  schema: {
+    routine_id: z.string().min(1).describe('From list_routines.'),
+    name: z.string().min(1).max(60).optional(),
+    exercises: z.array(plannedExercise()).min(1).max(30).optional().describe('The whole new list. Leave out to keep the exercises.'),
+    dry_run: dryRun(),
+    confirm: confirmArg()
+  },
+  handler: async ({ dry_run, confirm, ...args }) => runWrite(updateRoutine, args, dry_run, confirm)
+}
+
+export const assignWeekdayTool = {
+  name: 'assign_weekday',
+  description: 'Put routines on a weekday of the user\'s weekly plan (Sunday=0 … Saturday=6), replacing what is there (an empty list makes it a rest day) or adding to it. Other days are left as they are. In a rotation, weekday routines ride along beside the loop. Defaults to a dry run that returns the diff and a confirm token; save with dry_run: false and that confirm only after the user approved the diff. Needs the HTTP source (OPENGYM_URL).',
+  schema: {
+    weekday: z.number().int().min(0).max(6),
+    routine_ids: z.array(z.string().min(1)).max(6).describe('Routine ids from list_routines or create_routine.'),
+    mode: z.enum(['replace', 'add']).optional().describe('Defaults to replace.'),
+    dry_run: dryRun(),
+    confirm: confirmArg()
+  },
+  handler: async ({ dry_run, confirm, ...args }) => runWrite(assignWeekday, args, dry_run, confirm)
+}
+
+export const logWorkoutTool = {
+  name: 'log_workout',
+  description: 'Log a session the user already did (e.g. a run with no phone at hand, or lifting they tell you about), filed like a past workout logged in the app: it counts for progression, PRs and effort like any other. Per exercise, the sets as done: weight × reps (optionally RIR), a hold in seconds, or minutes for cardio (optionally calories, metres, speed in km/h). Weights in the profile\'s unit. Only what the user says they did; never invent numbers. Defaults to a dry run that returns the diff and a confirm token; save with dry_run: false and that confirm only after the user approved the diff. Needs the HTTP source (OPENGYM_URL).',
+  schema: {
+    date: isoDate().describe('The day it was done, YYYY-MM-DD; not in the future.'),
+    start_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be HH:MM').optional().describe('Local start time. Defaults to 18:00, or to "just finished" for today.'),
+    duration_min: z.number().int().min(1).max(600).optional().describe('Defaults to 60.'),
+    name: z.string().max(60).optional(),
+    note: z.string().max(500).optional(),
+    entries: z.array(z.object({
+      id: z.string().min(1).describe('Catalogue exercise id (e.g. 0685 run) or a custom exercise\'s.'),
+      sets: z.array(z.object({
+        w: z.number().min(0).max(1000).optional(),
+        r: z.number().int().min(0).max(1000).optional(),
+        rir: z.number().min(0).max(10).optional(),
+        sec: z.number().int().min(0).max(36000).optional(),
+        min: z.number().min(0).max(1440).optional(),
+        cal: z.number().min(0).max(10000).optional(),
+        m: z.number().min(0).max(1000000).optional(),
+        speed: z.number().min(0).max(100).optional()
+      })).min(1).max(50)
+    })).min(1).max(30),
+    dry_run: dryRun(),
+    confirm: confirmArg()
+  },
+  handler: async ({ dry_run, confirm, ...args }) => runWrite((S, a) => logWorkout(S, a), args, dry_run, confirm)
+}
+
 /* ---------- registration list ---------- */
 
-export const TOOLS = [
+export const READ_TOOLS = [
   listRoutines, getRoutine, previewSession, getWeekPlan, listWorkouts, getWorkout, getBodyweight, estimate1rm, muscleBalance,
   getWods, muscleGapTool, suggestLiftDays, crossfitRecords
 ]
+export const WRITE_TOOLS = [createRoutineTool, updateRoutineTool, assignWeekdayTool, logWorkoutTool]
+// Read-only unless asked for: a setup that only wants answers never exposes a tool that writes.
+export const writesEnabled = () => process.env.OPENGYM_MCP_WRITES === '1'
+export const TOOLS = writesEnabled() ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS
 
 function noState() {
   return {

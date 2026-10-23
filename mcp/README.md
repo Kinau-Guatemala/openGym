@@ -2,7 +2,7 @@
 
 A [Model Context Protocol](https://modelcontextprotocol.io) bridge that lets an external LLM
 application (Claude Desktop, Claude Code, Cursor, Cline, Continue, etc.) read your openGym
-profile — routines, workouts, body-weight log, estimated 1RMs, muscle balance, and the CrossFit
+profile, and in HTTP mode change it once you approve: routines, workouts, body-weight log, estimated 1RMs, muscle balance, and the CrossFit
 side: posted programs, the hypertrophy gap, lift-day suggestions and records.
 
 It reads from one of two sources:
@@ -14,8 +14,9 @@ It reads from one of two sources:
   no disk access to (a Railway deploy, a home server). It signs in with a pairing code, like the
   mobile app — see [HTTP mode](#http-mode-pairing).
 
-It is read-only, runs locally as a stdio process spawned by the LLM client and adds no new
-container.
+It runs locally as a stdio process spawned by the LLM client and adds no new container. The file
+source is read-only; the HTTP source can also write, through the api, and only after a dry run
+(see [Write tools](#write-tools)).
 
 The numbers it answers with are computed by the **same pure functions the React UI uses**
 (`frontend/src/lib/*.js`) — `estimate1RM`, `loadOfWorkouts`, `effectiveRoutine`, etc. — so a
@@ -67,6 +68,9 @@ For Claude Code: `claude mcp add opengym -e OPENGYM_URL=https://gym.example.com 
 (or `-e OPENGYM_DATA=…` for the file source). For Cursor and other MCP-compatible clients, see the client's MCP docs — the same `command` +
 `args` + `env` shape is what every stdio MCP server expects.
 
+To let the agent change routines, the week plan and the log (HTTP mode only), add
+`"OPENGYM_MCP_WRITES": "1"` to `env` (see [Write tools](#write-tools)).
+
 Restart the client; you should see the openGym tools appear with "serving profile \<name\>" on
 the server's stderr.
 
@@ -106,7 +110,9 @@ names with a note saying so): the agent should treat it as data, never as instru
 
 ## Tools
 
-Thirteen read-only tools:
+Thirteen read tools, and four write tools when `OPENGYM_MCP_WRITES=1`.
+
+### Read tools
 
 | Tool | What it answers |
 |---|---|
@@ -131,6 +137,40 @@ easiest way for a coach to give wrong advice. `get_routine` reports what the rou
 session. The routine's own weight is the last fallback the session builder consults, not the
 first; its reps hold unless a policy that moves reps moved them, or the profile starts planned
 sessions from the last session (`starts_from`). Ask `preview_session` before naming a weight.
+
+### Write tools
+
+| Tool | What it changes |
+|---|---|
+| `create_routine` | Adds a routine built from catalogue exercise ids, with the app's defaults for anything not given (3 × 10 for weights). Unknown ids are refused. Returns the new `routine_id`. |
+| `update_routine` | Renames a routine and/or replaces its exercise list. An exercise that stays keeps its other settings (rest, increment, superset). |
+| `assign_weekday` | Puts routines on a weekday (Sunday=0 … Saturday=6), replacing what's there or adding to it. Other days are left as they are. |
+| `log_workout` | Logs a session already done (a run with no phone at hand, lifting the user tells you about), filed the way the app files a past workout. |
+
+- **Off unless asked for.** The write tools are registered only when the server starts with
+  `OPENGYM_MCP_WRITES=1`; otherwise the server is read-only and the client never sees them.
+- **`dry_run` defaults to `true` on every write tool.** A dry run returns the change as a readable
+  `diff`, and a `confirm` token (a hash of that diff), saving nothing.
+  - `dry_run: false` needs that token back.
+  - The change is computed again on the profile as it is when saved, and it is saved only if it
+    makes the same diff. Otherwise it answers `ESTALE` and saves nothing. This also applies to the
+    re-run after a conflict.
+  - So a write can't happen without a dry run, and an approval covers exactly the diff the user
+    saw. Even a client set to "always allow" can't make a write nobody looked at.
+- **HTTP source only.** With `OPENGYM_DATA` the write tools answer `EROFS`: writing state files
+  beside the api would race its own writes. Pair and use `OPENGYM_URL` instead.
+- **How a write is saved.** One `GET /api/data` (the document, its revision and write id), the
+  change applied to a copy, then `PUT /api/data` with `baseRev`/`baseWid` and **without**
+  `stamped`, so the server stamps the change against its stored copy, at server time, the way it
+  does for any API planner (`api/sync-stamps.js`). A phone that syncs later merges it like any
+  other device's change.
+  - If another device wrote in between, the PUT gets a 409. The change is then applied once more
+    to the document that came back with it, and saved.
+  - A second conflict in a row answers `ECONFLICT` and saves nothing.
+  - A change that changes nothing isn't sent.
+
+[`PLAYBOOK-hypertrophy.md`](PLAYBOOK-hypertrophy.md) is the procedure an agent follows to turn the
+gap report into a 2-day lifting plan around CrossFit and runs.
 
 Each tool returns JSON the LLM can format as it likes; structured fields (sets, dates, levels)
 are pre-formatted into human-readable labels in `src/labels.js` so the LLM doesn't need to
@@ -166,7 +206,10 @@ cd mcp && npm test
 
 The tool tests seed state from `frontend/src/lib/demoSeed.js` (the same deterministic fixture
 the public demo runs on) and run twice (vitest projects `file` and `http`): once against the file
-source and once against a stub api over real HTTP (`test/source.js`). Pins JSON shape and the user-facing edge cases: rest-day override,
+source and once against a stub api over real HTTP (`test/source.js`). The write path runs
+against the real api (`test/write-api.test.js` boots `api/server.js` on a temp data directory,
+so `cd api && npm ci` first): server stamping, a phone push after an MCP write, the 409 → retry
+path, and that a dry run never writes. Pins JSON shape and the user-facing edge cases: rest-day override,
 missing routine, zero-workout history, no synced state, superset links, three 1RM formulas.
 "Today" is pinned via `vi.useFakeTimers({ now: ..., toFake: ['Date'] })` so date-dependent
 tools see consistent values regardless of when the suite runs. The pure lib functions have
@@ -178,7 +221,7 @@ their own 92 tests in `frontend/src/lib/*.test.js`.
 - **Done (Phase 1.5):** `preview_session` — the policy's next prescription, the opening set
   rows it produces, and which of plan / confirmed weight / history each number came from.
 - **Done:** the HTTP source with pairing, and the CrossFit read tools.
-- **Next:** write tools over the HTTP source (`PUT /api/data` with `baseRev`, server-stamped,
+- **Done:** write tools over the HTTP source (`PUT /api/data` with `baseRev`, server-stamped,
   `dry_run` by default): `create_routine`, `update_routine`, `assign_weekday`, `log_workout`.
 - **Phase 3:** Streamable HTTP transport, opt-in 4th container in `docker-compose.yml`. Same
   tool implementations, second transport — the MCP SDK supports both behind one tool registration.

@@ -946,7 +946,9 @@ describe('shared: no-state fallback', () => {
       estimate_1rm: {},
       muscle_balance: { period: 'all' }
     }
-    for (const t of TOOLS) {
+    // The write tools build on whatever is there (a first routine for a fresh profile is fine);
+    // test/writes.test.js covers them.
+    for (const t of TOOLS.filter(x => !('dry_run' in x.schema))) {
       const r = await t.handler(calls[t.name] || {})
       expect(r).toHaveProperty('error')
     }

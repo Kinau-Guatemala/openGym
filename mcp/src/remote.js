@@ -74,7 +74,7 @@ async function call(url, method, p, { token, body } = {}) {
   }
   if (res.status === 401 && token) throw pairAgain(url)
   const data = await res.json().catch(e => { if (e?.name === 'TimeoutError') throw unreachable(e); return null })
-  if (!res.ok) throw fail('EHTTP', `openGym answered ${res.status} to ${method} ${p}${data?.error ? `: ${data.error}` : ''}`)
+  if (!res.ok) throw Object.assign(fail('EHTTP', `openGym answered ${res.status} to ${method} ${p}${data?.error ? `: ${data.error}` : ''}`), { status: res.status, data })
   return data
 }
 
@@ -106,6 +106,35 @@ export async function connect(url) {
   return {
     user: async () => user,
     read: async () => (await request('GET', '/api/data'))?.state ?? null,
+    write: mutator => write(request, mutator),
     request
+  }
+}
+
+/**
+ * Applies `mutator` (state → { state, … }, pure) to the profile and saves it: the document and its
+ * revision from one GET /api/data (the write id is inside the document), then PUT /api/data with
+ * that `baseRev`/`baseWid` and no `stamped` flag, so the server stamps the change against the copy
+ * it holds. A 409 means another device wrote in between: the mutator runs again on the document
+ * the conflict carries, once. Returns the mutator's result plus the new `rev`.
+ */
+export async function write(request, mutator) {
+  let { state, rev } = await request('GET', '/api/data')
+  // The api refuses a document with nothing of the profile in it; say why before it does.
+  if (!state) throw fail('EINVAL', 'this profile has no synced state yet: open openGym on a device and sign in once, then try again')
+  for (let attempt = 0; ; attempt++) {
+    const out = mutator(state)
+    // Nothing changed (a day set to what it already holds): no write, no new revision.
+    if (JSON.stringify(out.state) === JSON.stringify(state)) return { ...out, rev, retried: attempt > 0, unchanged: true }
+    try {
+      const r = await request('PUT', '/api/data', { state: out.state, baseRev: rev || 0, ...(typeof state?._wid === 'string' ? { baseWid: state._wid } : {}) })
+      return { ...out, rev: r?.rev ?? null, retried: attempt > 0 }
+    } catch (e) {
+      if (e.status !== 409 || attempt > 0) {
+        if (e.status === 409) throw fail('ECONFLICT', 'the profile changed twice while saving (another device is syncing). Nothing was written; try again')
+        throw e
+      }
+      ;({ state, rev } = e.data || {})
+    }
   }
 }
