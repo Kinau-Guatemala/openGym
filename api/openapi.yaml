@@ -2614,8 +2614,10 @@ paths:
 
         The result arrives as `parsed` on `GET /api/coach/status`, never as a proposal, and
         a proposal already waiting is left alone. Needs consent at the current version (it
-        names the `image` category) and a provider that reads images: Anthropic or OpenAI
-        (or the fixture). Any other provider is refused with `unsupported`.
+        names the `image` category) and a provider that sends images: Anthropic, OpenAI or an
+        OpenAI-compatible endpoint (or the fixture). Any other provider is refused with
+        `unsupported`. A model that refuses the image, or (compatible only) answers an empty
+        program, fails the job with `novision`.
       requestBody:
         required: true
         content:
@@ -3798,7 +3800,7 @@ components:
                 outcome: { type: string, enum: [ready, nochange, applied, dismissed, expired, failed] }
                 errorClass:
                   oneOf: [{ type: string }, { type: 'null' }]
-                  description: e.g. `provider`, `unusable`, `restart`, `forgotten`, `consent`, `noworkout`.
+                  description: e.g. `provider`, `unusable`, `restart`, `forgotten`, `consent`, `noworkout`, `novision`.
                 at: { type: integer, description: Epoch ms. }
                 reading: { type: string, description: "Present on `nochange`: why there was nothing to change." }
             - type: 'null'

@@ -1123,6 +1123,7 @@ export default {
   'A routine image you share': 'Uma imagem de treino que partilhas',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': 'Só quando pedes ao Treinador para ler um treino publicado: a imagem e a data, enviadas uma vez ao fornecedor e nunca guardadas.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Este fornecedor do Treinador não consegue ler imagens. Muda para Anthropic ou OpenAI.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Este modelo não consegue ler imagens. Quem gere a instância tem de escolher um modelo com visão.',
   'Likes: {0}': 'Gosta: {0}',
   'Limits': 'Limitações',
   'Limits: {0}': 'Limitações: {0}',

@@ -1112,6 +1112,7 @@ export default {
   'A routine image you share': '你分享的訓練圖片',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': '僅在你請教練讀取已發布的訓練時：圖片及其日期會傳送給服務商一次，且從不儲存。',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': '這個教練服務商無法讀取圖片。請切換到 Anthropic 或 OpenAI。',
+  'This model can’t read images. The instance owner needs to pick a vision model.': '這個模型無法讀取圖片。需要實例管理員選擇一個支援視覺的模型。',
   'Likes: {0}': '偏好：{0}',
   'Limits': '限制條件',
   'Limits: {0}': '限制：{0}',

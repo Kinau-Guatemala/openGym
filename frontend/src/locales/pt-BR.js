@@ -616,6 +616,7 @@ export const PT_BR_OVERRIDES = {
   'A routine image you share': 'Uma imagem de treino que você compartilha',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': 'Só quando você pede ao Treinador para ler um treino publicado: a imagem e a data, enviadas uma vez ao provedor e nunca armazenadas.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Este provedor do Treinador não consegue ler imagens. Troque para Anthropic ou OpenAI.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Este modelo não consegue ler imagens. Quem administra a instância precisa escolher um modelo com visão.',
   'Not quite right? Say what to change below and I will revise the whole plan.': 'Não ficou bom? Diga abaixo o que mudar e eu reviso o plano inteiro.',
   'Pick one to continue.': 'Escolha uma para continuar.',
   'Pick what you will actually keep, not the best week you can imagine.': 'Escolha o que você vai realmente cumprir, não a melhor semana que consegue imaginar.',

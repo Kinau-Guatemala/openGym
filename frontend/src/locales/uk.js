@@ -924,6 +924,7 @@ export default {
   'A routine image you share': 'Зображення тренування, яким ти ділишся',
   'Only when you ask the Coach to read a posted workout: the image and its date, sent once to the provider and never stored.': 'Лише коли ти просиш тренера прочитати опубліковане тренування: зображення та його дата надсилаються провайдеру один раз і ніколи не зберігаються.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Цей провайдер тренера не вміє читати зображення. Перемкни його на Anthropic або OpenAI.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Ця модель не вміє читати зображення. Адміністратору екземпляра треба вибрати модель із підтримкою зображень.',
   'Likes: {0}': 'Подобається: {0}',
   'Limits': 'Обмеження',
   'Limits: {0}': 'Обмеження: {0}',

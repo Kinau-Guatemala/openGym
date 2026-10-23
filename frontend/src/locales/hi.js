@@ -1713,6 +1713,7 @@ export default {
   'The Coach couldn’t read your training data.': 'कोच आपका प्रशिक्षण डेटा नहीं पढ़ सका।',
   'The Coach is switched off on this instance for safety reasons.': 'सुरक्षा कारणों से इस इंस्टेंस पर कोच बंद है।',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'यह कोच प्रोवाइडर तस्वीरें नहीं पढ़ सकता। इसे Anthropic या OpenAI पर बदलें।',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'यह मॉडल तस्वीरें नहीं पढ़ सकता। इंस्टेंस चलाने वाले को विज़न वाला मॉडल चुनना होगा।',
   'Something went wrong on the server.': 'सर्वर पर कुछ गड़बड़ हो गई।',
   'Your AI provider rejected the key on this phone. Check it under Settings → AI Coach.': 'आपके AI प्रदाता ने इस फ़ोन की कुंजी अस्वीकार कर दी। इसे सेटिंग्स → AI कोच में जाँचें।',
   'The Coach isn’t set up on this phone. Check Settings → AI Coach.': 'इस फ़ोन पर कोच सेट नहीं है। सेटिंग्स → AI कोच देखें।',

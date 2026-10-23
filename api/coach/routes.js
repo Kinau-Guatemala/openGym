@@ -23,7 +23,7 @@ const USER_ERROR = {
   // it. A vaguer message here turns into a support question for the person running the box.
   shared: cfgStore.SHARED_ACCOUNT_REFUSAL,
   unprivileged: 'the Coach is switched off on this instance for safety reasons',
-  unsupported: 'switch the Coach provider to Anthropic or OpenAI to read routine images'
+  unsupported: 'switch the Coach provider to Anthropic, OpenAI or an OpenAI-compatible endpoint to read routine images'
 };
 const HTTP_FOR = { off: 503, busy: 409, cap: 429, consent: 403, shared: 409, unprivileged: 503, unsupported: 422 };
 

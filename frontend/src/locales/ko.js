@@ -1713,6 +1713,7 @@ export default {
   'The Coach couldn’t read your training data.': '코치가 훈련 데이터를 읽지 못했습니다.',
   'The Coach is switched off on this instance for safety reasons.': '보안상의 이유로 이 인스턴스에서는 코치가 꺼져 있습니다.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': '이 코치 제공자는 이미지를 읽을 수 없습니다. Anthropic 또는 OpenAI로 바꾸세요.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': '이 모델은 이미지를 읽을 수 없습니다. 인스턴스 관리자가 비전 모델을 선택해야 합니다.',
   'Something went wrong on the server.': '서버에서 문제가 발생했습니다.',
   'Your AI provider rejected the key on this phone. Check it under Settings → AI Coach.': 'AI 제공자가 이 휴대폰의 키를 거부했습니다. 설정 → AI 코치에서 확인하세요.',
   'The Coach isn’t set up on this phone. Check Settings → AI Coach.': '이 휴대폰에는 코치가 설정되어 있지 않습니다. 설정 → AI 코치를 확인하세요.',

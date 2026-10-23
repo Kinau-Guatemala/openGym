@@ -1713,6 +1713,7 @@ export default {
   'The Coach couldn’t read your training data.': 'Az Edző nem tudta beolvasni az edzésadataidat.',
   'The Coach is switched off on this instance for safety reasons.': 'Az Edző biztonsági okokból ki van kapcsolva ezen a példányon.',
   'This Coach provider can’t read images. Switch it to Anthropic or OpenAI.': 'Ez az Edző-szolgáltató nem tud képeket olvasni. Válts Anthropicra vagy OpenAI-ra.',
+  'This model can’t read images. The instance owner needs to pick a vision model.': 'Ez a modell nem tud képeket olvasni. A példány üzemeltetőjének látásra képes modellt kell választania.',
   'Something went wrong on the server.': 'Hiba történt a szerveren.',
   'Your AI provider rejected the key on this phone. Check it under Settings → AI Coach.': 'Az MI-szolgáltatód elutasította a telefonon lévő kulcsot. Ellenőrizd itt: Beállítások → MI-edző.',
   'The Coach isn’t set up on this phone. Check Settings → AI Coach.': 'Az Edző nincs beállítva ezen a telefonon. Nézd meg itt: Beállítások → MI-edző.',

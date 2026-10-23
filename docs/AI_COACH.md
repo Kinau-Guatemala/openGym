@@ -212,8 +212,12 @@ never names a catalogue id here.
   `GET /api/coach/status` — **never** as a proposal, so a plan suggestion waiting for an answer
   is left alone and no "proposal ready" notification is sent. The app clears it with
   `POST /api/coach/parsed/ack`.
-- **Anthropic and OpenAI only** (and the fixture, which answers a canned program). Any other
-  provider is refused with `unsupported` before anything is counted against the daily cap.
+- **Anthropic, OpenAI or an OpenAI-compatible endpoint** (and the fixture, which answers a
+  canned program). Any other provider is refused with `unsupported` before anything is counted
+  against the daily cap. Behind a compatible endpoint the model decides: pick a vision model.
+  A refusal of the image (a 4xx saying images aren't supported, or "text-only") and, on a
+  compatible endpoint only, an empty program both fail the job with `novision`, since a
+  text-only model behind a gateway can drop the image and answer `tracks: []`.
 - It needs consent **at the current version**, which names the `image` category; a consent
   given before that re-prompts once. It counts against the same daily cap as any other job and
   waits behind one already running (`busy`).

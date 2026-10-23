@@ -39,6 +39,12 @@ export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutM
   if (r.spawnError) return { ok: false, errorClass: 'missing', detail: r.stderr?.slice(0, 300) };
   if (r.code !== 0) {
     const err = (r.stderr || r.text || '').toLowerCase();
+    // A text-only model refusing the image (OpenAI "image_url is only supported by certain
+    // models", OpenRouter "No endpoints found that support image input", a gateway's "text-only").
+    // A 4xx that names images and support, not one about the image itself (too large, corrupt).
+    if (invokeOpts.images && /^4\d\d\b/.test(err) && (/text[- ]only/.test(err) || (/image|vision|multimodal/.test(err) && /support/.test(err)))) {
+      return { ok: false, errorClass: 'novision', detail: (r.stderr || r.text || '').slice(0, 300) };
+    }
     const authish = /auth|unauthor|api key|credential|token|401|403|login/.test(err);
     return { ok: false, errorClass: authish ? 'auth' : 'provider', detail: (r.stderr || r.text || '').slice(0, 300) };
   }

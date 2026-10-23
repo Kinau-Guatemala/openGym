@@ -197,8 +197,13 @@ export function clampMessage(text) {
 // Every job kind there is. Anything else is a programming error and throws as one — never a
 // CoachError a route would turn into a polite refusal, and never a plan by default.
 export const KINDS = ['create', 'review', 'debrief', 'parse-wod'];
-// The providers that can read an image. The fixture answers a canned program for CI and dev.
-export const IMAGE_PROVIDERS = ['anthropic', 'openai', 'fixture'];
+// The providers that send an image. The fixture answers a canned program for CI and dev.
+// Gemini's adapter has no image part, so it is not here.
+export const IMAGE_PROVIDERS = ['anthropic', 'openai', 'compatible', 'fixture'];
+// Where an empty program is believed. Behind an OpenAI-compatible endpoint the model decides,
+// and a text-only one can drop the image and still answer `tracks: []` (seen 2026-10-23 through
+// a gateway), so there an empty program is read as "could not see it", not "nothing there".
+const VISION_VERIFIED = ['anthropic', 'openai', 'fixture'];
 const hasCurrentConsent = S => !!S?.coach?.consent?.agreedAt && S.coach.consent.version === CONSENT_VERSION;
 
 /**
@@ -410,6 +415,9 @@ async function executeParse(job, cfg, adapter) {
   job.image = null;   // handed over; nothing here holds it past the call
   const attempt = await invokeProvider(job, cfg, adapter, payload, { images });
   if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
+  if (!attempt.result.program.tracks.length && !VISION_VERIFIED.includes(cfg.provider)) {
+    return finish(job, { outcome: 'failed', errorClass: 'novision', detail: `${cfgStore.modelFor(cfg) || 'the model'} answered an empty program; it probably cannot read images` });
+  }
   return finish(job, { outcome: 'ready', parsed: { jobId: job.id, date: job.date, program: attempt.result.program, at: Date.now() } });
 }
 
