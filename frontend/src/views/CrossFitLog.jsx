@@ -13,7 +13,7 @@ import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
 import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
 import { includeOf } from '../lib/wod-draft.js'
-import { isCardioMove, isMetcon, ladderOf, wodStart } from '../lib/wod-log.js'
+import { isCardioRow, isMetcon, ladderOf, relogState, wodStart } from '../lib/wod-log.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Segmented, Switch } from '../components/ui.jsx'
@@ -29,33 +29,6 @@ const atTime = (date, time) => { const [h, m] = time.split(':').map(Number); con
 // for a strength block, nothing for the rest.
 const SCORE_OF = { amrap: 'rounds', fortime: 'time', strength: 'load' }
 
-// What was logged for this date before, as the screen's starting state, so a re-log edits it.
-function fromLogged(program, w) {
-  const blocks = {}, moves = {}, include = {}
-  for (const b of list(w?.wod?.blocks)) blocks[b.ref] = { score: b.score, rx: !!b.rx }
-  const used = new Set()
-  for (const tr of list(program.tracks)) for (const b of list(tr.blocks)) {
-    const ref = `${tr.id}/${b.id}`
-    if (!w.wod.tracks?.includes(tr.id)) continue
-    include[ref] = !!blocks[ref]
-    for (const m of list(b.movements)) {
-      const ids = [m.exId, ...list(m.alts).map(a => a.exId)]
-      const e = list(w.entries).find(x => !used.has(x) && x.wodBlock === ref && (ids.includes(x.id) || x.swappedFrom === m.exId))
-      if (!e) continue
-      used.add(e)
-      const s0 = e.sets?.[0] || {}
-      const lm = {}
-      if (e.id !== m.exId) lm.exId = e.id
-      const sw = s0.sides ? s0.sides.L?.w : s0.w
-      if (sw != null) lm.w = sw
-      if (s0.mode === 'cardio' && s0.min > 0) lm.min = s0.min
-      if (b.format === 'strength') lm.sets = e.sets.map(s => ({ w: s.w, r: s.r }))
-      moves[`${ref}/${m.id}`] = lm
-    }
-  }
-  return { tracks: list(w.wod.tracks), include, logged: { moves, blocks } }
-}
-
 export default function CrossFitLog() {
   const nav = useNavigate()
   const { date } = useParams()
@@ -63,7 +36,7 @@ export default function CrossFitLog() {
   const program = wodOf(S, date)
   const before = list(S.workouts).find(w => w.id === 'wod-' + date && w.wod)
   const [state, setState] = useState(() => {
-    if (program && before) return { ...fromLogged(program, before), time: hhmm(before.start) }
+    if (program && before) return { ...relogState(program, before), time: hhmm(before.start) }
     const main = list(program?.tracks).find(tr => tr.kind !== 'extra') || list(program?.tracks)[0]
     return { tracks: main ? [main.id] : [], include: {}, logged: { moves: {}, blocks: {} }, time: hhmm(wodStart(date)) }
   })
@@ -191,7 +164,7 @@ function LogMovement({ S, block, m, lm, onChange }) {
   const swapped = lm.exId && !printed.includes(lm.exId)
   const rx = exId === m.exId ? rxFor(m, S) : null
   const w = lm.w ?? defaultW(S, m, exId)
-  const cardio = exId && isCardioMove(dose, exId, !!ladder)
+  const cardio = exId && isCardioRow(m, exId, dose, block)
   const strength = block.format === 'strength' && !isMetcon(block)
   const set = (k, v) => onChange(x => { if (v == null) delete x[k]; else x[k] = v })
   const pick = () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf } from './wod-log.js'
+import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -134,6 +134,21 @@ describe('wodToSession: sets per block format', () => {
     expect(entryOf(f, 'full/b1')[0].sets[0]).toMatchObject({ cal: 150, min: 9 })
   })
 
+  it('a machine down a ladder is one cardio row: the rungs are its calories, or its metres', () => {
+    const fran = block('b1', 'fortime', [mv('m0', ROW, {}, { raw: 'Cal Row' }), mv('m1', '3305', {}, { raw: 'Thrusters' })], { scheme: '21-15-9', capMin: 12 })
+    const [row, thr] = wodToSession(program([fran]), all, {}, S0()).entries
+    expect(row.sets).toEqual([{ mode: 'cardio', cal: 45, min: 3, done: true }])
+    expect(row.sets[0]).not.toHaveProperty('wodRir')
+    expect(thr.sets.map(x => [x.r, x.wodRir])).toEqual([[21, 5], [15, 5], [9, 5]])
+    expect(isCardioRow(fran.movements[0], ROW, {}, fran)).toBe(true)
+    expect(isCardioRow(fran.movements[1], '3305', {}, fran)).toBe(false)
+    const ski = block('b2', 'fortime', [mv('m0', SKI, {}, { raw: '500-400-300 mts Ski' })], { scheme: '500-400-300' })
+    expect(wodToSession(program([ski]), all, { moves: { 'full/b2/m0': { min: 5 } } }, S0()).entries[0].sets).toEqual([{ mode: 'cardio', m: 1200, min: 5, done: true }])
+    // burpees down a ladder stay reps per rung
+    const bur = block('b3', 'fortime', [mv('m0', BURPEE, {}, { raw: 'Burpees' })], { scheme: '21-15-9' })
+    expect(wodToSession(program([bur]), all, {}, S0()).entries[0].sets.map(x => x.r)).toEqual([21, 15, 9])
+  })
+
   it('a substitute from the search box sets swappedFrom and drops the Rx', () => {
     const p = program([block('b1', 'emom', [mv('m0', CJ, { reps: 2 }, { rx: { male: { w: 225, unit: 'lb' }, female: { w: 155, unit: 'lb' } } })], { capMin: 10 })])
     const [e] = wodToSession(p, all, { moves: { 'full/b1/m0': { exId: '1200', w: 60 } } }, S0()).entries
@@ -210,6 +225,47 @@ describe('buildWodWorkout + fileBackfill (logWod)', () => {
     expect(saved.entries[0]).toMatchObject({ rx: { w: 100, unit: 'kg' }, wodBlock: 'full/b1', noProg: true })
     expect(saved.entries[2]).toMatchObject({ id: PUSHUP, swappedFrom: BURPEE, wodBlock: 'full/b2' })
     expect(saved.entries[0].sets[0].wodRir).toBe(5)
+  })
+
+  it('re-opening a logged day restores what was typed, and saving it again changes nothing', () => {
+    const p = program([
+      block('b1', 'amrap', [mv('m0', BURPEE, { reps: 10 }), mv('m1', null, { reps: 8 }, { rawName: 'nastys' }), mv('m2', ROW, { cal: 15 })], { rounds: 3, capMin: 12 }),
+    ])
+    const logged = { moves: {
+      'full/b1/m0': { r: 11 },
+      'full/b1/m1': { exId: PUSHUP, w: 0 },
+      'full/b1/m2': { cal: 12, min: 4 },
+    }, blocks: { 'full/b1': { score: { type: 'rounds', rounds: 3, reps: 0 }, rx: false } } }
+    const S = S0()
+    const first = buildWodWorkout(S, DATE, p, all, logged, Date.parse('2026-10-20T12:00:00Z'))
+    fileBackfill(S, first.active, first.w)
+    expect(S.workouts[0].wod.moves).toEqual(logged.moves)
+    // kept through a later edit of the saved workout too
+    editCompletedSession(S, 'wod-' + DATE)
+    S.active.entries[0].sets[0].r = 12
+    expect(saveWorkoutEdit(S).wod.moves).toEqual(logged.moves)
+
+    const state = relogState(p, S.workouts[0])
+    expect(state.tracks).toEqual(['full'])
+    expect(state.include).toEqual({ 'full/b1': true })
+    expect(state.logged).toEqual(logged)
+    const again = buildWodWorkout(S, DATE, p, { tracks: state.tracks, include: state.include }, state.logged, Date.parse('2026-10-20T12:00:00Z'))
+    expect(again.w.entries).toEqual(first.w.entries)
+    expect(again.w.entries.map(e => e.id)).toEqual([BURPEE, PUSHUP, ROW])
+    expect(again.w.entries[0].sets.map(x => x.r)).toEqual([11, 11, 11])
+    expect(again.w.entries[2].sets).toEqual([{ mode: 'cardio', cal: 36, min: 4, done: true }])
+  })
+
+  it('an older log without the typed values is read back off its rows', () => {
+    const S = S0()
+    log(S, { moves: { 'full/b1/m0': { exId: '1200', w: 70 }, 'full/b1/m1': { min: 6 } } })
+    const w = structuredClone(S.workouts[0])
+    delete w.wod.moves
+    expect(relogState(prog(), w).logged.moves).toEqual({
+      'full/b1/m0': { exId: '1200', w: 70 },
+      'full/b1/m1': { min: 6 },
+      'full/b2/m0': { w: 0 },
+    })
   })
 
   it('logging the same date again edits it: one workout, the second contents', () => {

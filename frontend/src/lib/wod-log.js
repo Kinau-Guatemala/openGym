@@ -54,6 +54,17 @@ export function cardioMinutes(exId, dose, rounds = 1) {
 // burpees down a ladder).
 export const isCardioMove = (dose, exId, ladder) => pos(dose.cal) > 0 || pos(dose.m) > 0 || (isCardio(exId) && !pos(dose.reps) && !ladder)
 
+// A machine down a ladder (21-15-9 Cal Row): the rungs are its calories, or its metres when the
+// line prints them so (a run's always are). Burpees, double-unders and the like stay reps per rung.
+function ladderMachine(m, exId, dose, block) {
+  if (!ladderOf(block?.scheme) || !RATES[exId] || pos(dose.reps) || pos(dose.cal) || pos(dose.m)) return null
+  return exId === '0685' || /\b(m|mts?|meters?|metres?|metros?)\b/i.test(m?.raw || '') ? 'm' : 'cal'
+}
+
+/** Whether a movement logs as one cardio row in this block (the log screen asks for minutes). */
+export const isCardioRow = (m, exId, dose, block) =>
+  !!ladderMachine(m, exId, dose, block) || isCardioMove(dose, exId, !!ladderOf(block?.scheme))
+
 // What one round of a movement counts towards a rounds+reps score.
 const unitsOf = dose => pos(dose.reps) || pos(dose.cal) || 0
 
@@ -121,9 +132,10 @@ export function wodToSession(program, choice, logged, S) {
         const w = lm.w != null ? pos(lm.w) : (asPrinted ? rxFor(m, S)?.w || 0 : 0)
         const amounts = plan[i]
         if (!amounts.length) return
-        if (isCardioMove(dose, exId, !!ladderOf(block.scheme))) {
-          // One row for the whole block: the dose added up, with its minutes.
-          const kind = pos(dose.cal) ? 'cal' : pos(dose.m) ? 'm' : null
+        const machine = ladderMachine(m, exId, dose, block)
+        if (machine || isCardioMove(dose, exId, !!ladderOf(block.scheme))) {
+          // One row for the whole block: the dose (or a ladder's rungs) added up, with its minutes.
+          const kind = machine || (pos(dose.cal) ? 'cal' : pos(dose.m) ? 'm' : null)
           const row = { mode: 'cardio' }
           if (kind) row[kind] = amounts.reduce((sum, a) => sum + (a ?? dose[kind]), 0)
           const est = cardioMinutes(exId, kind ? { [kind]: row[kind] } : dose, kind ? 1 : amounts.length) ?? pos(block.capMin)
@@ -177,6 +189,62 @@ export function buildWodWorkout(S, date, program, choice, logged, now = Date.now
   // has done work, so none was dropped and the order holds).
   w.entries.forEach((e, i) => { for (const k of KEEP) if (entries[i][k] != null) e[k] = entries[i][k] })
   w.src = 'wod'
-  w.wod = { date, ...wod }
+  w.wod = { date, ...wod, moves: movesOf(logged) }
   return { active, w }
+}
+
+// What was typed per movement, as sent, so re-opening the day restores it exactly (relogState).
+const MOVE_KEYS = ['exId', 'w', 'r', 'cal', 'm', 'sec', 'min', 'sets']
+function movesOf(logged) {
+  const out = {}
+  for (const [key, lm] of Object.entries(logged?.moves || {})) {
+    if (!lm || typeof lm !== 'object') continue
+    const kept = Object.fromEntries(MOVE_KEYS.filter(k => lm[k] != null).map(k => [k, structuredClone(lm[k])]))
+    if (Object.keys(kept).length) out[key] = kept
+  }
+  return out
+}
+
+/**
+ * The log screen's starting state for a day already logged as `w`, so saving again edits what
+ * was logged rather than the program's printed doses: `{ tracks, include, logged }`. A log that
+ * kept what was typed (`w.wod.moves`) comes back as typed; an older one is read off its rows.
+ */
+export function relogState(program, w) {
+  const blocks = {}, include = {}
+  for (const b of list(w?.wod?.blocks)) blocks[b.ref] = { score: b.score, rx: !!b.rx }
+  const tracks = list(w?.wod?.tracks)
+  for (const tr of list(program?.tracks)) {
+    if (!tracks.includes(tr.id)) continue
+    for (const b of list(tr.blocks)) include[`${tr.id}/${b.id}`] = !!blocks[`${tr.id}/${b.id}`]
+  }
+  const saved = w?.wod?.moves
+  const moves = saved && typeof saved === 'object' ? structuredClone(saved) : movesFromRows(program, w, tracks)
+  return { tracks, include, logged: { moves, blocks } }
+}
+
+// An older log, without the typed values: the exercise, weight, cardio minutes and strength rows
+// read back off its entries, matched to the movements by block and exercise.
+function movesFromRows(program, w, tracks) {
+  const moves = {}
+  const used = new Set()
+  for (const tr of list(program?.tracks)) for (const b of list(tr.blocks)) {
+    const ref = `${tr.id}/${b.id}`
+    if (!tracks.includes(tr.id)) continue
+    for (const m of list(b.movements)) {
+      const ids = [m.exId, ...list(m.alts).map(a => a?.exId)]
+      const e = list(w?.entries).find(x => !used.has(x) && x.wodBlock === ref && (ids.includes(x.id) || x.swappedFrom === m.exId))
+      if (!e) continue
+      used.add(e)
+      const s0 = e.sets?.[0] || {}
+      const lm = {}
+      if (e.id !== m.exId) lm.exId = e.id
+      const sw = s0.sides ? s0.sides.L?.w : s0.w
+      if (sw != null) lm.w = sw
+      if (s0.mode === 'cardio' && s0.min > 0) lm.min = s0.min
+      if (b.format === 'strength') lm.sets = e.sets.map(x => ({ w: x.w, r: x.r }))
+      moves[`${ref}/${m.id}`] = lm
+    }
+  }
+  return moves
 }
