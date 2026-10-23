@@ -415,7 +415,8 @@ async function executeParse(job, cfg, adapter) {
   job.image = null;   // handed over; nothing here holds it past the call
   const attempt = await invokeProvider(job, cfg, adapter, payload, { images });
   if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
-  if (!attempt.result.program.tracks.length && !VISION_VERIFIED.includes(cfg.provider)) {
+  // Empty means no block anywhere: a blind model can still answer the full/evo skeleton the prompt names.
+  if (!attempt.result.program.tracks.some(t => t.blocks.length) && !VISION_VERIFIED.includes(cfg.provider)) {
     return finish(job, { outcome: 'failed', errorClass: 'novision', detail: `${cfgStore.modelFor(cfg) || 'the model'} answered an empty program; it probably cannot read images` });
   }
   return finish(job, { outcome: 'ready', parsed: { jobId: job.id, date: job.date, program: attempt.result.program, at: Date.now() } });

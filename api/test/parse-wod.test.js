@@ -363,9 +363,9 @@ async function endpoint(status, body) {
 const chat = program => ({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(program) } }] });
 const EMPTY = { title: null, tracks: [] };
 
-async function parseThrough(provider, status, body) {
+async function parseThrough(provider, status, body, model = 'gw/some-model') {
   const p = await endpoint(status, body);
-  cfg.save({ enabled: true, provider, providerOptions: { [provider]: { baseUrl: p.base } }, models: { [provider]: 'gw/some-model' } });
+  cfg.save({ enabled: true, provider, providerOptions: { [provider]: { baseUrl: p.base } }, models: { [provider]: model } });
   cfg.saveAuth(provider, { type: 'apikey', data: cfg.encrypt({ token: 'sk-test' }), connectedAt: new Date().toISOString() });
   const uid = `u-t15-${provider}-${status}-${p.base.split(':').pop()}`;
   writeState(DIR, uid, consented());
@@ -394,6 +394,13 @@ test('compatible: an empty program is a model that could not see the image, not 
   assert.equal(s.last.errorClass, 'novision');
 });
 
+test('compatible: tracks with no block in any are empty too', async () => {
+  const skeleton = { title: null, tracks: [{ id: 'full', label: 'Full Equipment', kind: 'main', blocks: [] }, { id: 'evo', label: 'Evo Equipment', kind: 'main', blocks: [] }] };
+  const { s } = await parseThrough('compatible', 200, chat(skeleton));
+  assert.equal(s.parsed, null);
+  assert.equal(s.last.errorClass, 'novision');
+});
+
 test('anthropic and openai: an empty program is still believed', async () => {
   for (const [id, body] of [['openai', chat(EMPTY)], ['anthropic', { content: [{ type: 'text', text: JSON.stringify(EMPTY) }], stop_reason: 'end_turn' }]]) {
     const { s } = await parseThrough(id, 200, body);
@@ -407,14 +414,18 @@ test('an endpoint that refuses images answers the vision message; other 4xx stay
     ['compatible', 'image inputs are not supported by this model'],
     ['compatible', 'No endpoints found that support image input'],
     ['compatible', 'ddgw/gpt-5.6-luna is a text-only model'],
+    ['compatible', 'Failed to deserialize the JSON body into the target type: messages[1]: unknown variant `image_url`, expected `text`'],
+    ['compatible', 'At most 0 image(s) may be provided in one request.'],
     ['openai', 'Invalid content type. image_url is only supported by certain models.']
   ]) {
     const { s, seen } = await parseThrough(provider, 400, { error: { message: msg } });
     assert.equal(s.last.errorClass, 'novision', msg);
     assert.equal(seen.length, 1, 'a refusal is not retried');
   }
-  for (const [status, msg, cls] of [[400, 'image too large', 'provider'], [400, 'model not found', 'provider'], [401, 'invalid api key', 'auth']]) {
-    const { s } = await parseThrough('compatible', status, { error: { message: msg } });
+  for (const [status, msg, cls, model] of [[400, 'image too large', 'provider'], [400, 'model not found', 'provider'], [401, 'invalid api key', 'auth'],
+    // The model id a gateway puts in front is not the model saying it cannot see.
+    [400, 'meta-llama/llama-3.2-11b-vision-instruct: temperature is not supported for this model', 'provider', 'meta-llama/llama-3.2-11b-vision-instruct']]) {
+    const { s } = await parseThrough('compatible', status, { error: { message: msg } }, model);
     assert.equal(s.last.errorClass, cls, msg);
   }
 });

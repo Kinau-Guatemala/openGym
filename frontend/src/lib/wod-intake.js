@@ -75,7 +75,7 @@ const classOf = e => {
 
 /**
  * One read of `image` for `date`. Resolves to exactly one of
- *   { program, jobId }  — a program with at least one track
+ *   { program, jobId }  — a program with at least one block
  *   { manual: cls }     — the Coach can't read it here (off, no consent, provider): type it in
  *   { failed: cls }     — this try failed ('empty' = no routine in the image): retry or type it
  *   { cancelled: true } — a newer image replaced it
@@ -105,7 +105,8 @@ export async function readProgram(image, date, io) {
     try { s = await io.status() } catch { /* a dropped poll: the next one asks again */ }
     if (s) {
       if (s.parsed?.jobId === job.id) {
-        return s.parsed.program?.tracks?.length ? { program: s.parsed.program, jobId: job.id } : { failed: 'empty', jobId: job.id }
+        // A skeleton (tracks, no block in any) is no routine either.
+        return s.parsed.program?.tracks?.some(t => t.blocks?.length) ? { program: s.parsed.program, jobId: job.id } : { failed: 'empty', jobId: job.id }
       }
       if (s.last?.id === job.id) return { failed: s.last.errorClass || 'unusable' }
       // Neither running nor ended: the server restarted and the in-memory job went with it.

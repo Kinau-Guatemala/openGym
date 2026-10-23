@@ -58,7 +58,7 @@ it('tomorrowISO is the next calendar day', () => {
 /* ---------- the flow, against a scripted server ---------- */
 
 const IMG = { url: 'data:image/jpeg;base64,QUJD', mime: 'image/jpeg', data: 'QUJD' }
-const PROGRAM = { title: '', tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [] }] }
+const PROGRAM = { title: '', tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', movements: [] }] }] }
 const refuse = (code, status = 409) => Object.assign(new Error(code), { status, data: { code } })
 
 // io whose parse() and status() answer from scripts, one entry per call (the last repeats).
@@ -107,6 +107,12 @@ describe('readProgram', () => {
 
   it('a program with no tracks is "no routine found"', async () => {
     const io = server({ status: [{ job: null, parsed: { jobId: 'j1', program: { tracks: [] } }, last: { id: 'j1', outcome: 'ready' } }] })
+    expect(await readProgram(IMG, '2026-10-23', io)).toMatchObject({ failed: 'empty' })
+  })
+
+  it('tracks with no block in any are "no routine found" too', async () => {
+    const skeleton = { tracks: [{ id: 'full', blocks: [] }, { id: 'evo', blocks: [] }] }
+    const io = server({ status: [{ job: null, parsed: { jobId: 'j1', program: skeleton }, last: { id: 'j1', outcome: 'ready' } }] })
     expect(await readProgram(IMG, '2026-10-23', io)).toMatchObject({ failed: 'empty' })
   })
 
