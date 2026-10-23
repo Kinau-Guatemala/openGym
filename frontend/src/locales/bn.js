@@ -2471,4 +2471,8 @@ export default {
   'Handstand push-up': 'হ্যান্ডস্ট্যান্ড পুশ-আপ',
   'Double-unders': 'Double-under',
   'Pull-up': 'পুল-আপ',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'আপনি কি এটি বোঝাতে চেয়েছেন?',
+  'Confirm {0}': '{0} নিশ্চিত করুন',
 }

@@ -2385,4 +2385,8 @@ export default {
   'Handstand push-up': '倒立撐',
   'Double-unders': '雙迴旋',
   'Pull-up': '引體向上',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': '你是不是要找：',
+  'Confirm {0}': '確認 {0}',
 }

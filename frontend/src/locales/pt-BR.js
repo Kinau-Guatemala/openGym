@@ -1553,6 +1553,10 @@ export const PT_BR_OVERRIDES = {
   'Handstand push-up': 'Flexão em parada de mão',
   'Double-unders': 'Double-unders',
   'Pull-up': 'Barra fixa',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Você quis dizer?',
+  'Confirm {0}': 'Confirmar {0}',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

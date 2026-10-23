@@ -2412,4 +2412,8 @@ export default {
   'Handstand push-up': 'Handstand-Liegestütz',
   'Double-unders': 'Double-Unders',
   'Pull-up': 'Klimmzug',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Meintest du?',
+  'Confirm {0}': '{0} bestätigen',
 }

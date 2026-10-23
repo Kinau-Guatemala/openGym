@@ -2392,4 +2392,8 @@ export default {
   'Handstand push-up': 'Piegamento in verticale',
   'Double-unders': 'Double-under',
   'Pull-up': 'Trazione',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': 'Forse intendevi?',
+  'Confirm {0}': 'Conferma {0}',
 }

@@ -2392,4 +2392,8 @@ export default {
   'Handstand push-up': '핸드스탠드 푸시업',
   'Double-unders': '더블언더',
   'Pull-up': '풀업',
+
+  // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
+  'Did you mean?': '이것을 찾으셨나요?',
+  'Confirm {0}': '{0} 확인',
 }
