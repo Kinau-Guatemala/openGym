@@ -44,13 +44,13 @@ afterAll(() => { dirs.forEach(d => fs.rmSync(d, { recursive: true, force: true }
 describe('a read failure is not "you never signed in"', () => {
   test('no state file at all is still null — that account really has never synced', async () => {
     const { getState } = await load(mk({ 'db.json': DB }))
-    expect(getState()).toBeNull()
+    expect(await getState()).toBeNull()
   })
 
   test('a corrupt state file throws EIO naming the parse failure', async () => {
     const { getState } = await load(mk({ 'db.json': DB, 'state-alex.json': '{ not json' }))
     let err = null
-    try { getState() } catch (e) { err = e }
+    try { await getState() } catch (e) { err = e }
     expect(err).toBeTruthy()
     expect(err.code).toBe('EIO')
     expect(err.message).toMatch(/state-alex\.json is not valid JSON/)
@@ -60,7 +60,7 @@ describe('a read failure is not "you never signed in"', () => {
   test('a state file that cannot be read throws EIO naming the failure, not null', async () => {
     const { getState } = await load(mk({ 'db.json': DB, 'state-alex.json': null }))
     let err = null
-    try { getState() } catch (e) { err = e }
+    try { await getState() } catch (e) { err = e }
     expect(err).toBeTruthy()
     expect(err.code).toBe('EIO')
     expect(err.message).toMatch(/cannot read state-alex\.json: EISDIR/)
@@ -74,7 +74,7 @@ describe('a read failure is not "you never signed in"', () => {
     fs.chmodSync(path.join(dir, 'state-alex.json'), 0o000)
     const { getState } = await load(dir)
     let err = null
-    try { getState() } catch (e) { err = e }
+    try { await getState() } catch (e) { err = e }
     fs.chmodSync(path.join(dir, 'state-alex.json'), 0o600)
     expect(err).toBeTruthy()
     expect(err.code).toBe('EIO')
@@ -84,7 +84,7 @@ describe('a read failure is not "you never signed in"', () => {
 
   test('a good state file still loads, with the app defaults merged in', async () => {
     const { getState } = await load(mk({ 'db.json': DB, 'state-alex.json': JSON.stringify({ unit: 'lb', routines: [{ id: 'r1', name: 'R', ex: [] }] }) }))
-    const S = getState()
+    const S = await getState()
     expect(S.unit).toBe('lb')
     expect(S.routines.length).toBe(1)
     expect(S.dayPlan).toEqual({})     // a default the snapshot did not carry
@@ -105,7 +105,7 @@ describe('the "which profile?" error is a config message, not a roster', () => {
       const dir = mk(files)
       const { getState } = await load(dir, '')       // no OPENGYM_UID pinned
       let err = null
-      try { getState() } catch (e) { err = e }
+      try { await getState() } catch (e) { err = e }
       spy.mockRestore()
       expect(err).toBeTruthy()
       expect(err.code).toBe('EINVAL')

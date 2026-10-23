@@ -2396,4 +2396,6 @@ export default {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': '이것을 찾으셨나요?',
   'Confirm {0}': '{0} 확인',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': '러닝과 WOD를 피한 웨이트 요일: 하체 {0} · 상체 {1}',
+  'none this week': '이번 주 없음',
 }

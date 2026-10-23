@@ -2396,4 +2396,6 @@ export default {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': '你是不是要找：',
   'Confirm {0}': '确认 {0}',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': '避开跑步和 WOD 的力量训练日：腿 {0} · 上肢 {1}',
+  'none this week': '本周没有',
 }

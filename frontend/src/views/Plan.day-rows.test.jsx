@@ -119,3 +119,23 @@ describe('Plan — the menu', () => {
     expect(menu.subtitle).toContain('Add an exercise to a routine first')
   })
 })
+
+describe('Plan — the lift-days hint', () => {
+  const hint = () => host.querySelector('.plan-lift-days')
+  const run = d => ({ id: 'hc-' + d, d, src: 'hc', entries: [{ id: '0685', sets: [{ min: 30, done: true }] }] })
+
+  it('stays out of the way with no runs and no posted programs', () => {
+    mount()
+    expect(hint()).toBeNull()
+  })
+
+  it('names the days that suit legs and upper body around the usual runs', () => {
+    // Thursday 2026-10-22; Tuesdays are run days, so Mon and Tue are no leg days.
+    vi.useFakeTimers({ now: new Date(2026, 9, 22, 12), toFake: ['Date'] })
+    try {
+      mocks.S.workouts = [run('2026-10-13'), run('2026-10-20')]
+      mount()
+      expect(hint().textContent).toBe('Lift days around your runs and WODs: legs Th, Fr, Sa, Su, We · upper body Th, Fr, Sa, Su, Mo, Tu, We')
+    } finally { vi.useRealTimers() }
+  })
+})

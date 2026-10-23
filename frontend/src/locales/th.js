@@ -2407,4 +2407,6 @@ export default {
   // T14 · best guess for a misspelled exercise (views/CrossFit.jsx)
   'Did you mean?': 'หมายถึงสิ่งนี้หรือเปล่า?',
   'Confirm {0}': 'ยืนยัน {0}',
+  'Lift days around your runs and WODs: legs {0} · upper body {1}': 'วันยกเวทเลี่ยงวันวิ่งและ WOD: ขา {0} · ร่างกายส่วนบน {1}',
+  'none this week': 'ไม่มีในสัปดาห์นี้',
 }
