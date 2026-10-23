@@ -26,7 +26,9 @@ const MODULES = [
   // The CrossFit tools (get_wods, muscle_gap, suggest_lift_days, crossfit_records), and the two
   // the write tools build on (sync-merge, routines).
   'recovery.js', 'muscle-gap.js', 'bodyweight.js', 'interference.js', 'wods.js', 'wod-draft.js',
-  'rx.js', 'crossfit-records.js', 'rx-history.js', 'skills.js', 'sync-merge.js', 'routines.js'
+  'rx.js', 'crossfit-records.js', 'rx-history.js', 'skills.js', 'sync-merge.js', 'routines.js',
+  // The write tools: a logged session is filed the way the app files a backfill.
+  'finish-workout.js', 'backfill.js', 'workout-date.js'
 ]
 
 let failed = 0
@@ -42,7 +44,7 @@ for (const m of MODULES) {
 
 // The real assertion: the server's own entry points, which pull the whole graph transitively.
 // A module added to the graph later is covered by this even if the list above never learns it.
-for (const entry of ['../src/state.js', '../src/tools.js']) {
+for (const entry of ['../src/state.js', '../src/tools.js', '../src/writes.js']) {
   try {
     await import(new URL(entry, import.meta.url))
     console.log(`  ok    mcp/${entry.replace('../', '')}`)

@@ -74,9 +74,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: mcp/package-lock.json
+          cache-dependency-path: |
+            mcp/package-lock.json
+            api/package-lock.json
       - run: npm ci
         working-directory: mcp
+      # test/write-api.test.js boots the real api to write against.
+      - run: npm ci
+        working-directory: api
       - run: npm test
         working-directory: mcp
       # The one check the vitest suite structurally cannot make. The MCP server is a bare node

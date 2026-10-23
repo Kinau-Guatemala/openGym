@@ -103,7 +103,13 @@ export async function init() {
         throw e
       }
     }
-    _source = { read, user: remote.user, remote }
+    const write = async mutator => {
+      try { return await remote.write(mutator) } catch (e) {
+        if (e.code === 'EAUTH' && _source?.read === read) _source = null
+        throw e
+      }
+    }
+    _source = { read, write, user: remote.user, remote }
     return
   }
   initFile()
@@ -144,6 +150,19 @@ function initFile() {
 export async function getState() {
   await init()
   return _source.read()
+}
+
+// Applies a pure mutator (lib: writes.js) to the stored profile and saves it. HTTP source only:
+// the api is the one writer of a state file, and it stamps and merges what it is sent; writing the
+// file from here would race its writes and skip both.
+export async function writeState(mutator) {
+  await init()
+  if (!_source.write) {
+    const err = new Error('this MCP reads the data directory (OPENGYM_DATA), which is read-only: writing state files beside the api would race its own writes. To use the write tools, pair with the instance and start the MCP with OPENGYM_URL (see the README, "HTTP mode")')
+    err.code = 'EROFS'
+    throw err
+  }
+  return _source.write(mutator)
 }
 
 // Returns the user record (id + name). No passkey material, no VAPID keys, no push subs.
