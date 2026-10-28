@@ -398,4 +398,16 @@ describe('wodToSession: repeats and sets (T17)', () => {
     expect(row.sets).toEqual([{ mode: 'cardio', cal: 60, min: 4, done: true }])
     expect(bur.sets.map(x => x.r)).toEqual([10, 10])
   })
+
+  it('an AMRAP rounds + reps score counts a round as every set of the line, the leftover set by set', () => {
+    const score = (rounds, reps) => ({ blocks: { 'full/b0': { score: { type: 'rounds', rounds, reps } } } })
+    const wb = program([block('b0', 'amrap', [mv('m0', '2458', { sets: 2, reps: 10 }), mv('m1', BURPEE, { reps: 5 })], { capMin: 12 })])
+    const [balls, bur] = wodToSession(wb, all, score(3, 15), S0()).entries
+    expect(balls.sets.map(x => x.r)).toEqual([10, 10, 10, 10, 10, 10, 10, 5])   // 3 × 2 × 10, then 10 + 5
+    expect(bur.sets.map(x => x.r)).toEqual([5, 5, 5])
+    const row = program([block('b0', 'amrap', [mv('m0', ROW, { sets: 2, cal: 10 }), mv('m1', BURPEE, { reps: 5 })], { capMin: 12 })])
+    const [cal, bur2] = wodToSession(row, all, score(2, 12), S0()).entries
+    expect(cal.sets).toEqual([{ mode: 'cardio', cal: 52, min: 3.5, done: true }])   // 2 × 2 × 10, then 10 + 2
+    expect(bur2.sets.map(x => x.r)).toEqual([5, 5])
+  })
 })

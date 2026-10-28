@@ -571,3 +571,11 @@ test('claude adapter: an error text that quotes the image has it cut out', async
     assert.equal(r.stderr, '400 bad [image]');
   } finally { claudeMod.setSdkForTest(undefined); }
 });
+
+test('the parse prompt keeps the T17 boundaries: sets × reps on a lift, a rounds heading, a warm-up-only duration', () => {
+  const p = PROMPTS['parse-wod'];
+  assert.match(p, /`3x12 Copas`, `5x5 Back Squat` \| on a lift, `NxR` is sets × reps: `dose: \{ "sets": 3, "reps": 12 \}`/);
+  assert.match(p, /`3 Rondas de:` \| a line of its own over the movements: the block's `rounds: 5`.*Never also `dose\.sets`/);
+  assert.match(p, /`2 Rondas de 400 m Run` → `\{ "sets": 2, "m": 400 \}`/);
+  assert.match(p, /Only a warm-up: .*`Easy 20 min` in a running track → `rawName: "run"`, `dose: \{ "sec": 1200 \}`/);
+});
