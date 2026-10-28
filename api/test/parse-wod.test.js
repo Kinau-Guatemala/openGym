@@ -75,7 +75,7 @@ test('fixture: 202, then status shows a checked program in `parsed`, and the ack
     assert.equal(s.parsed.jobId, r.body.job.id);
     assert.equal(s.parsed.date, DATE);
     assert.ok(validateWod(s.parsed.program).ok, 'the stored program passes the validator again');
-    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['conditioning', 'extra']]);
+    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra']]);
     assert.equal(s.parsed.program.tracks[0].blocks[0].warmup, true);
     assert.ok(s.parsed.program.tracks.every(t => t.blocks.every(b => b.movements.every(m => m.exId === null && m.rawName))));
     assert.equal(s.pending, null, 'a read image is never a proposal');
@@ -331,6 +331,28 @@ test('validateWod: shape, bounds and rawName, with ids assigned and exId always 
   assert.equal(long.rawName.length, 80, 'strings are clipped');
 });
 
+test('validateWod: repeats and rest (T17) are optional, whole and bounded', () => {
+  const move = dose => ({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format: 'interval', movements: [{ raw: 'x', rawName: 'run', name: 'run', dose }] }] }] });
+  const dose = d => validateWod(move(d)).proposal?.program.tracks[0].blocks[0].movements[0].dose;
+  const errs = d => (validateWod(move(d)).errors || []).join();
+  assert.deepEqual(dose({ sets: 2, m: 200, restSec: 60 }), { m: 200, sets: 2, restSec: 60 });
+  assert.deepEqual(dose({ sets: 50, restSec: 0 }), { sets: 50, restSec: 0 });
+  assert.deepEqual(dose({ m: 200 }), { m: 200 }, 'a dose without them is still valid, and gains nothing');
+  for (const sets of [0, 51, 1.5, '2']) assert.match(errs({ sets }), /dose\.sets must be a whole number from 1 to 50/, String(sets));
+  for (const restSec of [-1, 1801, 30.5]) assert.match(errs({ restSec }), /dose\.restSec must be whole seconds from 0 to 1800/, String(restSec));
+  assert.match((validateWod({ tracks: [{ label: 'x', kind: 'main', blocks: [{ label: 'b', format: 'other', movements: [{ rawName: 'x', alts: [{ rawName: 'y', dose: { sets: 99 } }] }] }] }] }).errors || []).join(), /alts\.dose\.sets/);
+
+  // The 2026-10-21 lines in the fixture: the Running Club's repeats and rest, its warm-up's cap,
+  // Rox Prep's two sets of max wall balls, and the umbrella TC 40 on each part.
+  const program = validateWod(FIXTURE_WOD).proposal.program;
+  const track = id => program.tracks.find(t => t.id === id);
+  const [warm, wod] = track('running').blocks;
+  assert.deepEqual([warm.warmup, warm.capMin, warm.movements.length], [true, 15, 0]);
+  assert.deepEqual(wod.movements.map(m => [m.rawName, m.dose]), [['run', { m: 8000, sets: 1, restSec: 180 }], ['run', { m: 200, sets: 2, restSec: 60 }]]);
+  assert.deepEqual(track('rox').blocks[0].movements.map(m => [m.rawName, m.dose]), [['wall balls', { sets: 2 }]]);
+  assert.ok(track('full').blocks.slice(1).every(b => b.raw.startsWith('TC 40\nMIN ')), 'TC 40 heads each part');
+});
+
 /* ---------- forget ---------- */
 
 test('forgetting a profile clears a read program too', async () => {
@@ -548,4 +570,12 @@ test('claude adapter: an error text that quotes the image has it cut out', async
     assert.equal(r.code, 1);
     assert.equal(r.stderr, '400 bad [image]');
   } finally { claudeMod.setSdkForTest(undefined); }
+});
+
+test('the parse prompt keeps the T17 boundaries: sets × reps on a lift, a rounds heading, a warm-up-only duration', () => {
+  const p = PROMPTS['parse-wod'];
+  assert.match(p, /`3x12 Copas`, `5x5 Back Squat` \| on a lift, `NxR` is sets × reps: `dose: \{ "sets": 3, "reps": 12 \}`/);
+  assert.match(p, /`3 Rondas de:` \| a line of its own over the movements: the block's `rounds: 5`.*Never also `dose\.sets`/);
+  assert.match(p, /`2 Rondas de 400 m Run` → `\{ "sets": 2, "m": 400 \}`/);
+  assert.match(p, /Only a warm-up: .*`Easy 20 min` in a running track → `rawName: "run"`, `dose: \{ "sec": 1200 \}`/);
 });

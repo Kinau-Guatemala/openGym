@@ -3879,7 +3879,18 @@ components:
 
     CoachWodDose:
       type: object
-      properties: { reps: { type: number }, repsMax: { type: number }, cal: { type: number }, m: { type: number }, sec: { type: number } }
+      description: >-
+        `sets` is the times the line is done (`2x200` → `{sets: 2, m: 200}`, `2 Set de Max` →
+        `{sets: 2}`), `restSec` the rest printed between repeats. Both are optional: a dose without
+        `sets` is done once.
+      properties:
+        reps: { type: number }
+        repsMax: { type: number }
+        cal: { type: number }
+        m: { type: number }
+        sec: { type: number }
+        sets: { type: integer, minimum: 1, maximum: 50 }
+        restSec: { type: integer, minimum: 0, maximum: 1800 }
 
     CoachWodLoad:
       type: object

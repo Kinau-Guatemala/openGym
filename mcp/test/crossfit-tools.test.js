@@ -81,6 +81,18 @@ describe('get_wods', () => {
     expect(female[2].dose).toBe('15 cal')
   })
 
+  test('repeats and sets show in the dose, the printed rest as rest_sec (T17)', async () => {
+    const p = structuredClone(program)
+    p.tracks[1].blocks[0].movements.push(
+      { id: 'm1', raw: '2x200 x 1 De pausa', rawName: 'run', exId: '0685', dose: { sets: 2, m: 200, restSec: 60 } },
+      { id: 'm2', raw: '2 Set de Max Wall Balls', rawName: 'wall balls', exId: '2458', dose: { sets: 2 } })
+    S.wods[TODAY] = p
+    const [curl, run, wb] = (await call('get_wods')).programs[0].tracks[1].blocks[0].movements
+    expect([curl.dose, curl.rest_sec]).toEqual(['12', null])
+    expect([run.dose, run.rest_sec]).toEqual(['2 × 200 m', 60])
+    expect([wb.dose, wb.rest_sec]).toEqual(['2 × Max', null])
+  })
+
   test('a best guess for a misspelled name is flagged with its candidates, never passed as the exercise', async () => {
     const p = structuredClone(program)
     const emom = p.tracks[0].blocks[1]

@@ -41,6 +41,7 @@ describe('doseFor / fmtDose', () => {
     expect(doseFor(row, { body: 'female' })).toEqual({ cal: 15 })
     expect(doseFor({ dose: { reps: 5 } }, { body: 'female' })).toEqual({ reps: 5 })
     expect(doseFor({}, {})).toEqual({})
+    expect(doseFor({ dose: { sets: 2, cal: 20, restSec: 60 }, doseFemale: { cal: 15 } }, { body: 'female' })).toEqual({ sets: 2, restSec: 60, cal: 15 })
   })
   it('formats each kind', () => {
     expect(fmtDose({ reps: 12, repsMax: 15 })).toBe('12-15')
@@ -49,5 +50,11 @@ describe('doseFor / fmtDose', () => {
     expect(fmtDose({ m: 1000 })).toBe('1000 m')
     expect(fmtDose({ sec: 40 })).toBe('40 s')
     expect(fmtDose({})).toBe('')
+  })
+  it('puts the repeats in front: 2 × 200 m, and 2 × Max for sets with no number', () => {
+    expect(fmtDose({ sets: 2, m: 200, restSec: 60 })).toBe('2 × 200 m')
+    expect(fmtDose({ sets: 3, reps: 10 })).toBe('3 × 10')
+    expect(fmtDose({ sets: 2 })).toBe('2 × Max')
+    expect(fmtDose({ sets: 1, m: 8000 })).toBe('8000 m')
   })
 })

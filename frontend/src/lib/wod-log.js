@@ -24,6 +24,8 @@ export const WOD_RIR = 5
 const METCON = new Set(['emom', 'amrap', 'fortime', 'interval'])
 const list = v => (Array.isArray(v) ? v : [])
 const pos = v => (Number(v) > 0 ? Number(v) : 0)
+// `2x200`, `2 Set de Max`: the times a line is done (dose.sets). A dose without it is done once.
+export const setsOf = dose => Math.floor(pos(dose?.sets)) || 1
 const HOUR = 3600000
 
 /** A ladder scheme ("50-40-30-20-10", "21-15-9") as its rungs, or null. */
@@ -84,11 +86,12 @@ export function scoreFor(block, score) {
 const unitsOf = dose => pos(dose.reps) || pos(dose.cal) || 0
 
 // Per movement, the amount of each set: null for the full dose, a number for a ladder's rung or
-// the reps a partial round reached.
+// the reps a partial round reached. A line done `sets` times (`2 Set de 10`) is that many sets
+// per round, here and nowhere else.
 function setsPlan(block, doses, score) {
   const rungs = ladderOf(block.scheme)
-  if (rungs) return doses.map(d => rungs.map(r => (unitsOf(d) ? null : r)))
-  const full = n => doses.map(() => Array(Math.max(1, n)).fill(null))
+  if (rungs) return doses.map(d => rungs.flatMap(r => Array(setsOf(d)).fill(unitsOf(d) ? null : r)))
+  const full = n => doses.map(d => Array(Math.max(1, n) * setsOf(d)).fill(null))
   const rounds = score?.type === 'rounds' && Number(score.rounds) >= 0 ? Math.floor(Number(score.rounds)) : null
   if (block.format === 'emom') {
     // k slots (M1, M2…) share the minutes; movements without a slot are all done every minute.
@@ -97,12 +100,12 @@ function setsPlan(block, doses, score) {
     return full(rounds != null ? Math.min(n, rounds) : n)
   }
   if (rounds == null || !['amrap', 'fortime', 'interval'].includes(block.format)) return full(pos(block.rounds) || 1)
-  // Rounds completed, then the leftover reps through the movements in order.
+  // Rounds completed, then the leftover reps through the movements in order, set by set.
   let left = pos(score.reps)
   return doses.map(d => {
-    const out = Array(rounds).fill(null)
+    const out = Array(rounds * setsOf(d)).fill(null)
     const u = unitsOf(d)
-    if (left > 0 && u) { out.push(Math.min(u, left)); left -= u }
+    for (let k = setsOf(d); left > 0 && u && k > 0; k--) { out.push(Math.min(u, left)); left -= u }
     return out
   })
 }

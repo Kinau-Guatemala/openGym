@@ -23,6 +23,7 @@ import { fmtDate, fmtNum, isoOf, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
 import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
+import { fmtRest } from '../lib/duration.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
 import { exercisePicker, confirmSheet } from '../sheets.jsx'
@@ -441,8 +442,10 @@ function ExChoice({ item, onPick, onChoose }) {
 
 function MovementRow({ S, m, onEdit, onPick, onChoose }) {
   const rx = rxFor(m, S)
-  const dose = fmtDose(doseFor(m, S))
-  const line = [dose + (dose && m.perSide ? ' ' + t('each side') : ''), rx ? `${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
+  const d = doseFor(m, S)
+  const dose = fmtDose(d)
+  const line = [dose + (dose && m.perSide ? ' ' + t('each side') : ''), d.restSec > 0 ? t('{0} rest', fmtRest(d.restSec)) : null,
+    rx ? `${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
   return <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 10, paddingTop: 10 }}>
     <div {...tappable(onEdit)} style={{ cursor: 'pointer' }}>
       <div className="row" style={{ gap: 6 }}>
@@ -515,6 +518,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
   const [dose, setDose] = useState(Number(m0.dose?.[kindOf(m0.dose)]) || null)
   const [doseMax, setDoseMax] = useState(Number(m0.dose?.repsMax) || null)
   const [doseF, setDoseF] = useState(Number(m0.doseFemale?.[kindOf(m0.dose)]) || null)
+  const [sets, setSets] = useState(Number(m0.dose?.sets) || null)
   const [perSide, setPerSide] = useState(!!m0.perSide)
   const [rxM, setRxM] = useState(Number(m0.rx?.male?.w) || null)
   const [rxF, setRxF] = useState(Number(m0.rx?.female?.w) || null)
@@ -532,7 +536,9 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
     const base = !movement ? movementFromText(text, null, S.exAliases)
       : changed ? resolveInto({ ...m0, raw: text, rawName: rawNameOf(text), name: undefined }, S.exAliases)
       : m0
-    const d = dose ? { [kind]: dose, ...(kind === 'reps' && doseMax > dose ? { repsMax: doseMax } : {}) } : {}
+    // The rest printed on the line (`x 1 De pausa`) is shown, not edited here: it rides along.
+    const d = { ...(dose ? { [kind]: dose, ...(kind === 'reps' && doseMax > dose ? { repsMax: doseMax } : {}) } : {}),
+      ...(sets > 0 ? { sets: Math.min(50, Math.round(sets)) } : {}), ...(m0.dose?.restSec != null ? { restSec: m0.dose.restSec } : {}) }
     const out = { ...base, dose: d, perSide,
       rx: rxM || rxF ? { male: rxM ? { w: rxM, unit: rxUnit } : null, female: rxF ? { w: rxF, unit: rxUnit } : null } : null,
       alts }
@@ -563,6 +569,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
       {field(doseLabel(kind), dose, setDose, null, kind === 'm')}
       {kind === 'reps' && field(t('Up to'), doseMax, setDoseMax, null, false)}
       {field(t('Women (if different)'), doseF, setDoseF, null, kind === 'm')}
+      {field(t('Sets'), sets, setSets, null, false)}
     </div>
     <div className="lrow" style={{ padding: '12px 0' }}>
       <span className="lrow-m"><span className="lrow-t">{t('Each side')}</span></span>
