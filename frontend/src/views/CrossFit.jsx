@@ -67,20 +67,8 @@ export default function CrossFit() {
   const dates = Object.keys(S.wods || {}).filter(d => wodOf(S, d))
   const upcoming = dates.filter(d => d >= today).sort()
   const recent = dates.filter(d => d < today).sort().reverse()
-  const file = useRef(null)
   // An image read while the person was elsewhere: the job ran and was charged, so it is offered here.
   const read = readyIntake(useSyncExternalStore(subscribeIntake, currentIntake))
-  // The box's image, picked from the device: read into a program on the intake screen.
-  const upload = async e => {
-    const f = e.target.files?.[0]
-    e.target.value = ''
-    if (!f) return
-    let image = null
-    try { image = await downscale(f) } catch { /* below */ }
-    if (!image) { toast(t('This image could not be opened.')); return }
-    setIntakeImage(image, tomorrowISO())
-    nav(INTAKE_ROUTE)
-  }
   const row = d => {
     const w = wodOf(S, d)
     return <div key={d} className="item" {...tappable(() => nav('/crossfit/edit/' + d))}>
@@ -102,8 +90,7 @@ export default function CrossFit() {
     </div>
     <div className="row" style={{ gap: 8, marginBottom: 18 }}>
       <Button variant="primary" icon="plus" onClick={() => nav('/crossfit/new')}>{t('New program')}</Button>
-      <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
-      <Button icon="camera" onClick={() => file.current?.click()}>{t('Upload image')}</Button>
+      <UploadImage date={tomorrowISO()} />
     </div>
     {read && <div className="list" style={{ marginBottom: 18 }}>
       <div className="item" {...tappable(() => { const r = takeIntake(); if (r) openRead(nav, r) })}>
@@ -133,6 +120,27 @@ function GapLine({ S, onOpen }) {
       ? t('Below the weekly target: {0}', below.map(r => `${t(MUSCLE_NAME[r.muscle])} ${fmtNum(Math.round(r.setsPerWeek * 10) / 10)}/${fmtNum(r.target)}`).join(' · '))
       : t('Every muscle is at the weekly target.')}
   </div>
+}
+
+// The box's image, picked from the device and read into a program on the intake screen, for
+// `date`: the list reads for tomorrow, a new program for its own day. `ask(go)` may hold the
+// read back (the editor asks before dropping unsaved changes); the picked image waits for it.
+function UploadImage({ date, ask = go => go(), replace = false }) {
+  const nav = useNavigate()
+  const file = useRef(null)
+  const upload = async e => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    let image = null
+    try { image = await downscale(f) } catch { /* below */ }
+    if (!image) { toast(t('This image could not be opened.')); return }
+    ask(() => { setIntakeImage(image, date); nav(INTAKE_ROUTE, { replace }) })
+  }
+  return <>
+    <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
+    <Button icon="camera" onClick={() => file.current?.click()}>{t('Upload image')}</Button>
+  </>
 }
 
 /* ============================ the editor ============================ */
@@ -223,17 +231,19 @@ function Editor() {
   const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.exAliases))
   const [tab, setTab] = useState(0)
   const [dirty, setDirty] = useState(!!handed)
+  // Edited beyond the date: what an upload would throw away (the date goes along with it).
+  const [edited, setEdited] = useState(false)
   if (editDate && !wodOf(S, editDate) && !dirty) return <Navigate to="/crossfit" replace />
 
   // Every change goes through here: a copy, changed, so the sheets' callbacks never hold a stale one.
-  const edit = fn => { setDirty(true); setDraft(d => { const n = structuredClone(d); fn(n); return n }) }
+  const edit = fn => { setDirty(true); setEdited(true); setDraft(d => { const n = structuredClone(d); fn(n); return n }) }
   const ti = Math.min(tab, Math.max(0, draft.tracks.length - 1))
   const track = draft.tracks[ti]
 
-  const leave = () => {
-    if (!dirty) { goBack(nav); return }
-    confirmSheet({ title: t('Discard changes?'), message: t('This program has changes you have not saved.'), confirmText: t('Discard'), danger: true, onConfirm: () => goBack(nav) })
-  }
+  const discardFirst = go => (dirty
+    ? confirmSheet({ title: t('Discard changes?'), message: t('This program has changes you have not saved.'), confirmText: t('Discard'), danger: true, onConfirm: go })
+    : go())
+  const leave = () => discardFirst(() => goBack(nav))
   const save = () => {
     if (!ISO.test(date)) { toast(t('Pick a date')); return }
     if (!draft.tracks.length) { toast(t('Add a track first')); return }
@@ -257,9 +267,10 @@ function Editor() {
       await store().pushState()
       nav(INTAKE_ROUTE, { replace: true })
     }
-    if (dirty) confirmSheet({ title: t('Discard changes?'), message: t('This program has changes you have not saved.'), confirmText: t('Discard'), danger: true, onConfirm: go })
-    else go()
+    discardFirst(go)
   }
+  // A new, empty program can be read off the box's image instead, for the day it is for (T18).
+  const canUpload = !editDate && !loc.state?.draft && !loc.state?.image && !draft.tracks.some(tr => tr.blocks.some(b => b.movements.length))
   const remove = () => confirmSheet({
     title: t('Delete this program?'), message: t('The program for {0} goes away on every device.', fmtDate(editDate, true)),
     confirmText: t('Delete'), danger: true,
@@ -304,6 +315,9 @@ function Editor() {
         <div className="sub">{ISO.test(date) ? fmtDate(date, true) : ''}</div>
       </div>
     </div>
+
+    {canUpload && <div style={{ marginBottom: 14 }}>
+      <UploadImage date={ISO.test(date) ? date : todayISO()} ask={go => (edited ? discardFirst(go) : go())} replace /></div>}
 
     {loc.state?.reason && <div className="card">
       <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
