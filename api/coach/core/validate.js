@@ -676,6 +676,9 @@ function wodDose(v, where, errors, field = 'dose') {
     if (!isNum(v[k]) || v[k] < 0 || v[k] > MAX_WOD_DOSE) errors.push(`${where}.${field}.${k} must be a number from 0 to ${MAX_WOD_DOSE}`);
     else out[k] = v[k];
   }
+  // `2x200`, `2 Set de Max`: the times the line is done, and the rest between them.
+  if (v.sets != null) { if (isInt(v.sets, 1, 50)) out.sets = v.sets; else errors.push(`${where}.${field}.sets must be a whole number from 1 to 50`); }
+  if (v.restSec != null) { if (isInt(v.restSec, 0, 1800)) out.restSec = v.restSec; else errors.push(`${where}.${field}.restSec must be whole seconds from 0 to 1800`); }
   return out;
 }
 

@@ -12,8 +12,9 @@ import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
 import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
+import { fmtRest } from '../lib/duration.js'
 import { includeOf } from '../lib/wod-draft.js'
-import { SCORE_OF, isCardioRow, isMetcon, ladderOf, relogState, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, isCardioRow, isMetcon, ladderOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Segmented, Switch } from '../components/ui.jsx'
@@ -167,8 +168,9 @@ function LogMovement({ S, block, m, lm, onChange }) {
   const pick = () => {
     const picker = exercisePicker(ex => { picker.close(); onChange(x => { x.exId = ex.id; delete x.w }) }, { title: t('Substitute'), like: exId || undefined })
   }
-  const line = [fmtDose(dose) + (fmtDose(dose) && m.perSide ? ' ' + t('each side') : ''), rx ? `Rx ${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
-  const rows = list(lm.sets).length ? lm.sets : [{ w, r: dose.reps || null }]
+  const line = [fmtDose(dose) + (fmtDose(dose) && m.perSide ? ' ' + t('each side') : ''), dose.restSec > 0 ? t('{0} rest', fmtRest(dose.restSec)) : null,
+    rx ? `Rx ${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
+  const rows = list(lm.sets).length ? lm.sets : Array.from({ length: setsOf(dose) }, () => ({ w, r: dose.reps || null }))
   return <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 10, paddingTop: 10 }}>
     <div className="small" style={{ marginBottom: 6 }}>{m.raw || m.rawName}{line && <span className="muted"> · {line}</span>}</div>
     <div className="chips" style={{ margin: '0 0 8px', flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', alignItems: 'center' }}>

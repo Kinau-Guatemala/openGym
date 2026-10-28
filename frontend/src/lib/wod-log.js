@@ -24,6 +24,8 @@ export const WOD_RIR = 5
 const METCON = new Set(['emom', 'amrap', 'fortime', 'interval'])
 const list = v => (Array.isArray(v) ? v : [])
 const pos = v => (Number(v) > 0 ? Number(v) : 0)
+// `2x200`, `2 Set de Max`: the times a line is done (dose.sets). A dose without it is done once.
+export const setsOf = dose => Math.floor(pos(dose?.sets)) || 1
 const HOUR = 3600000
 
 /** A ladder scheme ("50-40-30-20-10", "21-15-9") as its rungs, or null. */
@@ -153,15 +155,16 @@ export function wodToSession(program, choice, logged, S) {
           // One row for the whole block: the dose (or a ladder's rungs) added up, with its minutes.
           const kind = machine || (pos(dose.cal) ? 'cal' : pos(dose.m) ? 'm' : null)
           const row = { mode: 'cardio' }
-          if (kind) row[kind] = amounts.reduce((sum, a) => sum + (a ?? dose[kind]), 0)
-          const est = cardioMinutes(exId, kind ? { [kind]: row[kind] } : dose, kind ? 1 : amounts.length) ?? pos(block.capMin)
+          if (kind) row[kind] = amounts.reduce((sum, a) => sum + (a ?? dose[kind]), 0) * setsOf(dose)
+          const est = cardioMinutes(exId, kind ? { [kind]: row[kind] } : dose, kind ? 1 : amounts.length * setsOf(dose)) ?? pos(block.capMin)
           row.min = pos(lm.min) || (pos(block.capMin) ? Math.min(est, block.capMin) : est)
           row.done = true
           entry.sets.push(row)
         } else if (!metcon && list(lm.sets).length) {
           entry.sets = lm.sets.map(s => ({ w: pos(s.w), r: pos(s.r), done: true }))
         } else {
-          for (const a of amounts) {
+          // Each round's line done `sets` times: `2 Set de Max` is two rows, the reps left to type.
+          for (const a of amounts.flatMap(a => Array(setsOf(dose)).fill(a))) {
             const n = a ?? (pos(dose.reps) || pos(dose.sec))
             let row = pos(dose.sec) && !pos(dose.reps) ? { mode: 'time', sec: n, w, done: true }
               : m.perSide ? syncSideAggregate({ sides: { L: { w, r: n, done: true }, R: { w, r: n, done: true } } })

@@ -10,6 +10,7 @@
 // version of an lb program (135 lb → 60 kg, 24 kg → 55 lb). In the printed unit it is shown
 // exactly as printed.
 import { LB_PER_KG } from './units.js'
+import { t } from './i18n-core.js'
 
 const GRID = { kg: 2.5, lb: 5 }
 const unitOf = u => (String(u || '').toLowerCase() === 'kg' ? 'kg' : 'lb')
@@ -39,16 +40,19 @@ export function rxIn(rx, unit) {
 }
 
 /** The dose for S.body: doseFemale when the image printed a split and the profile is female. */
-export const doseFor = (movement, S) =>
-  (S?.body === 'female' && movement?.doseFemale) || movement?.dose || {}
+export function doseFor(movement, S) {
+  const dose = movement?.dose || {}
+  if (S?.body !== 'female' || !movement?.doseFemale) return dose
+  // The repeats and the rest are the line's, whoever does it: `2x 20/15 Cal`.
+  const { sets, restSec } = dose
+  return { ...(sets != null ? { sets } : {}), ...(restSec != null ? { restSec } : {}), ...movement.doseFemale }
+}
 
-/** A dose as one short line: "12-15", "20 cal", "1000 m", "40 s"; '' for none. */
+/** A dose as one short line: "12-15", "20 cal", "1000 m", "40 s", "2 × 200 m", "2 × Max"; '' for none. */
 export function fmtDose(dose) {
   if (!dose || typeof dose !== 'object') return ''
   const n = k => Number(dose[k]) > 0
-  if (n('reps')) return n('repsMax') ? `${dose.reps}-${dose.repsMax}` : String(dose.reps)
-  if (n('cal')) return `${dose.cal} cal`
-  if (n('m')) return `${dose.m} m`
-  if (n('sec')) return `${dose.sec} s`
-  return ''
+  const one = n('reps') ? (n('repsMax') ? `${dose.reps}-${dose.repsMax}` : String(dose.reps))
+    : n('cal') ? `${dose.cal} cal` : n('m') ? `${dose.m} m` : n('sec') ? `${dose.sec} s` : ''
+  return Number(dose.sets) > 1 ? `${dose.sets} × ${one || t('Max')}` : one
 }

@@ -8,6 +8,9 @@ import { musclesOf } from './muscles.js'
 import { EXIDX } from './exercises.js'
 import { entryExcluded } from './history.js'
 import { backfillStart } from './backfill.js'
+import { prepareDraft } from './wod-draft.js'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const SNATCH = '3888', CJ = '5122', PUSHUP = '0662', ROW = '1161', SKI = '2142', BURPEE = '1160', DL = '0032'
 const mv = (id, exId, dose, extra = {}) => ({ id, rawName: id, exId, dose, perSide: false, rx: null, alts: [], ...extra })
@@ -361,5 +364,38 @@ describe('effort: wodRir is a fallback, kept out of the Effort card', () => {
     expect(sum).toMatchObject({ done: 8, rated: 0, est: 0, covered: 0, avg: null })
     expect(effortWeeks(st, 0, resolve)).toEqual([])
     expect(effortHistogram(st, 0, resolve).every(b => b.n === 0)).toBe(true)
+  })
+})
+
+describe('wodToSession: repeats and sets (T17)', () => {
+  // The 2026-10-21 image as the fixture provider answers it, resolved the way the review screen does.
+  const fixture = prepareDraft(JSON.parse(readFileSync(resolve(__dirname, '../../../api/coach/fixture-wod.json'), 'utf8')))
+
+  it('the Running Club logs 8.4 km: 1 × 8000 m and 2 × 200 m, the minutes for the whole distance', () => {
+    const out = wodToSession(fixture, { tracks: ['running'] }, {}, S0())
+    const runs = entryOf(out, 'running/b1')
+    expect(runs.map(e => e.id)).toEqual(['0685', '0685'])
+    expect(runs.map(e => e.sets)).toEqual([[{ mode: 'cardio', m: 8000, min: 40, done: true }], [{ mode: 'cardio', m: 400, min: 2, done: true }]])
+    expect(runs.reduce((km, e) => km + e.sets[0].m, 0) / 1000).toBe(8.4)
+    // a distance typed on the log screen is one repeat's, so it is multiplied too
+    expect(entryOf(wodToSession(fixture, { tracks: ['running'] }, { moves: { 'running/b1/m1': { m: 250 } } }, S0()), 'running/b1')[1].sets[0].m).toBe(500)
+  })
+
+  it('2 Set de Max Wall Balls logs two rows of max reps for the user to fill in', () => {
+    const [wb] = wodToSession(fixture, { tracks: ['rox'] }, {}, S0()).entries
+    expect(wb.id).toBe('2458')
+    expect(wb.sets).toEqual([{ w: 0, r: 0, done: true }, { w: 0, r: 0, done: true }])
+    const typed = wodToSession(fixture, { tracks: ['rox'] }, { moves: { 'rox/b0/m0': { r: 25, w: 9 } } }, S0()).entries[0]
+    expect(typed.sets).toEqual([{ w: 9, r: 25, done: true }, { w: 9, r: 25, done: true }])
+  })
+
+  it('sets multiply the reps and calories of a metcon line; a dose without sets logs as before', () => {
+    const p = program([
+      block('b0', 'fortime', [mv('m0', PUSHUP, { sets: 3, reps: 10 }), mv('m1', ROW, { sets: 2, cal: 15, restSec: 60 }), mv('m2', BURPEE, { reps: 10 })], { rounds: 2 }),
+    ])
+    const [pu, row, bur] = wodToSession(p, all, {}, S0()).entries
+    expect(pu.sets.map(x => x.r)).toEqual([10, 10, 10, 10, 10, 10])
+    expect(row.sets).toEqual([{ mode: 'cardio', cal: 60, min: 4, done: true }])
+    expect(bur.sets.map(x => x.r)).toEqual([10, 10])
   })
 })

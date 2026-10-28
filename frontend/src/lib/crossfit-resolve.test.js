@@ -41,6 +41,7 @@ const FIXTURE = [
   ['10x300mts Row', 'row', '1161'],
   ['15 Sit Wall Balls', 'sit wall balls', null],
   ['1x1000 mts Row', 'row', '1161'],
+  ['2 Set de Max Wall Balls', 'wall balls', '2458'],   // 2026-10-21 Rox Prep (T17)
   // 09-28
   ['4 Squat Cleans', 'squat cleans', '5287'],
   ['4 FS', 'fs', '0042'],
@@ -547,5 +548,13 @@ describe('crossfit resolve: misspellings', () => {
     expect(resolveMovement({ rawName: 'wal balls' }).via).toBe('guess')
     const userAliases = { [norm('wal balls')]: { exId: '2458', _ts: 1 } }   // what confirming writes
     expect(resolveMovement({ rawName: 'Wal Balls' }, userAliases)).toEqual({ exId: '2458', via: 'user', candidates: [] })
+  })
+})
+
+describe('crossfit resolve: a leading set count (T17)', () => {
+  it('"2 Set de Max Wall Balls" is wall balls, which resolves; the name with the dose left in did not', () => {
+    expect(resolveMovement({ rawName: 'wall balls' })).toMatchObject({ exId: '2458', via: 'shipped' })
+    expect(resolveMovement({ rawName: 'set de max wall balls' }).via).not.toBe('shipped')
+    expect(rawNameOf('3 Sets of 10 Pull ups')).toBe('pull ups')
   })
 })

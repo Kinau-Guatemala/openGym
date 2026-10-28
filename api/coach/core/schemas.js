@@ -118,7 +118,8 @@ const NUM_OR_NULL = { type: ['number', 'null'] };
 const STR_OR_NULL = { type: ['string', 'null'] };
 const DOSE = {
   type: 'object',
-  properties: { reps: { type: 'number' }, repsMax: { type: 'number' }, cal: { type: 'number' }, m: { type: 'number' }, sec: { type: 'number' } }
+  properties: { reps: { type: 'number' }, repsMax: { type: 'number' }, cal: { type: 'number' }, m: { type: 'number' }, sec: { type: 'number' },
+    sets: { type: 'integer' }, restSec: { type: 'integer' } }
 };
 const LOAD = { type: ['object', 'null'], properties: { w: { type: 'number' }, unit: { type: 'string', enum: ['lb', 'kg'] } } };
 const MOVEMENT_SCHEMA = {

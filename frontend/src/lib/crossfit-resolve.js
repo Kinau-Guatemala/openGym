@@ -8,6 +8,7 @@
 //   - drop a leading slot label ("M1 ", "R3 ");
 //   - drop the leading dose, repeatedly: a number, range or pair ("12", "12-15", "20/15",
 //     "1x1000") with an optional unit (cal, m, mts, k, km, seg, sec, min, set), or "max";
+//     "2 Set de", "3 Sets of", "2 Rondas de" go with their number;
 //   - drop the trailing load and distance, repeatedly: numbers and x/y pairs with an optional unit
 //     ("185/135", "24KG/16KG", "12/12", "Run 1.6K", "Ski800"), the partner split "/ 2", the
 //     side or pacing marker (R, L, ALT, UNBROKEN), "Parner A";
@@ -36,7 +37,7 @@ const plain = text => String(text || '')
 
 export const norm = text => plain(text).split(' ').map(singular).join(' ')
 
-const LEAD = /^(?:[mr]\d+\s+|\d[\d.,/x-]*\s*(?:km|k|mts|mt|m|cal|seg|sec|min|sets?)(?![a-z])|\d[\d.,/x-]*|(?:max|mts|cal)(?![a-z]))\s*/i
+const LEAD = /^(?:[mr]\d+\s+|\d[\d.,/x-]*\s*(?:km|k|mts|mt|m|cal|seg|sec|min|(?:sets?|rondas?|rounds?)(?:\s+(?:de|of)(?![a-z]))?)(?![a-z])|\d[\d.,/x-]*|(?:max|mts|cal)(?![a-z]))\s*/i
 const TRAIL = /(?:\s+(?:r|l|alt|unbroken)|\s+parner\s+[a-c]|(?:\s*\/?\s*\d[\d.]*\s*(?:kg|lbs?|km|k|mts|m)?)+)\s*$/i
 
 export function rawNameOf(raw) {
