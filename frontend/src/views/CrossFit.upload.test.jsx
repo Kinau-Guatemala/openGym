@@ -34,7 +34,14 @@ async function mount(entry) {
     <Where />
   </MemoryRouter>))
 }
-const button = text => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+const button = (text, el = host) => [...el.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+// The top sheet, rendered where the test can reach it (the app's sheet host isn't mounted here).
+let sheetHost, sheetRoot
+function renderSheet() {
+  if (!sheetHost) { sheetHost = document.createElement('div'); document.body.appendChild(sheetHost); sheetRoot = createRoot(sheetHost) }
+  const sheet = useUI.getState().sheets.at(-1)
+  sheetRoot.render(sheet.render(() => useUI.getState().closeSheet(sheet.id)))
+}
 const pick = async () => {
   const input = host.querySelector('input[type=file]')
   Object.defineProperty(input, 'files', { value: [new File(['x'], 'wod.jpg', { type: 'image/jpeg' })], configurable: true })
@@ -59,6 +66,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   host.remove()
+  if (sheetHost) { act(() => sheetRoot.unmount()); sheetHost.remove(); sheetHost = null }
   vi.useRealTimers()
 })
 
@@ -110,6 +118,25 @@ describe('Upload image on a new program (T18)', () => {
     await mount({ pathname: '/crossfit/new', state: { draft: program, date: '2026-10-28' } })
     expect(host.textContent).toContain('New program')
     expect(button('Upload image')).toBeUndefined()
+    // the manual path, with the image the intake could not read: it has "Read the image again"
+    act(() => root.unmount()); host.remove()
+    await mount({ pathname: '/crossfit/new', state: { image: intake.image.url, reason: 'off', date: '2026-10-28' } })
+    expect(host.textContent).toContain('Posted image')
+    expect(button('Upload image')).toBeUndefined()
+  })
+
+  it('goes away once a block has a movement', async () => {
+    await mount('/crossfit/new?date=2026-10-28')
+    expect(button('Upload image')).toBeTruthy()
+    await act(async () => { button('Add block').click() })
+    await act(async () => { renderSheet() })
+    await act(async () => { button('Done', sheetHost).click() })
+    await act(async () => { button('Add movement').click() })
+    await act(async () => { renderSheet() })
+    await act(async () => { type(sheetHost.querySelector('input[maxlength="120"]'), '10 Burpees') })
+    await act(async () => { button('Done', sheetHost).click() })
+    expect(host.textContent).toContain('10 Burpees')
+    expect(button('Upload image')).toBeUndefined()
   })
 
   it('the list still reads for tomorrow', async () => {
@@ -118,5 +145,12 @@ describe('Upload image on a new program (T18)', () => {
     await pick()
     expect(intake.setIntakeImage).toHaveBeenCalledWith(intake.image, '2026-10-29')
     expect(seen).toContain('/crossfit/new?shared=1')
+  })
+
+  it('tomorrow is when the image is picked, not when the list was opened', async () => {
+    await mount('/crossfit')
+    vi.setSystemTime(new Date('2026-10-30T09:00:00'))
+    await pick()
+    expect(intake.setIntakeImage).toHaveBeenCalledWith(intake.image, '2026-10-31')
   })
 })

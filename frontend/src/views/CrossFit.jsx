@@ -19,7 +19,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
-import { fmtDate, fmtNum, isoOf, todayISO } from '../lib/format.js'
+import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
 import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
@@ -51,7 +51,6 @@ const doseLabel = k => ({ reps: t('Reps'), cal: t('Calories'), m: t('Meters'), s
 
 // An icon inside a chip, sitting on the text line (the exercise picker's chips do the same).
 const CHIP_ICON = { fontSize: 12, display: 'inline-block', marginInlineEnd: 4, verticalAlign: '-1px' }
-const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return isoOf(d) }
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 export const trackNames = w => (w?.tracks || []).map(tr => tr.label).filter(Boolean).join(' · ')
 
@@ -90,7 +89,7 @@ export default function CrossFit() {
     </div>
     <div className="row" style={{ gap: 8, marginBottom: 18 }}>
       <Button variant="primary" icon="plus" onClick={() => nav('/crossfit/new')}>{t('New program')}</Button>
-      <UploadImage date={tomorrowISO()} />
+      <UploadImage date={tomorrowISO} />
     </div>
     {read && <div className="list" style={{ marginBottom: 18 }}>
       <div className="item" {...tappable(() => { const r = takeIntake(); if (r) openRead(nav, r) })}>
@@ -123,7 +122,7 @@ function GapLine({ S, onOpen }) {
 }
 
 // The box's image, picked from the device and read into a program on the intake screen, for
-// `date`: the list reads for tomorrow, a new program for its own day. `ask(go)` may hold the
+// `date()`, asked when the image is picked: the list reads for tomorrow, a new program for its own day. `ask(go)` may hold the
 // read back (the editor asks before dropping unsaved changes); the picked image waits for it.
 function UploadImage({ date, ask = go => go(), replace = false }) {
   const nav = useNavigate()
@@ -135,7 +134,7 @@ function UploadImage({ date, ask = go => go(), replace = false }) {
     let image = null
     try { image = await downscale(f) } catch { /* below */ }
     if (!image) { toast(t('This image could not be opened.')); return }
-    ask(() => { setIntakeImage(image, date); nav(INTAKE_ROUTE, { replace }) })
+    ask(() => { setIntakeImage(image, date()); nav(INTAKE_ROUTE, { replace }) })
   }
   return <>
     <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
@@ -227,7 +226,7 @@ function Editor() {
   const S = useStore(s => s.S)
   const store = useStore.getState
   const handed = loc.state?.draft || null
-  const [date, setDate] = useState(() => editDate || loc.state?.date || new URLSearchParams(loc.search).get('date') || tomorrow())
+  const [date, setDate] = useState(() => editDate || loc.state?.date || new URLSearchParams(loc.search).get('date') || tomorrowISO())
   const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.exAliases))
   const [tab, setTab] = useState(0)
   const [dirty, setDirty] = useState(!!handed)
@@ -317,7 +316,7 @@ function Editor() {
     </div>
 
     {canUpload && <div style={{ marginBottom: 14 }}>
-      <UploadImage date={ISO.test(date) ? date : todayISO()} ask={go => (edited ? discardFirst(go) : go())} replace /></div>}
+      <UploadImage date={() => (ISO.test(date) ? date : todayISO())} ask={go => (edited ? discardFirst(go) : go())} replace /></div>}
 
     {loc.state?.reason && <div className="card">
       <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
