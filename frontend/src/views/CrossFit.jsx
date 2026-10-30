@@ -125,7 +125,7 @@ function GapLine({ S, onOpen }) {
 // holds the read back until `go(day)`: the list asks which day it is for (T20), the editor asks
 // before dropping unsaved changes and reads for its own day, `date()` when the image is picked.
 // The picked image waits for the answer; one never given drops it.
-function UploadImage({ date, ask = go => go(), replace = false }) {
+export function UploadImage({ date, ask = go => go(), replace = false }) {
   const nav = useNavigate()
   const file = useRef(null)
   const upload = async e => {
@@ -135,7 +135,13 @@ function UploadImage({ date, ask = go => go(), replace = false }) {
     let image = null
     try { image = await downscale(f) } catch { /* below */ }
     if (!image) { toast(t('This image could not be opened.')); return }
-    ask(day => { setIntakeImage(image, day ?? date()); nav(INTAKE_ROUTE, { replace }) })
+    // Only a real day, or `date()`: an `ask` that forwards a click event files nothing under it.
+    ask(day => {
+      const d = isoForChoice(day) ?? date?.()
+      if (!d) return
+      setIntakeImage(image, d)
+      nav(INTAKE_ROUTE, { replace })
+    })
   }
   return <>
     <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
@@ -147,8 +153,13 @@ function UploadImage({ date, ask = go => go(), replace = false }) {
 
 // T20: an image with no date of its own (Share, the list's upload) is read for the day picked
 // here: Today or Tomorrow in one tap, the likelier one highlighted, or any other day. Cancel, or
-// the sheet dismissed, drops the image; nothing has been sent yet.
-export const whichDaySheet = go => ui().openSheet(close => <WhichDay go={go} close={close} />)
+// the sheet dismissed, drops the image; nothing has been sent yet. The newest image wins: a second
+// Share while the sheet is open replaces it, so the one underneath can't start a second paid read.
+let dayAsked = null
+export const whichDaySheet = go => {
+  dayAsked?.close()
+  dayAsked = ui().openSheet(close => <WhichDay go={go} close={close} />)
+}
 
 function WhichDay({ go, close }) {
   const S = useStore(s => s.S)

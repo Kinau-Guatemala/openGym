@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import CrossFit, { CrossFitEdit, whichDaySheet } from './CrossFit.jsx'
+import CrossFit, { CrossFitEdit, UploadImage, whichDaySheet } from './CrossFit.jsx'
 import { currentIntake, initShareIntake } from '../lib/wod-intake.js'
 
 const intake = vi.hoisted(() => ({ setIntakeImage: vi.fn(), image: { url: 'data:image/jpeg;base64,AAAA', w: 10, h: 10 } }))
@@ -20,6 +20,8 @@ vi.mock('../lib/wod-intake.js', async importOriginal => ({
 }))
 
 const clone = v => JSON.parse(JSON.stringify(v))
+// An UploadImage on its own, for its go(day) contract.
+const upload = { el: null }
 let root, host, seen = []
 
 // Every place the router went: the intake screen sends an image it doesn't hold back to the list.
@@ -33,6 +35,7 @@ async function mount(entry) {
       <Route path="/crossfit" element={<CrossFit />} />
       <Route path="/crossfit/new" element={<CrossFitEdit />} />
       <Route path="/crossfit/edit/:date" element={<CrossFitEdit />} />
+      <Route path="/upload" element={upload.el} />
     </Routes>
     <Where />
   </MemoryRouter>))
@@ -224,5 +227,38 @@ describe('Which day, from the list and a Share (T20)', () => {
     expect(currentIntake()).toMatchObject({ date: '2026-10-28', image: intake.image, phase: 'pending' })
     expect(window.location.hash).toBe('#/crossfit/new?shared=1')
     window.location.hash = ''
+  })
+
+  it('a second Share while the sheet is open replaces it: only the newest image is read', async () => {
+    await mount('/crossfit')
+    const first = vi.fn(), second = vi.fn()
+    await act(async () => { whichDaySheet(first); whichDaySheet(second) })
+    expect(useUI.getState().sheets).toHaveLength(1)
+    await act(async () => { renderSheet() })
+    await act(async () => { day('Today').click() })
+    expect(second).toHaveBeenCalledWith('2026-10-28')
+    expect(first).not.toHaveBeenCalled()
+  })
+})
+
+describe('UploadImage reads only for a real day (T20)', () => {
+  const event = new MouseEvent('click')
+  it('a forwarded click event is not a day: it falls back to date()', async () => {
+    upload.el = <UploadImage date={() => '2026-10-30'} ask={go => go(event)} />
+    await mount('/upload')
+    await pick()
+    expect(intake.setIntakeImage).toHaveBeenCalledWith(intake.image, '2026-10-30')
+  })
+
+  it('no day and no date() reads nothing, and does not throw', async () => {
+    for (const arg of [undefined, event, 'next week']) {
+      upload.el = <UploadImage ask={go => go(arg)} />
+      await mount('/upload')
+      await pick()
+      act(() => root.unmount()); host.remove()
+    }
+    await mount('/crossfit')
+    expect(intake.setIntakeImage).not.toHaveBeenCalled()
+    expect(seen).not.toContain('/crossfit/new?shared=1')
   })
 })
