@@ -2402,4 +2402,10 @@ export default {
   'Confirm {0}': '{0} megerősítése',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Edzésnapok a futások és WOD-ok körül: láb {0} · felsőtest {1}',
   'none this week': 'ezen a héten nincs',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'Melyik napra szól ez a program?',
+  'Tomorrow': 'Holnap',
+  'Other day…': 'Másik nap…',
+  'Replaces the program saved for {0}': 'Lecseréli a(z) {0} napra mentett programot',
 }

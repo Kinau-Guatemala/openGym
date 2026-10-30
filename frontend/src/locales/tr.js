@@ -2399,4 +2399,10 @@ export default {
   'Confirm {0}': '{0} seçimini onayla',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Koşu ve WOD’lara göre ağırlık günleri: bacak {0} · üst vücut {1}',
   'none this week': 'bu hafta yok',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'Bu program hangi gün için?',
+  'Tomorrow': 'Yarın',
+  'Other day…': 'Başka bir gün…',
+  'Replaces the program saved for {0}': '{0} için kaydedilen programın yerine geçer',
 }

@@ -22,6 +22,23 @@ const MAX_PIXELS = 50e6
 /** The day a posted program is for, unless the person says otherwise: the box posts the evening before. */
 export const tomorrowISO = (now = new Date()) => { const d = new Date(now); d.setDate(d.getDate() + 1); return isoOf(d) }
 
+const ISO = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * T20: the day an image with no date of its own (Share, the list's upload) is most likely for,
+ * highlighted when the person is asked: the box posts the next day's program in the afternoon.
+ */
+// ponytail: a fixed noon cut-off, local time. A box that posts in the morning gets the other
+// button highlighted, one tap away; make it a setting if that turns out to be common.
+export const defaultDayFor = (now = new Date()) => (now.getHours() < 12 ? 'today' : 'tomorrow')
+
+/** 'today' | 'tomorrow' | a YYYY-MM-DD picked by hand → the local date read for; null for anything else. */
+export function isoForChoice(choice, now = new Date()) {
+  if (choice === 'today') return isoOf(now)
+  if (choice === 'tomorrow') return tomorrowISO(now)
+  return ISO.test(choice || '') ? choice : null
+}
+
 /** The size an image of w×h is drawn at: its long side at most `max`, never enlarged. */
 export function fitSize(w, h, max = LONG_SIDE) {
   const k = Math.min(1, max / Math.max(w, h, 1))
@@ -195,16 +212,19 @@ export const INTAKE_ROUTE = '/crossfit/new?shared=1'
 
 /**
  * Once, at start-up: an image shared to the app becomes a run and opens the intake screen.
- * `unreadable()` is called for one that could not be opened.
+ * `unreadable()` is called for one that could not be opened. `whichDay(go)` asks the day it is
+ * for (T20) and calls `go(date)` with the answer, or never: the image is dropped.
  */
-export function initShareIntake(unreadable) {
+export function initShareIntake(unreadable, whichDay, read = downscale) {
   onSharedImage(async ev => {
     let image = null
-    try { if (!ev?.error) image = await downscale(`data:${ev.mime};base64,${ev.data}`) } catch { /* below */ }
+    try { if (!ev?.error) image = await read(`data:${ev.mime};base64,${ev.data}`) } catch { /* below */ }
     if (!image) { unreadable(); return }
-    setIntakeImage(image, tomorrowISO())
-    // The hash, not the router: a cold start delivers the image before the router is up.
-    // Already there (a second share), the screen picks the new run up by itself.
-    window.location.hash = '#' + INTAKE_ROUTE
+    whichDay(date => {
+      setIntakeImage(image, date)
+      // The hash, not the router: a cold start delivers the image before the router is up.
+      // Already there (a second share), the screen picks the new run up by itself.
+      window.location.hash = '#' + INTAKE_ROUTE
+    })
   })
 }

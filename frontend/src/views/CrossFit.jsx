@@ -33,7 +33,7 @@ import { MUSCLE_NAME } from '../lib/muscles.js'
 import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod } from '../lib/coach-api.js'
-import { INTAKE_ROUTE, beginIntake, currentIntake, downscale, failureOf, fromDataUrl, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
+import { INTAKE_ROUTE, beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fromDataUrl, isoForChoice, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
 import CrossFitRecords from './CrossFitRecords.jsx'
 import { Button, NumberField, Row, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
@@ -89,7 +89,7 @@ export default function CrossFit() {
     </div>
     <div className="row" style={{ gap: 8, marginBottom: 18 }}>
       <Button variant="primary" icon="plus" onClick={() => nav('/crossfit/new')}>{t('New program')}</Button>
-      <UploadImage date={tomorrowISO} />
+      <UploadImage ask={whichDaySheet} />
     </div>
     {read && <div className="list" style={{ marginBottom: 18 }}>
       <div className="item" {...tappable(() => { const r = takeIntake(); if (r) openRead(nav, r) })}>
@@ -121,9 +121,10 @@ function GapLine({ S, onOpen }) {
   </div>
 }
 
-// The box's image, picked from the device and read into a program on the intake screen, for
-// `date()`, asked when the image is picked: the list reads for tomorrow, a new program for its own day. `ask(go)` may hold the
-// read back (the editor asks before dropping unsaved changes); the picked image waits for it.
+// The box's image, picked from the device and read into a program on the intake screen. `ask(go)`
+// holds the read back until `go(day)`: the list asks which day it is for (T20), the editor asks
+// before dropping unsaved changes and reads for its own day, `date()` when the image is picked.
+// The picked image waits for the answer; one never given drops it.
 function UploadImage({ date, ask = go => go(), replace = false }) {
   const nav = useNavigate()
   const file = useRef(null)
@@ -134,11 +135,49 @@ function UploadImage({ date, ask = go => go(), replace = false }) {
     let image = null
     try { image = await downscale(f) } catch { /* below */ }
     if (!image) { toast(t('This image could not be opened.')); return }
-    ask(() => { setIntakeImage(image, date()); nav(INTAKE_ROUTE, { replace }) })
+    ask(day => { setIntakeImage(image, day ?? date()); nav(INTAKE_ROUTE, { replace }) })
   }
   return <>
     <input ref={file} type="file" accept="image/*" hidden onChange={upload} />
     <Button icon="camera" onClick={() => file.current?.click()}>{t('Upload image')}</Button>
+  </>
+}
+
+/* ============================ which day an image is for ============================ */
+
+// T20: an image with no date of its own (Share, the list's upload) is read for the day picked
+// here: Today or Tomorrow in one tap, the likelier one highlighted, or any other day. Cancel, or
+// the sheet dismissed, drops the image; nothing has been sent yet.
+export const whichDaySheet = go => ui().openSheet(close => <WhichDay go={go} close={close} />)
+
+function WhichDay({ go, close }) {
+  const S = useStore(s => s.S)
+  const [now] = useState(() => new Date())
+  const [other, setOther] = useState(null)
+  const pick = day => { close(); go(day) }
+  // Allowed all the same: the review is where saving over it is decided.
+  const replaces = day => wodOf(S, day) && <div className="small muted" style={{ margin: '6px 2px 0' }}>{t('Replaces the program saved for {0}', fmtDate(day, true))}</div>
+  const choice = (key, label) => {
+    const day = isoForChoice(key, now)
+    return <div style={{ marginBottom: 10 }}>
+      <Button variant={defaultDayFor(now) === key ? 'primary' : 'plain'} onClick={() => pick(day)}>{label} · {fmtDate(day, true)}</Button>
+      {replaces(day)}
+    </div>
+  }
+  return <>
+    <h3>{t('Which day is this program for?')}</h3>
+    {choice('today', t('Today'))}
+    {choice('tomorrow', t('Tomorrow'))}
+    {other === null
+      ? <Button variant="ghost" icon="calendar" onClick={() => setOther(isoForChoice('tomorrow', now))}>{t('Other day…')}</Button>
+      : <>
+        <input className="field" type="date" aria-label={t('Date')} value={other} onChange={e => setOther(e.target.value)} style={{ background: 'var(--surface-2)' }} />
+        {isoForChoice(other) && replaces(other)}
+        <div style={{ height: 10 }} />
+        <Button variant="tinted" disabled={!isoForChoice(other)} onClick={() => pick(other)}>{t('Continue')}</Button>
+      </>}
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Cancel')}</Button>
   </>
 }
 

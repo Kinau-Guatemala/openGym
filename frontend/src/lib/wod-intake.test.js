@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
-import { beginIntake, currentIntake, downscale, failureOf, fitSize, fromDataUrl, readProgram, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from './wod-intake.js'
+import { beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fitSize, fromDataUrl, initShareIntake, isoForChoice, readProgram, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from './wod-intake.js'
+
+const share = vi.hoisted(() => ({ cb: null }))
+vi.mock('./mobile.js', () => ({ onSharedImage: cb => { share.cb = cb } }))
 
 // A canvas that records what it was asked for and "encodes" the type it was given.
 const fakeCanvas = () => {
@@ -53,6 +56,60 @@ it('fromDataUrl splits a data URL and rejects anything else', () => {
 
 it('tomorrowISO is the next calendar day', () => {
   expect(tomorrowISO(new Date(2026, 11, 31, 23, 30))).toBe('2027-01-01')
+})
+
+// T20: the day an image with no date of its own is asked for. Dates are built in local time
+// (new Date(y, m, d, h)), the way the phone's clock reads, never from a 'YYYY-MM-DD' string.
+describe('which day an image is for', () => {
+  it('highlights today before noon and tomorrow from noon', () => {
+    expect(defaultDayFor(new Date(2026, 9, 28, 0, 0))).toBe('today')
+    expect(defaultDayFor(new Date(2026, 9, 28, 9, 0))).toBe('today')
+    expect(defaultDayFor(new Date(2026, 9, 28, 11, 59, 59))).toBe('today')
+    expect(defaultDayFor(new Date(2026, 9, 28, 12, 0))).toBe('tomorrow')
+    expect(defaultDayFor(new Date(2026, 9, 28, 18, 0))).toBe('tomorrow')
+    expect(defaultDayFor(new Date(2026, 9, 28, 23, 59))).toBe('tomorrow')
+  })
+
+  it('turns the choice into the local date, across a month and a year', () => {
+    const late = new Date(2026, 9, 31, 23, 30)
+    expect(isoForChoice('today', late)).toBe('2026-10-31')
+    expect(isoForChoice('tomorrow', late)).toBe('2026-11-01')
+    const early = new Date(2026, 11, 31, 0, 15)
+    expect(isoForChoice('today', early)).toBe('2026-12-31')
+    expect(isoForChoice('tomorrow', early)).toBe('2027-01-01')
+    expect(isoForChoice('tomorrow', new Date(2028, 1, 28, 20))).toBe('2028-02-29')
+  })
+
+  it('passes a picked date through and refuses anything else', () => {
+    expect(isoForChoice('2026-11-03')).toBe('2026-11-03')
+    expect(isoForChoice('')).toBe(null)
+    expect(isoForChoice(undefined)).toBe(null)
+    expect(isoForChoice('next week')).toBe(null)
+  })
+})
+
+describe('a shared image (initShareIntake)', () => {
+  it('asks the day first, and is read for the answer', async () => {
+    globalThis.window = { location: { hash: '' } }
+    const asks = []
+    const unreadable = vi.fn()
+    initShareIntake(unreadable, go => asks.push(go), async url => fromDataUrl(url))
+    setIntakeImage(null, '2026-01-01')
+    const before = currentIntake()
+    await share.cb({ mime: 'image/jpeg', data: 'QUJD' })
+    // nothing handed over, nowhere gone, until a day is picked
+    expect(asks).toHaveLength(1)
+    expect(currentIntake()).toBe(before)
+    expect(window.location.hash).toBe('')
+    asks[0]('2026-10-28')
+    expect(currentIntake()).toMatchObject({ date: '2026-10-28', phase: 'pending', image: { data: 'QUJD' } })
+    expect(window.location.hash).toBe('#/crossfit/new?shared=1')
+    // one that cannot be opened is not asked about
+    await share.cb({ error: 'x' })
+    expect(asks).toHaveLength(1)
+    expect(unreadable).toHaveBeenCalledTimes(1)
+    delete globalThis.window
+  })
 })
 
 /* ---------- the flow, against a scripted server ---------- */

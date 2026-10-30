@@ -2410,4 +2410,10 @@ export default {
   'Confirm {0}': 'ยืนยัน {0}',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'วันยกเวทเลี่ยงวันวิ่งและ WOD: ขา {0} · ร่างกายส่วนบน {1}',
   'none this week': 'ไม่มีในสัปดาห์นี้',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'โปรแกรมนี้สำหรับวันไหน?',
+  'Tomorrow': 'พรุ่งนี้',
+  'Other day…': 'วันอื่น…',
+  'Replaces the program saved for {0}': 'แทนที่โปรแกรมที่บันทึกไว้สำหรับ {0}',
 }

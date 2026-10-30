@@ -2399,4 +2399,10 @@ export default {
   'Confirm {0}': '{0} 확인',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': '러닝과 WOD를 피한 웨이트 요일: 하체 {0} · 상체 {1}',
   'none this week': '이번 주 없음',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': '이 프로그램은 어느 날을 위한 건가요?',
+  'Tomorrow': '내일',
+  'Other day…': '다른 날…',
+  'Replaces the program saved for {0}': '{0}에 저장된 프로그램을 대체합니다',
 }
