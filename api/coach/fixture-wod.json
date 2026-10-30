@@ -99,6 +99,22 @@
           ]
         }
       ]
+    },
+    {
+      "id": "pump",
+      "label": "Holy Pump",
+      "kind": "extra",
+      "blocks": [
+        {
+          "label": "EMOM 9", "warmup": false, "format": "emom", "capMin": 9, "rounds": null, "scheme": null, "benchmark": null,
+          "raw": "EMOM 9\nM1 10 Wall Balls\nM2 10 Burpees\nM3 Rest 30 seg + 40 DU",
+          "movements": [
+            { "raw": "M1 10 Wall Balls", "rawName": "wall balls", "name": "wall ball", "slot": "M1", "dose": { "reps": 10 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M2 10 Burpees", "rawName": "burpees", "name": "burpee", "slot": "M2", "dose": { "reps": 10 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M3 Rest 30 seg + 40 DU", "rawName": "du", "name": "double under", "slot": "M3", "dose": { "reps": 40, "restSec": 30 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        }
+      ]
     }
   ]
 }

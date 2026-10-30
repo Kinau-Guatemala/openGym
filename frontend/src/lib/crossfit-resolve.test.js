@@ -161,7 +161,7 @@ const FIXTURE = [
   ['40 mts Burpee BJ', 'burpee bj', null],
   ['Easy Run', 'easy run', '0685'],
   // 10-08
-  ['4 Kips', 'kips', null],
+  ['4 Kips', 'kips', '10948'],
   ['4 knees to chest', 'knees to chest', '9819'],
   ['4 Hang Snatch', 'hang snatch', '1522'],
   ['4 Back push press', 'back push press', '4857'],
@@ -216,7 +216,7 @@ const FIXTURE = [
   ['70 Wall Balls', 'wall balls', '2458'],
   ['RUN10K', 'run', '0685'],
   // 10-11
-  ['4 kips', 'kips', null],
+  ['4 kips', 'kips', '10948'],
   ['4 pull ups', 'pull ups', '0652'],
   ['4 Cleans', 'cleans', '0648'],
   ['4 Push press', 'push press', '1200'],
@@ -374,7 +374,7 @@ const FIXTURE = [
 // remembered (S.exAliases).
 const NEEDS_PICK = [
   'machine', 'sushy rolls', 'sit wall balls', 'nastys', 'burpee pull ups', 'blast off push ups',
-  'hollow crunches', 'burpee bj', 'db´s farmer hold', 'predator jacks', 'kips', 'sled pull & push',
+  'hollow crunches', 'burpee bj', 'db´s farmer hold', 'predator jacks', 'sled pull & push',
   'wall balls sentado', 'kb goblet lunges', 'burpee broad jump', 'dl jump', 'kb high pull to squat',
   'kb farmer bends', 'db high sumo pull',
 ]
@@ -453,7 +453,6 @@ describe('crossfit resolve: catalogue search', () => {
   it('leaves a vague or unknown name to a pick', () => {
     expect(resolveMovement({ rawName: 'nastys', name: 'nasty' })).toMatchObject({ exId: null, via: null })
     expect(resolveMovement({ rawName: 'machine' })).toMatchObject({ exId: null, via: null })
-    expect(resolveMovement({ rawName: 'kips', name: 'kip swing' })).toMatchObject({ exId: null, via: null })
     expect(resolveMovement({})).toEqual({ exId: null, via: null, candidates: [] })
   })
 })
@@ -505,6 +504,25 @@ const OCT_28 = [
 
 describe('crossfit resolve: the 28 Oct image', () => {
   it.each(OCT_28)('%s (%s) → %j', (raw, name, want) => {
+    const r = resolveMovement({ rawName: rawNameOf(raw), name })
+    expect([r.exId, r.via]).toEqual(want)
+  })
+})
+
+// The 30 Oct image (IMG-20261030-WA0006), the same way. Before the shipped keys "Russian Swings"
+// ranked kettlebell russian twist first (0.86, side swing 0.77), one runner-up from a wrong guess;
+// the russian twists themselves stay where they were.
+const OCT_30 = [
+  ['4 Kips', 'kipping swing', ['10948', 'shipped']],
+  ['M3 10 Russian Swings 32KG/24KG', 'kettlebell russian swing', ['0549', 'shipped']],
+  ['M1 10 KB OHS 5/5 24KG/16KG', 'kettlebell overhead squat', ['1566', 'shipped']],
+  ['Russian Twist', 'russian twist', ['0687', 'shipped']],
+  ['Russian Twist', 'kettlebell russian twist', ['0687', 'shipped']],
+  ['Kettlebell Russian Twist', 'kettlebell russian twist', ['4393', 'search']],
+]
+
+describe('crossfit resolve: the 30 Oct image', () => {
+  it.each(OCT_30)('%s (%s) → %j', (raw, name, want) => {
     const r = resolveMovement({ rawName: rawNameOf(raw), name })
     expect([r.exId, r.via]).toEqual(want)
   })

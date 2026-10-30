@@ -75,7 +75,7 @@ test('fixture: 202, then status shows a checked program in `parsed`, and the ack
     assert.equal(s.parsed.jobId, r.body.job.id);
     assert.equal(s.parsed.date, DATE);
     assert.ok(validateWod(s.parsed.program).ok, 'the stored program passes the validator again');
-    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra']]);
+    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra'], ['pump', 'extra']]);
     assert.equal(s.parsed.program.tracks[0].blocks[0].warmup, true);
     assert.ok(s.parsed.program.tracks.every(t => t.blocks.every(b => b.movements.every(m => m.exId === null && m.rawName))));
     assert.equal(s.pending, null, 'a read image is never a proposal');
@@ -351,6 +351,45 @@ test('validateWod: repeats and rest (T17) are optional, whole and bounded', () =
   assert.deepEqual(wod.movements.map(m => [m.rawName, m.dose]), [['run', { m: 8000, sets: 1, restSec: 180 }], ['run', { m: 200, sets: 2, restSec: 60 }]]);
   assert.deepEqual(track('rox').blocks[0].movements.map(m => [m.rawName, m.dose]), [['wall balls', { sets: 2 }]]);
   assert.ok(track('full').blocks.slice(1).every(b => b.raw.startsWith('TC 40\nMIN ')), 'TC 40 heads each part');
+});
+
+test('validateWod: a rest is never a movement — dropped, its seconds on a movement of its own line (T21)', () => {
+  const block = movements => ({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 9', format: 'emom', movements }] }] });
+  const moves = ms => validateWod(block(ms)).proposal.program.tracks[0].blocks[0].movements.map(m => [m.rawName, m.slot, m.dose]);
+  const rest = (rawName, dose) => ({ raw: 'M3 Rest 30 seg + 40 DU', rawName, slot: 'M3', dose });
+  const du = (dose = { reps: 40 }) => ({ raw: 'M3 Rest 30 seg + 40 DU', rawName: 'du', slot: 'M3', dose });
+  // The slip the 30 Oct image produced: `rest` with dose.sec, then the double unders.
+  assert.deepEqual(moves([rest('rest', { sec: 30 }), du()]), [['du', 'M3', { reps: 40, restSec: 30 }]]);
+  assert.deepEqual(moves([rest('Descanso', { restSec: 60 }), du()]), [['du', 'M3', { reps: 40, restSec: 60 }]]);
+  // The seconds in the name, in each spelling the box or the model might use.
+  for (const [name, sec] of [['rest 1 min', 60], ['pausa 30 seg', 30], ['rest 30', 30], ['rest 1:30', 90], ['rest 2 minutes', 120],
+    ['rest 90 seconds', 90], ['rest 45 secs', 45], ['descanso 30 segundos', 30], ['descanso 2 minutos', 120], ['rest 1 min cv', 60], ['REST 2 MIN', 120]]) {
+    assert.deepEqual(moves([rest(name, {}), du()]), [['du', 'M3', { reps: 40, restSec: sec }]], name);
+  }
+  assert.deepEqual(moves([rest('rest', { sec: 30 }), du({ reps: 40, restSec: 15 })]), [['du', 'M3', { reps: 40, restSec: 15 }]], 'a rest of its own wins');
+  assert.deepEqual(moves([rest('rest', {}), du()]), [['du', 'M3', { reps: 40 }]], 'no seconds, nothing moved');
+  // Only to a movement on the rest's own line: the next one there, else the one before it.
+  const line = (raw, slot, rawName, dose) => ({ raw, rawName, slot, dose });
+  const m2 = 'M2 40 DU + Rest 30 seg', m3 = 'M3 10 Wall Balls';
+  assert.deepEqual(moves([line(m2, 'M2', 'du', { reps: 40 }), line(m2, 'M2', 'rest', { sec: 30 }), line(m3, 'M3', 'wall balls', { reps: 10 })]),
+    [['du', 'M2', { reps: 40, restSec: 30 }], ['wall balls', 'M3', { reps: 10 }]], 'a rest after its work goes back to it');
+  assert.deepEqual(moves([line('Rest 30 seg', 'M2', 'rest', { sec: 30 }), line('40 DU', 'M2', 'du', { reps: 40 }), line(m3, 'M3', 'wall balls', { reps: 10 })]),
+    [['du', 'M2', { reps: 40, restSec: 30 }], ['wall balls', 'M3', { reps: 10 }]], 'the same slot is the same line');
+  assert.deepEqual(moves([line('Rest 1 min', null, 'rest', { sec: 60 }), line('10 Wall Balls', null, 'wall balls', { reps: 10 })]),
+    [['wall balls', null, { reps: 10 }]], 'never to the next line');
+  for (const name of ['rest pause squats', 'pausa squats', 'pause bench', 'rest pause push ups', 'rest 30 burpees']) {
+    assert.deepEqual(moves([{ rawName: name, dose: { reps: 10 } }]).map(m => m[0]), [name], `${name} stays a movement`);
+  }
+
+  // The fixture's EMOM line, as the prompt asks for it, passes as one movement.
+  const pump = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'pump').blocks[0];
+  assert.deepEqual(pump.movements.map(m => [m.rawName, m.slot, m.dose]).at(-1), ['du', 'M3', { reps: 40, restSec: 30 }]);
+  assert.match(pump.raw, /M3 Rest 30 seg \+ 40 DU/);
+});
+
+test('the parse prompt says a rest inside a line or a minute is never a movement (T21)', () => {
+  assert.match(PROMPTS['parse-wod'], /`Rest 30 seg`, `Rest 1 min`, `Descanso 30 seg` \*\*inside a line or a minute\*\*.*a rest, never a movement/);
+  assert.match(PROMPTS['parse-wod'], /`"M3 Rest 30 seg \+ 40 DU"` → one movement, `rawName: "du"`, `slot: "M3"`, `dose: \{ "reps": 40, "restSec": 30 \}`/);
 });
 
 /* ---------- forget ---------- */
