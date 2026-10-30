@@ -474,7 +474,7 @@ describe('crossfit aliases table', () => {
 
 // Misspellings, as the box prints them (the first five, from the sample programs) and made up:
 // [rawName, 'guess' | 'choose', the right exercise(s)]. A guess must be one of them; a choice must
-// offer one. The guess tier is asked directly: four of the box's are in the shipped table too, so
+// offer one. The guess tier is asked directly: some are in the shipped table too, so
 // resolveMovement answers those from it (and the rest exactly as the tier does).
 const MISSPELT = [
   ['skull cruches', 'choose', ['1504', '4351', '0060', '4344', '5861', '4151']],
@@ -491,6 +491,24 @@ const MISSPELT = [
   ['russian twsit', 'guess', ['0687']],
   ['airsquats', 'guess', ['3948']],
 ]
+
+// The 28 Oct image (IMG-20261028-WA0007): raw line, the parser's English name, [exId, via].
+// A blast-off push-up (plank, hips back to child pose, push-up) has no catalogue exercise, so it
+// stays a pick, as a "machine" with no type always does.
+const OCT_28 = [
+  ['12 Skull Cruches', 'skull crusher', ['0351', 'shipped']],
+  ['M2 Plank S.Taps', 'plank shoulder tap', ['3699', 'shipped']],
+  ['M1 Ankle Toach', 'ankle touch', ['0006', 'shipped']],
+  ['6 Blast Of Push ups', 'blast-off push-up', [null, null]],
+  ['20 seg machine', 'cardio machine', [null, null]],
+]
+
+describe('crossfit resolve: the 28 Oct image', () => {
+  it.each(OCT_28)('%s (%s) → %j', (raw, name, want) => {
+    const r = resolveMovement({ rawName: rawNameOf(raw), name })
+    expect([r.exId, r.via]).toEqual(want)
+  })
+})
 
 describe('crossfit resolve: misspellings', () => {
   it.each(MISSPELT)('%s → %s', (rawName, tier, ok) => {
