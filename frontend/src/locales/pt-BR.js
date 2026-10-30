@@ -1560,6 +1560,12 @@ export const PT_BR_OVERRIDES = {
   'Confirm {0}': 'Confirmar {0}',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Dias de musculação conforme suas corridas e WODs: pernas {0} · parte superior {1}',
   'none this week': 'nenhum nesta semana',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'Para qual dia é este programa?',
+  'Tomorrow': 'Amanhã',
+  'Other day…': 'Outro dia…',
+  'Replaces the program saved for {0}': 'Substitui o programa salvo para {0}',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

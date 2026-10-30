@@ -2396,4 +2396,10 @@ export default {
   'Confirm {0}': 'Підтвердити: {0}',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Дні для силових з огляду на пробіжки й WOD: ноги {0} · верх тіла {1}',
   'none this week': 'цього тижня немає',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'На який день ця програма?',
+  'Tomorrow': 'Завтра',
+  'Other day…': 'Інший день…',
+  'Replaces the program saved for {0}': 'Замінить програму, збережену на {0}',
 }

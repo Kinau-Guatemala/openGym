@@ -6,6 +6,7 @@ import { useStore } from './store/useStore.js'
 import { startMediaSync } from './lib/media-sync.js'
 import { startNativeKeyboard } from './lib/native-keyboard.js'
 import { initShareIntake } from './lib/wod-intake.js'
+import { whichDaySheet } from './views/CrossFit.jsx'
 import { useUI } from './store/useUI.js'
 import { t } from './lib/i18n.js'
 import './index.css'
@@ -26,8 +27,9 @@ startMediaSync(useStore)
 startNativeKeyboard()
 
 // Android: a routine image shared to the app (WhatsApp → Share → openGym) opens the intake
-// screen, the one the app was launched with included. Idle everywhere else.
-initShareIntake(() => useUI.getState().toast(t('This image could not be opened.')))
+// screen, the one the app was launched with included, once the day it is for is picked (T20).
+// The sheet waits in useUI until the app is up to show it. Idle everywhere else.
+initShareIntake(() => useUI.getState().toast(t('This image could not be opened.')), whichDaySheet)
 
 // Not in the mobile build: the native shell already serves everything from disk.
 if (!MOBILE && 'serviceWorker' in navigator && location.protocol === 'https:') {

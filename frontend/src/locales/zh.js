@@ -2399,4 +2399,10 @@ export default {
   'Confirm {0}': '确认 {0}',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': '避开跑步和 WOD 的力量训练日：腿 {0} · 上肢 {1}',
   'none this week': '本周没有',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': '这个训练计划是哪一天的？',
+  'Tomorrow': '明天',
+  'Other day…': '其他日期…',
+  'Replaces the program saved for {0}': '将替换 {0} 已保存的计划',
 }

@@ -2399,4 +2399,10 @@ export default {
   'Confirm {0}': 'Confirmar {0}',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'Dias de musculação à volta das corridas e WODs: pernas {0} · parte superior {1}',
   'none this week': 'nenhum esta semana',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'Para que dia é este programa?',
+  'Tomorrow': 'Amanhã',
+  'Other day…': 'Outro dia…',
+  'Replaces the program saved for {0}': 'Substitui o programa guardado para {0}',
 }

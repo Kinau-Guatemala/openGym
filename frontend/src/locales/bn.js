@@ -2478,4 +2478,10 @@ export default {
   'Confirm {0}': '{0} নিশ্চিত করুন',
   'Lift days around your runs and WODs: legs {0} · upper body {1}': 'দৌড় ও WOD-এর আশেপাশে লিফটের দিন: পা {0} · শরীরের উপরের অংশ {1}',
   'none this week': 'এই সপ্তাহে নেই',
+
+  // T20 · which day a shared or uploaded image is for (views/CrossFit.jsx)
+  'Which day is this program for?': 'এই প্রোগ্রামটি কোন দিনের জন্য?',
+  'Tomorrow': 'আগামীকাল',
+  'Other day…': 'অন্য দিন…',
+  'Replaces the program saved for {0}': '{0}-এর জন্য সংরক্ষিত প্রোগ্রামটি প্রতিস্থাপন করবে',
 }
