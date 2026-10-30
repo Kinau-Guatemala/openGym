@@ -42,8 +42,11 @@ export const SHIPPED_ALIASES = {
   'db split squat': '2960', 'db step up': '0431', 'db lunge': '0336', 'db farmer lunge': '0336',
   'db reverse lunge': '0381',
 
-  // Kettlebell (KB, KB´s)
+  // Kettlebell (KB, KB´s). A Russian swing is the eye-level swing, the catalogue's kettlebell swing.
+  // KB OHS is printed 5/5 (per side), and the one-arm overhead squat is the catalogue's only KB one.
   'kb swing': '0549', 'swing': '0549', 'kb swing high pull': '0548',
+  'russian swing': '0549', 'kb russian swing': '0549', 'russian kb swing': '0549',
+  'kb oh': '1566', 'kb overhead squat': '1566',
   'kb high sumo pull': '4132', 'kb dl': '3322', 'kb c and j': '4542',
   'kb hang clean': '0535', 'kb jerk': '0527', 'kb bend over row': '6156', 'kb gorilla row': '7230',
   'kb goblet squat': '0534', 'kb sit up to shoulder press': '5072',
@@ -54,6 +57,8 @@ export const SHIPPED_ALIASES = {
   'chin up': '1326', 'chin up estricto': '1326',
   'push up': '0662', 'push us': '0662', 'hpu': '3947', 'diamond push up': '0283', 'dymond push up': '0283',
   'push up knee tap': '4162', 'dip': '0251',
+  // A kip swing (hollow to arch, hanging from the bar) is the catalogue's scapular pull-up swing.
+  'kip': '10948', 'kip swing': '10948', 'kipping swing': '10948',
   's tap': '3699', 'shoulder tap': '3699', 'plank s tap': '3699', 'plank shoulder tap': '3699',
   'ankle toach': '0006', 'ankle touch': '0006', 'ankle tap': '0006',
   'burpee': '1160', 'burpee bjo': '8704', 'bjo': '3887', 'bj': '3650', 'du': '3885',
