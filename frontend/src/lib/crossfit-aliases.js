@@ -27,9 +27,9 @@ export const SHIPPED_ALIASES = {
   'high sumo pull': '1199',
   'land mine press': '5074', 'bb land mine press': '5074',
 
-  // Dumbbell (DB, DB´s)
+  // Dumbbell (DB, DB´s). A skull crusher with no equipment printed is the dumbbell one at the box.
   'db bench press': '0289', 'db elevated bench press': '0314',
-  'db skull cruch': '0351', 'copa': '0430', 'db tricep kick back': '0333',
+  'db skull cruch': '0351', 'skull cruch': '0351', 'skull crusher': '0351', 'copa': '0430', 'db tricep kick back': '0333',
   'db bicep curl': '0294', 'db martillo': '0313', 'martillo': '0313',
   'db strict press': '0426', 'db sea saw press': '3972', 'db arnold press': '2137', 'db push press': '1700',
   'db front fly': '0310', 'db lateral fly': '0334', 'db lateral fly to front fly': '0335',
@@ -53,7 +53,9 @@ export const SHIPPED_ALIASES = {
   'pull up': '0652', 'pull up estricto': '0652', 'pull up estrcito': '0652',
   'chin up': '1326', 'chin up estricto': '1326',
   'push up': '0662', 'push us': '0662', 'hpu': '3947', 'diamond push up': '0283', 'dymond push up': '0283',
-  'push up knee tap': '4162', 's tap': '3699', 'dip': '0251',
+  'push up knee tap': '4162', 'dip': '0251',
+  's tap': '3699', 'shoulder tap': '3699', 'plank s tap': '3699', 'plank shoulder tap': '3699',
+  'ankle toach': '0006', 'ankle touch': '0006', 'ankle tap': '0006',
   'burpee': '1160', 'burpee bjo': '8704', 'bjo': '3887', 'bj': '3650', 'du': '3885',
   'squat': '3948', 'airsquat': '3948', 'air squat': '3948', 'jump squat': '0514', 'pulse squat': '3535',
   'lunge': '0612', 'reverse lunge': '1581', 'step up': '0801',
