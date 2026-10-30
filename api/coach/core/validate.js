@@ -724,22 +724,28 @@ function wodMovement(m, i, where, errors) {
 }
 
 // A rest the model filed as a movement anyway (`M3 Rest 30 seg + 40 DU` read as `rest` and `du`):
-// it is dropped, and its seconds go to the next movement's restSec when that has none, which is
-// where the prompt asks for them. The block's `raw` still prints it.
-const REST_ONLY = /^(?:rest|descanso|pausa)(?:\s+(\d+)\s*(seg|sec|s|min)?)?$/i;
+// it is dropped, and its seconds go to the restSec of a movement on the same line (same `raw` or
+// `slot`) that has none, which is where the prompt asks for them: the next one on that line, else
+// the one before it (`M2 40 DU + Rest 30 seg`). Never to another line's movement. The block's
+// `raw` still prints it.
+const REST_ONLY = /^(?:rest|descanso|pausa)(?:\s+(\d+)(?::(\d{2}))?\s*(seg(?:undos?)?|sec(?:onds?|s)?|s|min(?:utos?|utes?|s)?)?)?(?:\s+cv)?$/i;
+function restOf(m) {
+  const r = REST_ONLY.exec(m.rawName);
+  if (!r) return undefined;
+  const named = r[2] != null ? r[1] * 60 + +r[2] : r[1] && (/^min/i.test(r[3] || '') ? r[1] * 60 : +r[1]);
+  const sec = Math.round(m.dose.restSec ?? m.dose.sec ?? named);
+  return isInt(sec, 0, 1800) ? sec : null;
+}
 function withoutRests(moves) {
-  let carry = null;
-  return moves.filter(m => {
-    const r = REST_ONLY.exec(m.rawName);
-    if (r) {
-      const sec = m.dose.restSec ?? m.dose.sec ?? (r[1] && (r[2]?.toLowerCase() === 'min' ? r[1] * 60 : +r[1]));
-      carry = isInt(Math.round(sec), 0, 1800) ? Math.round(sec) : null;
-      return false;
-    }
-    if (carry != null && m.dose.restSec == null) m.dose.restSec = carry;
-    carry = null;
-    return true;
+  const rests = moves.map(restOf);
+  const work = moves.filter((_, i) => rests[i] === undefined);
+  moves.forEach((m, i) => {
+    if (rests[i] == null) return;
+    const sameLine = n => rests[moves.indexOf(n)] === undefined && (n.raw === m.raw || (m.slot && n.slot === m.slot));
+    const to = moves.slice(i + 1).find(sameLine) || moves.slice(0, i).findLast(sameLine);
+    if (to && to.dose.restSec == null) to.dose.restSec = rests[i];
   });
+  return work;
 }
 
 function wodBlock(b, i, where, errors) {

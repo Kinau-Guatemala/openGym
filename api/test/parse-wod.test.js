@@ -353,7 +353,7 @@ test('validateWod: repeats and rest (T17) are optional, whole and bounded', () =
   assert.ok(track('full').blocks.slice(1).every(b => b.raw.startsWith('TC 40\nMIN ')), 'TC 40 heads each part');
 });
 
-test('validateWod: a rest is never a movement — dropped, its seconds on the next movement (T21)', () => {
+test('validateWod: a rest is never a movement — dropped, its seconds on a movement of its own line (T21)', () => {
   const block = movements => ({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 9', format: 'emom', movements }] }] });
   const moves = ms => validateWod(block(ms)).proposal.program.tracks[0].blocks[0].movements.map(m => [m.rawName, m.slot, m.dose]);
   const rest = (rawName, dose) => ({ raw: 'M3 Rest 30 seg + 40 DU', rawName, slot: 'M3', dose });
@@ -361,13 +361,25 @@ test('validateWod: a rest is never a movement — dropped, its seconds on the ne
   // The slip the 30 Oct image produced: `rest` with dose.sec, then the double unders.
   assert.deepEqual(moves([rest('rest', { sec: 30 }), du()]), [['du', 'M3', { reps: 40, restSec: 30 }]]);
   assert.deepEqual(moves([rest('Descanso', { restSec: 60 }), du()]), [['du', 'M3', { reps: 40, restSec: 60 }]]);
-  assert.deepEqual(moves([rest('rest 1 min', {}), du()]), [['du', 'M3', { reps: 40, restSec: 60 }]], 'the number in the name, in minutes');
-  assert.deepEqual(moves([rest('pausa 30 seg', {}), du()]), [['du', 'M3', { reps: 40, restSec: 30 }]]);
+  // The seconds in the name, in each spelling the box or the model might use.
+  for (const [name, sec] of [['rest 1 min', 60], ['pausa 30 seg', 30], ['rest 30', 30], ['rest 1:30', 90], ['rest 2 minutes', 120],
+    ['rest 90 seconds', 90], ['rest 45 secs', 45], ['descanso 30 segundos', 30], ['descanso 2 minutos', 120], ['rest 1 min cv', 60], ['REST 2 MIN', 120]]) {
+    assert.deepEqual(moves([rest(name, {}), du()]), [['du', 'M3', { reps: 40, restSec: sec }]], name);
+  }
   assert.deepEqual(moves([rest('rest', { sec: 30 }), du({ reps: 40, restSec: 15 })]), [['du', 'M3', { reps: 40, restSec: 15 }]], 'a rest of its own wins');
-  assert.deepEqual(moves([du(), rest('rest', { sec: 30 })]), [['du', 'M3', { reps: 40 }]], 'with no movement after it, only the raw keeps it');
   assert.deepEqual(moves([rest('rest', {}), du()]), [['du', 'M3', { reps: 40 }]], 'no seconds, nothing moved');
-  assert.deepEqual(moves([rest('rest', { sec: 30 }), du(), { rawName: 'burpees', dose: { reps: 10 } }]).map(m => m[2]), [{ reps: 40, restSec: 30 }, { reps: 10 }], 'only the next one');
-  assert.deepEqual(moves([{ rawName: 'rest pause push ups', dose: { reps: 10 } }]).map(m => m[0]), ['rest pause push ups'], 'a movement that only starts with "rest" stays');
+  // Only to a movement on the rest's own line: the next one there, else the one before it.
+  const line = (raw, slot, rawName, dose) => ({ raw, rawName, slot, dose });
+  const m2 = 'M2 40 DU + Rest 30 seg', m3 = 'M3 10 Wall Balls';
+  assert.deepEqual(moves([line(m2, 'M2', 'du', { reps: 40 }), line(m2, 'M2', 'rest', { sec: 30 }), line(m3, 'M3', 'wall balls', { reps: 10 })]),
+    [['du', 'M2', { reps: 40, restSec: 30 }], ['wall balls', 'M3', { reps: 10 }]], 'a rest after its work goes back to it');
+  assert.deepEqual(moves([line('Rest 30 seg', 'M2', 'rest', { sec: 30 }), line('40 DU', 'M2', 'du', { reps: 40 }), line(m3, 'M3', 'wall balls', { reps: 10 })]),
+    [['du', 'M2', { reps: 40, restSec: 30 }], ['wall balls', 'M3', { reps: 10 }]], 'the same slot is the same line');
+  assert.deepEqual(moves([line('Rest 1 min', null, 'rest', { sec: 60 }), line('10 Wall Balls', null, 'wall balls', { reps: 10 })]),
+    [['wall balls', null, { reps: 10 }]], 'never to the next line');
+  for (const name of ['rest pause squats', 'pausa squats', 'pause bench', 'rest pause push ups', 'rest 30 burpees']) {
+    assert.deepEqual(moves([{ rawName: name, dose: { reps: 10 } }]).map(m => m[0]), [name], `${name} stays a movement`);
+  }
 
   // The fixture's EMOM line, as the prompt asks for it, passes as one movement.
   const pump = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'pump').blocks[0];
