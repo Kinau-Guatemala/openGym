@@ -38,6 +38,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 | `x 1 De pausa`, `x 3 min pausa`, `REST 2 MIN` on a movement's line | rest after each repeat, in seconds: `dose.restSec` (`x 3 de pausa` → `180`). The number is minutes unless `seg` is printed (`x 30 seg pausa` → `30`) |
 | `2 Set de Max`, `3 Sets of 10`, `2 Rondas de` with the movement **on the same line** | the times that line is done: `dose.sets` (`2 Set de Max Wall Balls` → `dose: { "sets": 2 }`; `3 Sets of 10 Pull ups` → `{ "sets": 3, "reps": 10 }`; `2 Rondas de 400 m Run` → `{ "sets": 2, "m": 400 }`) |
 | `REST 1 MIN CV` | rest between rounds (`CV` = cardio of choice); keep it in the block's `raw`, not as a movement |
+| `Rest 30 seg`, `Rest 1 min`, `Descanso 30 seg` **inside a line or a minute** (`M3 Rest 30 seg + 40 DU`) | a rest, never a movement: the work on that line is the movement and the rest is its `dose.restSec` (`"M3 Rest 30 seg + 40 DU"` → one movement, `rawName: "du"`, `slot: "M3"`, `dose: { "reps": 40, "restSec": 30 }`). A rest with no work on its line stays in the block's `raw` |
 | `seg` | seconds: `20 seg machine` → `dose: { "sec": 20 }` |
 | `Cal`, `mts`, `m`, `1K` | `dose.cal`, `dose.m` (`1K` = 1000 m) |
 | `R` / `L`, `7/7` | per side: `perSide: true`. An R line and its L line are **one** movement. |
@@ -60,7 +61,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 - `dose`: `reps`, `cal`, `m` or `sec`, plus `repsMax` for a range, `sets` for the times the line is done (only when printed on the movement's line: `2x200`, `3x12`, `2 Set de`) and `restSec` for a rest printed on the line. `{}` when no number is printed (`Max Diamond push ups`); `{ "sets": 2 }` for `2 Set de Max`.
 - `doseFemale`: **only** when the dose itself is printed as a male/female split (`20/15 Cal Row` → `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }`), same keys as `dose`; otherwise leave it out. Different doses for different alternatives (`250 mts Row/Ski/500 mts Bike`) are not a split: each alternative carries its own `dose`. A load pair (`185/135`) is `rx`, never `doseFemale`.
 - `rx`: `{ "male": { "w": 185, "unit": "lb" }, "female": { "w": 135, "unit": "lb" } }` or `null`. One printed load is the male figure, female `null`.
-- `A + B` on one line is two movements **only when B has its own dose** (`"4 Cleans + 4 Push press"` → two). Otherwise it is one movement, and the `+` stays in `rawName` (`"DB´s Lateral + Front Fly"` → `"db´s lateral + front fly"`, `"Sled Pull + Drag Just Arms"` → `"sled pull + drag just arms"`).
+- `A + B` on one line is two movements **only when B has its own dose** (`"4 Cleans + 4 Push press"` → two). A rest is never one of them (see `Rest 30 seg` above). Otherwise it is one movement, and the `+` stays in `rawName` (`"DB´s Lateral + Front Fly"` → `"db´s lateral + front fly"`, `"Sled Pull + Drag Just Arms"` → `"sled pull + drag just arms"`).
 
 ## Each block
 

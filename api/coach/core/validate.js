@@ -723,6 +723,25 @@ function wodMovement(m, i, where, errors) {
   };
 }
 
+// A rest the model filed as a movement anyway (`M3 Rest 30 seg + 40 DU` read as `rest` and `du`):
+// it is dropped, and its seconds go to the next movement's restSec when that has none, which is
+// where the prompt asks for them. The block's `raw` still prints it.
+const REST_ONLY = /^(?:rest|descanso|pausa)(?:\s+(\d+)\s*(seg|sec|s|min)?)?$/i;
+function withoutRests(moves) {
+  let carry = null;
+  return moves.filter(m => {
+    const r = REST_ONLY.exec(m.rawName);
+    if (r) {
+      const sec = m.dose.restSec ?? m.dose.sec ?? (r[1] && (r[2]?.toLowerCase() === 'min' ? r[1] * 60 : +r[1]));
+      carry = isInt(Math.round(sec), 0, 1800) ? Math.round(sec) : null;
+      return false;
+    }
+    if (carry != null && m.dose.restSec == null) m.dose.restSec = carry;
+    carry = null;
+    return true;
+  });
+}
+
 function wodBlock(b, i, where, errors) {
   const at = `${where}.blocks[${i}]`;
   if (!b || typeof b !== 'object') { errors.push(`${at} must be an object`); return null; }
@@ -741,7 +760,7 @@ function wodBlock(b, i, where, errors) {
     scheme: strOrNull(b.scheme, 60),
     benchmark: strOrNull(b.benchmark, 40),
     raw: clampStr(isStr(b.raw) ? b.raw.trim() : '', 1000),
-    movements: b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean)
+    movements: withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean))
   };
 }
 

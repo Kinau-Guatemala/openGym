@@ -75,7 +75,7 @@ test('fixture: 202, then status shows a checked program in `parsed`, and the ack
     assert.equal(s.parsed.jobId, r.body.job.id);
     assert.equal(s.parsed.date, DATE);
     assert.ok(validateWod(s.parsed.program).ok, 'the stored program passes the validator again');
-    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra']]);
+    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra'], ['pump', 'extra']]);
     assert.equal(s.parsed.program.tracks[0].blocks[0].warmup, true);
     assert.ok(s.parsed.program.tracks.every(t => t.blocks.every(b => b.movements.every(m => m.exId === null && m.rawName))));
     assert.equal(s.pending, null, 'a read image is never a proposal');
@@ -351,6 +351,33 @@ test('validateWod: repeats and rest (T17) are optional, whole and bounded', () =
   assert.deepEqual(wod.movements.map(m => [m.rawName, m.dose]), [['run', { m: 8000, sets: 1, restSec: 180 }], ['run', { m: 200, sets: 2, restSec: 60 }]]);
   assert.deepEqual(track('rox').blocks[0].movements.map(m => [m.rawName, m.dose]), [['wall balls', { sets: 2 }]]);
   assert.ok(track('full').blocks.slice(1).every(b => b.raw.startsWith('TC 40\nMIN ')), 'TC 40 heads each part');
+});
+
+test('validateWod: a rest is never a movement — dropped, its seconds on the next movement (T21)', () => {
+  const block = movements => ({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 9', format: 'emom', movements }] }] });
+  const moves = ms => validateWod(block(ms)).proposal.program.tracks[0].blocks[0].movements.map(m => [m.rawName, m.slot, m.dose]);
+  const rest = (rawName, dose) => ({ raw: 'M3 Rest 30 seg + 40 DU', rawName, slot: 'M3', dose });
+  const du = (dose = { reps: 40 }) => ({ raw: 'M3 Rest 30 seg + 40 DU', rawName: 'du', slot: 'M3', dose });
+  // The slip the 30 Oct image produced: `rest` with dose.sec, then the double unders.
+  assert.deepEqual(moves([rest('rest', { sec: 30 }), du()]), [['du', 'M3', { reps: 40, restSec: 30 }]]);
+  assert.deepEqual(moves([rest('Descanso', { restSec: 60 }), du()]), [['du', 'M3', { reps: 40, restSec: 60 }]]);
+  assert.deepEqual(moves([rest('rest 1 min', {}), du()]), [['du', 'M3', { reps: 40, restSec: 60 }]], 'the number in the name, in minutes');
+  assert.deepEqual(moves([rest('pausa 30 seg', {}), du()]), [['du', 'M3', { reps: 40, restSec: 30 }]]);
+  assert.deepEqual(moves([rest('rest', { sec: 30 }), du({ reps: 40, restSec: 15 })]), [['du', 'M3', { reps: 40, restSec: 15 }]], 'a rest of its own wins');
+  assert.deepEqual(moves([du(), rest('rest', { sec: 30 })]), [['du', 'M3', { reps: 40 }]], 'with no movement after it, only the raw keeps it');
+  assert.deepEqual(moves([rest('rest', {}), du()]), [['du', 'M3', { reps: 40 }]], 'no seconds, nothing moved');
+  assert.deepEqual(moves([rest('rest', { sec: 30 }), du(), { rawName: 'burpees', dose: { reps: 10 } }]).map(m => m[2]), [{ reps: 40, restSec: 30 }, { reps: 10 }], 'only the next one');
+  assert.deepEqual(moves([{ rawName: 'rest pause push ups', dose: { reps: 10 } }]).map(m => m[0]), ['rest pause push ups'], 'a movement that only starts with "rest" stays');
+
+  // The fixture's EMOM line, as the prompt asks for it, passes as one movement.
+  const pump = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'pump').blocks[0];
+  assert.deepEqual(pump.movements.map(m => [m.rawName, m.slot, m.dose]).at(-1), ['du', 'M3', { reps: 40, restSec: 30 }]);
+  assert.match(pump.raw, /M3 Rest 30 seg \+ 40 DU/);
+});
+
+test('the parse prompt says a rest inside a line or a minute is never a movement (T21)', () => {
+  assert.match(PROMPTS['parse-wod'], /`Rest 30 seg`, `Rest 1 min`, `Descanso 30 seg` \*\*inside a line or a minute\*\*.*a rest, never a movement/);
+  assert.match(PROMPTS['parse-wod'], /`"M3 Rest 30 seg \+ 40 DU"` → one movement, `rawName: "du"`, `slot: "M3"`, `dose: \{ "reps": 40, "restSec": 30 \}`/);
 });
 
 /* ---------- forget ---------- */
