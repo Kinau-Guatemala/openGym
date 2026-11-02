@@ -2257,6 +2257,7 @@ export default {
   'or': '或',
   '{0} already has a program. Saving replaces it.': '{0} 已有计划。保存会替换它。',
   '{0} rounds': '{0} 轮',
+  'Every {0}': '每 {0}',
   'Every {0} × {1}': '每 {0} × {1}',
   '{0}–{1} rounds': '{0}–{1} 轮',
   'Every (seconds)': '间隔（秒）',

@@ -800,6 +800,7 @@ export function everyOf(text) {
   }, 0);
   return { sec, times: +r[2] };
 }
+const PARTNER = /\bpar[tn]n?er\b/i;   // the box prints PARNER
 // `3-4 RONDAS` as a heading (not `3-4 Rondas de 400 m Run`, which is that line's sets).
 const ROUNDS_RANGE = /(?:^|[\s·])(\d{1,3})\s*-\s*(\d{1,3})\s+(?:rondas?|rounds?)\b(?!\s+(?:de|of)\s+\w)/i;
 // A minute window with nothing in it but a rest (`MIN 7-8 TC 1` / `REST`) is not a block. The
@@ -829,14 +830,19 @@ function wodBlock(b, i, where, errors) {
   const raw = clampStr(isStr(b.raw) ? b.raw.trim() : '', 1000);
   let { format, capMin = null, rounds = null, everySec = null, roundsMax = null } = b;
   // The model can leave the structure in the text only; what the heading prints is read back here.
-  // ponytail: a partner EVERY (`EVERY :30 + 1:00 x8`, A works while B rests) gets all 8 repeats,
-  // twice one partner's share; split per partner when partner WODs are modelled.
+  // ponytail: in a partner WOD (`PARNER A WORK / PARNER B REST`) the repeats are shared and each
+  // line is a team total, so rounds is left as the model gave it (null logs one set per line, which
+  // undercounts an `EVERY4x3` team block); model the partners to log each one's share.
   const every = everySec == null ? everyOf(label) || everyOf(raw) : null;
-  if (every && isInt(every.sec, 10, 3600) && isInt(every.times, 1, 100) && (rounds == null || rounds === every.times)) {
-    everySec = every.sec; rounds = every.times;
+  const partner = PARTNER.test(label) || PARTNER.test(raw);
+  if (every && isInt(every.sec, 10, 3600) && isInt(every.times, 1, 100) && (partner || rounds == null || rounds === every.times)) {
+    everySec = every.sec;
+    if (!partner) rounds = every.times;
   }
   if (everySec != null && rounds != null && capMin == null && everySec * rounds <= 600 * 60) capMin = Math.round(everySec * rounds / 6) / 10;
-  if (everySec != null && format === 'other') format = 'interval';
+  // An EMOM logs by the minute; an EVERY of anything but a minute (`AMRAP 12 / EVERY 3x4` read as
+  // an EMOM) logs by the repeat.
+  if (everySec != null && (format === 'other' || (format === 'emom' && everySec !== 60))) format = 'interval';
   const range = rounds == null && roundsMax == null ? ROUNDS_RANGE.exec(label) || ROUNDS_RANGE.exec(raw) : null;
   if (range && +range[1] >= 1 && +range[1] < +range[2] && +range[2] <= 100) { rounds = +range[1]; roundsMax = +range[2]; }
   return {

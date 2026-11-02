@@ -2257,6 +2257,7 @@ export default {
   'or': 'veya',
   '{0} already has a program. Saving replaces it.': '{0} için zaten bir program var. Kaydetmek onu değiştirir.',
   '{0} rounds': '{0} tur',
+  'Every {0}': 'Her {0}',
   'Every {0} × {1}': 'Her {0} × {1}',
   '{0}–{1} rounds': '{0}–{1} tur',
   'Every (seconds)': 'Aralık (saniye)',

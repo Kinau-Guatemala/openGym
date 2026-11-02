@@ -58,11 +58,13 @@ export function fmtDose(dose) {
 }
 
 /** A block's rounds as the program, review and log screens show them: "Every 3:00 × 4" for an
- *  EVERY block, "3–4 rounds" for a printed range, "5 rounds"; '' for none. */
+ *  EVERY block ("Every 1:30" without rounds, a partner WOD), "3–4 rounds" for a printed range,
+ *  "5 rounds"; '' for none. */
 export function fmtRounds(block) {
   const n = k => Number(block?.[k]) > 0
-  if (!n('rounds')) return ''
-  if (n('everySec')) return t('Every {0} × {1}', `${Math.floor(block.everySec / 60)}:${String(block.everySec % 60).padStart(2, '0')}`, block.rounds)
+  const every = n('everySec') && `${Math.floor(block.everySec / 60)}:${String(block.everySec % 60).padStart(2, '0')}`
+  if (!n('rounds')) return every ? t('Every {0}', every) : ''
+  if (every) return t('Every {0} × {1}', every, block.rounds)
   if (block.roundsMax > block.rounds) return t('{0}–{1} rounds', block.rounds, block.roundsMax)
   return t('{0} rounds', block.rounds)
 }

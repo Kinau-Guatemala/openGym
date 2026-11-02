@@ -9,6 +9,7 @@ import { EXIDX } from './exercises.js'
 import { entryExcluded } from './history.js'
 import { backfillStart } from './backfill.js'
 import { prepareDraft } from './wod-draft.js'
+import { validateWod } from '../../../api/coach/core/validate.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -73,6 +74,24 @@ describe('wodToSession: sets per block format', () => {
     const [row, wb] = wodToSession(nxd, all, {}, S0()).entries
     expect(row.sets[0].m).toBe(3000)
     expect(wb.sets.map(s => s.r)).toEqual(Array(10).fill(15))
+  })
+
+  it('through the validator: a partner EVERY logs one set per line, an EVERY read as an EMOM logs its repeats (T23)', () => {
+    // What the parser stored for 5 Oct and 22 Oct, checked by validateWod, with the exercises picked.
+    const checked = (b, ids) => {
+      const p = validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [b] }] }).proposal.program
+      p.tracks[0].blocks[0].movements.forEach((m, i) => { m.exId = ids[i] })
+      return p
+    }
+    const war = checked({ label: 'TC 12 Parner Wod Squat Clean War', format: 'interval', capMin: 12, rounds: null,
+      raw: 'TC 12 PARNER WOD\nSQUAT CLEAN WAR\nEVERY 1:30 x 8\nR1 12 DL + Max Squat Cleans 155/105',
+      movements: [{ raw: 'R1 12 DL', rawName: 'dl', slot: 'R1', dose: { reps: 12 } }, { raw: 'R1 Max Squat Cleans', rawName: 'squat cleans', slot: 'R1', dose: {} }] }, [DL, SNATCH])
+    expect(war.tracks[0].blocks[0]).toMatchObject({ everySec: 90, rounds: null })
+    expect(wodToSession(war, all, {}, S0()).entries.map(e => e.sets.length)).toEqual([1, 1])
+    const oct22 = checked({ label: 'AMRAP 12', format: 'emom', capMin: 12, rounds: 4, raw: 'AMRAP 12\nEVERY 3x4\n9 Burpee BJ\n12 Step ups',
+      movements: [{ raw: '9 Burpee BJ', rawName: 'burpee bj', dose: { reps: 9 } }, { raw: '12 Step ups', rawName: 'step ups', dose: { reps: 12 } }] }, [BURPEE, PUSHUP])
+    expect(oct22.tracks[0].blocks[0]).toMatchObject({ format: 'interval', everySec: 180, rounds: 4 })
+    expect(wodToSession(oct22, all, {}, S0()).entries.map(e => e.sets.length)).toEqual([4, 4])
   })
 
   it('a ladder: one set per rung, the rung as its reps', () => {

@@ -429,7 +429,16 @@ test('validateWod: the safety nets when the model leaves the structure in the te
   // EVERY in the label or the raw: everySec and rounds, the cap when none is printed, `other` becomes `interval`.
   assert.deepEqual(pick(block({ label: 'TC 12 EVERY 3x4', capMin: 12 })), ['interval', 12, 4, 180]);
   assert.deepEqual(pick(block({ label: 'WOD', raw: 'WOD\nEVERY 3x4\n7 BMU' })), ['interval', 12, 4, 180]);
-  assert.deepEqual(pick(block({ format: 'interval', raw: 'TC 12 PARNER WOD\nEVERY 1:30 x 8' })), ['interval', 12, 8, 90]);
+  assert.deepEqual(pick(block({ format: 'interval', raw: 'TC 12\nEVERY 1:30 x 8' })), ['interval', 12, 8, 90]);
+  // A partner WOD shares the repeats, and its lines are team totals: everySec only, rounds as given.
+  assert.deepEqual(pick(block({ format: 'interval', label: 'TC 12 Parner Wod Squat Clean War', capMin: 12,
+    raw: 'TC 12 PARNER WOD\nSQUAT CLEAN WAR\nEVERY 1:30 x 8\nR1 12 DL + Max Squat Cleans 155/105' })), ['interval', 12, null, 90], '5 Oct');
+  assert.deepEqual(pick(block({ format: 'amrap', label: 'Amrap 12 Parner WOD', capMin: 12,
+    raw: 'AMRAP 12 PARNER WOD\nEVERY :30 + 1:00 x8\n:30\nMax Bike/Row/Ski\nTHEN 1:00 TEAM TARGET\n120 DB´s Lunges\n*PARNER A WORK 1:30\n*PARNER B REST 1:30' })), ['amrap', 12, null, 90], '28 Sep');
+  assert.deepEqual(pick(block({ label: 'Partner WOD', raw: 'Partner WOD\nEVERY 3x4' })), ['interval', null, null, 180]);
+  // An EVERY read as an EMOM logs by the repeat, not the minute (22 Oct); an EVERY 1 stays an EMOM.
+  assert.deepEqual(pick(block({ format: 'emom', label: 'AMRAP 12', capMin: 12, rounds: 4, raw: 'AMRAP 12\nEVERY 3x4\n9 Burpee BJ' })), ['interval', 12, 4, 180], '22 Oct');
+  assert.deepEqual(pick(block({ format: 'emom', label: 'EVERY 1 x 10', capMin: 10 })), ['emom', 10, 10, 60]);
   assert.deepEqual(pick(block({ format: 'amrap', label: 'AMRAP 10', capMin: 10, raw: 'AMRAP 10\nEVERY 2 + :30 x 4' })), ['amrap', 10, 4, 150], 'a format the model chose stays');
   assert.deepEqual(pick(block({ label: 'EVERY 3x4', rounds: 4 })), ['interval', 12, 4, 180], 'rounds that agree');
   assert.deepEqual(pick(block({ label: 'EVERY 3x4', rounds: 2 })), ['other', null, 2, null], 'rounds that disagree: nothing guessed');
@@ -467,6 +476,7 @@ test('the parse prompt carries the T23 rows: EVERY, round groups and ranges, res
   const p = PROMPTS['parse-wod'];
   assert.match(p, /`EVERY 3x4`, `EVERY 1:30 x 8`, `EVERY 2 \+ :30 x 4` \| .*`format: "interval"`, `everySec` the period in seconds/);
   assert.match(p, /`TC 12` \/ `EVERY 3x4` → `everySec: 180`, `rounds: 4`, `capMin: 12`; `EVERY 1:30 x 8` → `everySec: 90`, `rounds: 8`; `EVERY 2 \+ :30 x 4` → `everySec: 150`, `rounds: 4`/);
+  assert.match(p, /In a partner WOD \(`PARNER WOD`, `PARNER A WORK` \/ `PARNER B REST`\) the repeats are shared: `everySec` as above, `rounds: null`/);
   assert.match(p, /\*\*Several `N RONDAS` groups under one cap\*\*.*one block per group.*The cap goes on the first group only.*shared `TC 12`.*A `COMPLEX` line belongs to the group it follows/);
   assert.match(p, /\| `3-4 RONDAS` \| a round range: `rounds: 3`, `roundsMax: 4` \|/);
   assert.match(p, /\*\*A minute window with nothing in it but a rest\*\* \(`MIN 7-8 TC 1` \/ `REST`, or `Descanso`\) is not a block/);

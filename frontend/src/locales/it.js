@@ -2257,6 +2257,7 @@ export default {
   'or': 'o',
   '{0} already has a program. Saving replaces it.': '{0} ha già un programma. Salvando lo sostituisci.',
   '{0} rounds': '{0} round',
+  'Every {0}': 'Ogni {0}',
   'Every {0} × {1}': 'Ogni {0} × {1}',
   '{0}–{1} rounds': '{0}–{1} round',
   'Every (seconds)': 'Ogni (secondi)',

@@ -2257,6 +2257,7 @@ export default {
   'or': 'lub',
   '{0} already has a program. Saving replaces it.': '{0} ma już program. Zapisanie go zastąpi.',
   '{0} rounds': '{0} rund',
+  'Every {0}': 'Co {0}',
   'Every {0} × {1}': 'Co {0} × {1}',
   '{0}–{1} rounds': '{0}–{1} rund',
   'Every (seconds)': 'Co (sekundy)',

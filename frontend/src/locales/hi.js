@@ -2257,6 +2257,7 @@ export default {
   'or': 'या',
   '{0} already has a program. Saving replaces it.': '{0} के लिए पहले से एक प्रोग्राम है। सहेजने पर वह बदल जाएगा।',
   '{0} rounds': '{0} राउंड',
+  'Every {0}': 'हर {0}',
   'Every {0} × {1}': 'हर {0} × {1}',
   '{0}–{1} rounds': '{0}–{1} राउंड',
   'Every (seconds)': 'हर (सेकंड)',

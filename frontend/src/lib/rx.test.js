@@ -66,7 +66,7 @@ describe('fmtRounds (T23)', () => {
     expect(fmtRounds({ rounds: 3, roundsMax: 4 })).toBe('3–4 rounds')
     expect(fmtRounds({ rounds: 3, roundsMax: 3 })).toBe('3 rounds')
     expect(fmtRounds({ rounds: 5, everySec: null, roundsMax: null })).toBe('5 rounds')
-    expect(fmtRounds({ rounds: null, everySec: 180 })).toBe('')
+    expect(fmtRounds({ rounds: null, everySec: 90 })).toBe('Every 1:30')
     expect(fmtRounds({})).toBe('')
   })
 })
