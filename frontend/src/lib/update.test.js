@@ -243,6 +243,19 @@ describe('compareSemver: fork builds (-<word>.N) count on top of their base', ()
     expect(compareSemver('v1.4.10-kinau.1', '1.4.9-kinau.7')).toBe(1)
   })
 
+  it('offers the first fork build on upstream 1.4.3 to a phone on 1.4.1-kinau.4, and 1.4.4 over it', () => {
+    expect(compareSemver('v1.4.3-kinau.1', '1.4.1-kinau.4')).toBe(1)
+    expect(compareSemver('1.4.3-kinau.1', '1.4.3')).toBe(1)
+    expect(compareSemver('1.4.4', '1.4.3-kinau.1')).toBe(1)
+  })
+
+  it('the fork\'s one APK per release (android-release.yml) is the Standard kind, with its checksum', () => {
+    const a = n => ({ name: n, browser_download_url: `https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.3-kinau.1/${n}` })
+    const { apk, hash } = pickApk(['openGym-1.4.3-kinau.1.apk', 'openGym-1.4.3-kinau.1.apk.sha256'].map(a), APK_VARIANT)
+    expect(apk.name).toBe('openGym-1.4.3-kinau.1.apk')
+    expect(hash.name).toBe('openGym-1.4.3-kinau.1.apk.sha256')
+  })
+
   it('reads the tag and the app version alike, with or without v and build metadata', () => {
     expect(compareSemver('v1.4.1-kinau.2', '1.4.1-kinau.2+abc')).toBe(0)
   })
