@@ -581,7 +581,7 @@ export function stampPut(cur0, next, { overRead = false, stamped = false, now = 
   // stored one (a file the old build wrote) on a shallow copy, the one being written in place.
   let cur = cur0;
   if (isMap(cur) && isMap(cur.exAliases) && Object.values(cur.exAliases).some(isMap)) { cur = { ...cur }; migrateWodAliases(cur); }
-  const oldBuild = migrateWodAliases(next);
+  migrateWodAliases(next);
   const t = Math.max(Number(now) || 0, highestStamp(cur) + 1, highestStamp(next) + 1);
   const reset = (Number(next.resetAt) || 0) > (Number(cur?.resetAt) || 0);
   const sent = isMap(next.edited) ? { ...next.edited } : null;
@@ -594,12 +594,20 @@ export function stampPut(cur0, next, { overRead = false, stamped = false, now = 
   delete next._prior;
   if (cur && !reset) {
     // The old build does not know wodAliases (an unstamped field to it, so its merge can leave the
-    // stored picks out) nor upstream's alias arrays: the picks are a stamped map, merged here per
-    // name as the app merges them, the later `_ts`; and what that build left out of exAliases is
-    // put back (upstream clears an alias with [], never by removing its key).
+    // stored picks out): the picks are a stamped map, merged here per name as the app merges them,
+    // the later `_ts`.
     if (isMap(cur.wodAliases)) next.wodAliases = unionByStamp(cur.wodAliases, next.wodAliases);
-    if (oldBuild && isMap(cur.exAliases)) {
-      for (const [k, v] of Object.entries(cur.exAliases)) if (Array.isArray(v) && !(k in next.exAliases)) next.exAliases[k] = clone(v);
+    // Nor does it know upstream's alias arrays: to it exAliases is a stamped map, both stamps of an
+    // array read 0 and the newer copy's wins, and its merge skips `edited['exAliases.<id>']`. So
+    // an array that differs from the stored one (left out included: upstream clears with [], never
+    // by removing the key), with no later per-key stamp of the writer's own, was not edited by
+    // it and is put back. A new build's own edit is stamped later and goes through.
+    if (stamped && isMap(cur.exAliases)) {
+      for (const [k, v] of Object.entries(cur.exAliases)) {
+        if (!Array.isArray(v) || same(next.exAliases?.[k], v)) continue;
+        if ((Number(sent?.[`exAliases.${k}`]) || 0) > (Number(cur.edited?.[`exAliases.${k}`]) || 0)) continue;
+        next.exAliases = { ...(isMap(next.exAliases) ? next.exAliases : {}), [k]: clone(v) };
+      }
     }
     const d = mergeDeletions(cur.deleted, next.deleted);
     if (d) next.deleted = d; else delete next.deleted;

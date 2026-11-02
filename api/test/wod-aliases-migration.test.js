@@ -63,6 +63,32 @@ test('stampPut: a file the old build wrote is read with its picks moved', () => 
   assert.deepEqual(cur.exAliases, { t2b: { exId: '0099', _ts: T + 20 } }, 'the stored copy is not touched');
 });
 
+// Upstream's arrays to the old build: a stamped map whose entries carry no `_ts` (both read 0, the
+// newer copy wins) and an `edited['exAliases.<id>']` it skips. Its push must not undo an edit.
+test('stampPut: an old build\'s stale alias array does not undo the new build\'s edit', () => {
+  const cur = { _ts: T + 10, _rev: 2, exAliases: { '0123': ['OHP', 'Press'] }, edited: { 'exAliases.0123': T + 10 }, workouts: [], routines: [] };
+  // Its copy kept ['OHP'] and carries the stored stamp along, no later one of its own.
+  const next = { _ts: T + 20, exAliases: { '0123': ['OHP'], t2b: { exId: '0099', _ts: T - 5 } }, edited: { 'exAliases.0123': T + 10 }, workouts: [], routines: [] };
+  stampPut(cur, next, { stamped: true, overRead: true, now: T + 21 });
+  assert.deepEqual(next.exAliases, { '0123': ['OHP', 'Press'] });
+  assert.deepEqual(next.wodAliases, { t2b: { exId: '0099', _ts: T - 5 } });
+});
+
+test('stampPut: a phone with no picks at all that leaves an array out gets it back', () => {
+  const cur = { _ts: T, _rev: 2, exAliases: { '0123': ['OHP'] }, workouts: [], routines: [] };
+  const next = { _ts: T + 20, exAliases: {}, workouts: [], routines: [] };
+  stampPut(cur, next, { stamped: true, overRead: true, now: T + 21 });
+  assert.deepEqual(next.exAliases, { '0123': ['OHP'] });
+});
+
+test('stampPut: the new build\'s own edit, stamped later than the stored one, goes through', () => {
+  const cur = { _ts: T + 10, _rev: 2, exAliases: { '0123': ['OHP', 'Press'] }, edited: { 'exAliases.0123': T + 10 }, workouts: [], routines: [] };
+  const next = { _ts: T + 30, exAliases: { '0123': [] }, edited: { 'exAliases.0123': T + 30 }, workouts: [], routines: [] };
+  stampPut(cur, next, { stamped: true, overRead: true, now: T + 31 });
+  assert.deepEqual(next.exAliases, { '0123': [] });
+  assert.equal(next.edited['exAliases.0123'], T + 30);
+});
+
 /* ---------- the round trip through the real server ---------- */
 
 const API = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -117,4 +143,22 @@ test('PUT /api/data from 1.4.1-kinau.4: CAS holds, the picks move, nothing of th
   S = (await get()).state;
   assert.deepEqual(S.exAliases, { '1162': ['Zentara lift'] });
   assert.deepEqual(S.wodAliases, { t2b: { exId: '0099', _ts: T + 20 }, 'hang cleans': { exId: '1234', _ts: T + 30 } });
+  // The new build edits the upstream alias (its stampEdits stamps the key) ...
+  r = await put({ state: { ...S, _ts: T + 70, exAliases: { '1162': ['Zentara lift', 'Zen'] }, edited: { ...S.edited, 'exAliases.1162': T + 70 } }, baseRev: S._rev, stamped: true });
+  assert.equal(r.status, 200);
+  S = (await get()).state;
+  assert.deepEqual(S.exAliases, { '1162': ['Zentara lift', 'Zen'] });
+
+  // ... and the old phone, whose merge kept its stale array and carried the stored stamp along,
+  // pushes again: the edit stays.
+  r = await put({ state: { ...old, _ts: T + 80, exAliases: { ...old.exAliases, '1162': ['Zentara lift'] }, edited: { 'exAliases.1162': T + 70 } }, baseRev: S._rev, stamped: true });
+  assert.equal(r.status, 200);
+  S = (await get()).state;
+  assert.deepEqual(S.exAliases, { '1162': ['Zentara lift', 'Zen'] });
+  assert.deepEqual(S.wodAliases, { t2b: { exId: '0099', _ts: T + 20 }, 'hang cleans': { exId: '1234', _ts: T + 30 } });
+
+  // A later edit on the new build still lands.
+  r = await put({ state: { ...S, _ts: T + 90, exAliases: { '1162': [] }, edited: { ...S.edited, 'exAliases.1162': T + 90 } }, baseRev: S._rev, stamped: true });
+  assert.equal(r.status, 200);
+  assert.deepEqual((await get()).state.exAliases, { '1162': [] });
 });
