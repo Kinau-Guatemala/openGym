@@ -57,8 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Upstream only, as release-check.yml: a fork tag keeps package.json at the upstream version.
       - name: Versions agree with the release tag
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && github.repository == 'DuarteSantos8/openGym'
         run: node scripts/ci/release-check.mjs "$GITHUB_REF_NAME"
 
       - name: Lowercase owner (registry names must be lowercase)

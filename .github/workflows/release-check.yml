@@ -21,6 +21,9 @@ permissions:
 
 jobs:
   versions:
+    # Upstream's versions and CHANGELOG. A fork tag (vX.Y.Z-kinau.N) keeps package.json at the
+    # upstream version and has no CHANGELOG section of its own, so it would always fail here.
+    if: github.repository == 'DuarteSantos8/openGym'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

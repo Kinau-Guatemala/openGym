@@ -26,6 +26,8 @@ concurrency:
 jobs:
   # Whether a pull request is one for the Mac at all (macOS minutes are the slow queue).
   gate:
+    # Upstream only: the fork ships no iPhone app, and every job below waits on this one.
+    if: github.repository == 'DuarteSantos8/openGym'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
