@@ -39,7 +39,7 @@ const FIXTURE = [
   ['18 DB´ s Bench press', 'db´ s bench press', '0289'],
   ['Max Diamond push ups', 'diamond push ups', '0283'],
   ['10x300mts Row', 'row', '1161'],
-  ['15 Sit Wall Balls', 'sit wall balls', null],
+  ['15 Sit Wall Balls', 'sit wall balls', '0625'],
   ['1x1000 mts Row', 'row', '1161'],
   ['2 Set de Max Wall Balls', 'wall balls', '2458'],   // 2026-10-21 Rox Prep (T17)
   // 09-28
@@ -77,7 +77,7 @@ const FIXTURE = [
   ['M1 7 DB´s DL', 'db´s dl', '0300'],
   ['7 DB´s H. Cleans', 'db´s h. cleans', '4449'],
   ['7 DB´s Bend over Row', 'db´s bend over row', '0293'],
-  ['M2 14 Hollow Crunches', 'hollow crunches', null],
+  ['M2 14 Hollow Crunches', 'hollow crunches', '5649'],
   ['M3 14 BJO', 'bjo', '3887'],
   ['18 Sit ups', 'sit ups', '0736'],
   ['9 DB Split Row R', 'db split row', '0292'],
@@ -107,7 +107,7 @@ const FIXTURE = [
   ['Max Sled Push 100 KG/50KG', 'sled push', '4428'],
   ['100 Cal Bike', 'bike', '3893'],
   ['Run 1K', 'run', '0685'],
-  ['15 Burpee BJ', 'burpee bj', null],
+  ['15 Burpee BJ', 'burpee bj', '8704'],
   ['30 DB´s Lunges', 'db´s lunges', '0336'],
   ['5 Back Squats', 'back squats', '0043'],
   ['3 Front Squats', 'front squats', '0042'],
@@ -127,7 +127,7 @@ const FIXTURE = [
   ['4 DB´s Devil Press', 'db´s devil press', '4164'],
   ['8 DB´s Push press', 'db´s push press', '1700'],
   ['M1 20 Push ups', 'push ups', '0662'],
-  ['M2 Max DB´s Farmer Hold', 'db´s farmer hold', null],
+  ['M2 Max DB´s Farmer Hold', 'db´s farmer hold', '2917'],
   ['8 DB´s Arnold Press', 'db´s arnold press', '2137'],
   ['16 DB´s Skull Cruches', 'db´s skull cruches', '0351'],
   ['M1 12 KB´s Swings High pull 20KG/12KG', 'kb´s swings high pull', '0548'],
@@ -141,7 +141,7 @@ const FIXTURE = [
   ['Easy Bike', 'easy bike', '3893'],
   ['Ski', 'ski', '2142'],
   // 10-07
-  ['12 Predator jacks', 'predator jacks', null],
+  ['12 Predator jacks', 'predator jacks', '7556'],
   ['10 Jump Squats', 'jump squats', '0514'],
   ['8 Push ups Knee tap', 'push ups knee tap', '4162'],
   ['Max Run', 'run', '0685'],
@@ -151,14 +151,14 @@ const FIXTURE = [
   ['40 seg plank', 'plank', '0463'],
   ['30 Sit ups', 'sit ups', '0736'],
   ['20 Leg Raises', 'leg raises', '1163'],
-  ['10 Hollow Crunches', 'hollow crunches', null],
+  ['10 Hollow Crunches', 'hollow crunches', '5649'],
   ['30 Step ups', 'step ups', '0801'],
   ['15 Dips', 'dips', '0251'],
   ['30 Reverse Lunges', 'reverse lunges', '1581'],
   ['15 Dymond Push ups', 'dymond push ups', '0283'],
   ['40 mts Sled Push', 'sled push', '4428'],
   ['40 mts Sled Pull', 'sled pull', '9939'],
-  ['40 mts Burpee BJ', 'burpee bj', null],
+  ['40 mts Burpee BJ', 'burpee bj', '8704'],
   ['Easy Run', 'easy run', '0685'],
   // 10-08
   ['4 Kips', 'kips', '10948'],
@@ -187,7 +187,7 @@ const FIXTURE = [
   ['Max Tuck Crunches', 'tuck crunches', '0871'],
   ['24 Land Mine Press 12/12', 'land mine press', '5074'],
   ['Max Russian Twist', 'russian twist', '0687'],
-  ['max Wall Balls Sentado', 'wall balls sentado', null],
+  ['max Wall Balls Sentado', 'wall balls sentado', '0625'],
   // 10-09
   ['4 Pop jacks', 'pop jacks', '7556'],
   ['8 Thrusters', 'thrusters', '3305'],
@@ -202,14 +202,14 @@ const FIXTURE = [
   ['M3 14 DB Goblet Sumo Squat', 'db goblet sumo squat', '7547'],
   ['16 Cal Row', 'row', '1161'],
   ['DB´s Clusters', 'db´s clusters', '2968'],
-  ['20 KB Goblet Lunges', 'kb goblet lunges', null],
+  ['20 KB Goblet Lunges', 'kb goblet lunges', '3574'],
   ['35 Swings', 'swings', '0549'],
   ['50 KB High sumo pull', 'kb high sumo pull', '4132'],
   ['Run 700', 'run', '0685'],
   ['700 mts Ski', 'ski', '2142'],
   ['30 mts sled Push', 'sled push', '4428'],
   ['30 mts Sled Pull', 'sled pull', '9939'],
-  ['50 mts Burpee Broad Jump', 'burpee broad jump', null],
+  ['50 mts Burpee Broad Jump', 'burpee broad jump', '5187'],
   ['700 mts Row', 'row', '1161'],
   ['140 mts Farmer Walk', 'farmer walk', '2133'],
   ['70 mts Lunges', 'lunges', '0612'],
@@ -229,7 +229,7 @@ const FIXTURE = [
   ['M2 12 Pull ups', 'pull ups', '0652'],
   ['6 T2B', 't2b', '3891'],
   ['M3 12 Sit ups', 'sit ups', '0736'],
-  ['6 Hollow Crunches', 'hollow crunches', null],
+  ['6 Hollow Crunches', 'hollow crunches', '5649'],
   ['Max Plank', 'plank', '0463'],
   ['M1 12 DB´s Lateral Fly', 'db´s lateral fly', '0334'],
   ['max plank', 'plank', '0463'],
@@ -241,7 +241,7 @@ const FIXTURE = [
   ['8 Pull ups', 'pull ups', '0652'],
   ['4 Leg Raises', 'leg raises', '1163'],
   // 10-12
-  ['10 DL Jump', 'dl jump', null],
+  ['10 DL Jump', 'dl jump', '4964'],
   ['7 Push ups', 'push ups', '0662'],
   ['5 Squat Cleans', 'squat cleans', '5287'],
   ['1 Squat Clean', 'squat clean', '5287'],
@@ -337,7 +337,7 @@ const FIXTURE = [
   ['M3 16 DB Hang Snatch R', 'db hang snatch', '10044'],
   ['M1 40 seg max Sit ups', 'sit ups', '0736'],
   ['M2 40 seg max DB´s Lateral + Front Fly', 'db´s lateral + front fly', '0335'],
-  ['M3 25 Seg KB Farmer Bends  R', 'kb farmer bends', null],
+  ['M3 25 Seg KB Farmer Bends  R', 'kb farmer bends', '4396'],
   ['12 KB´s DL 24/16', 'kb´s dl', '3322'],
   ['9 KB´s Hang Cleans 24/16', 'kb´s hang cleans', '0535'],
   ['6 KB´s Jerks 24/16', 'kb´s jerks', '0527'],
@@ -358,7 +358,7 @@ const FIXTURE = [
   ['Max hollow', 'hollow', '1246'],
   ['9 Cal Ski', 'ski', '2142'],
   ['21 Swings', 'swings', '0549'],
-  ['M2 12 DB High sumo pull', 'db high sumo pull', null],
+  ['M2 12 DB High sumo pull', 'db high sumo pull', '5666'],
   // 10-21
   ['20/15 Cal Row', 'row', '1161'],
   ['10 Wall Balls', 'wall balls', '2458'],
@@ -373,10 +373,8 @@ const FIXTURE = [
 // one shows up, the user picks the exercise (from the suggestions or the search) and the pick is
 // remembered (S.wodAliases).
 const NEEDS_PICK = [
-  'machine', 'sushy rolls', 'sit wall balls', 'nastys', 'burpee pull ups', 'blast off push ups',
-  'hollow crunches', 'burpee bj', 'db´s farmer hold', 'predator jacks', 'sled pull & push',
-  'wall balls sentado', 'kb goblet lunges', 'burpee broad jump', 'dl jump', 'kb high pull to squat',
-  'kb farmer bends', 'db high sumo pull',
+  'machine', 'sushy rolls', 'nastys', 'burpee pull ups', 'blast off push ups', 'sled pull & push',
+  'kb high pull to squat',
 ]
 
 describe('crossfit resolve: the sample programs', () => {
@@ -528,6 +526,31 @@ describe('crossfit resolve: the 30 Oct image', () => {
   })
 })
 
+// The 20-image batch (27 Sep to 30 Oct, T22): the names it left to a pick that have a catalogue
+// exercise, as printed, with the parser's English name.
+const BATCH_20 = [
+  ['M2 14 Hollow Crunches', 'hollow body crunch', ['5649', 'shipped']],
+  ['12 Predator jacks', 'predator jack', ['7556', 'shipped']],
+  ['15 Burpee BJ', 'burpee box jump', ['8704', 'shipped']],
+  ['50 mts Burpee Broad Jump', 'burpee broad jump', ['5187', 'shipped']],
+  ['10 DL Jump', 'jumping deadlift', ['4964', 'shipped']],
+  ['max Wall Balls Sentado', 'seated wall ball', ['0625', 'shipped']],
+  ['15 Sit Wall Balls', 'wall ball sit-up', ['0625', 'shipped']],
+  ['12-15 DB´s Copas', 'dumbbell overhead triceps extension', ['0430', 'shipped']],
+  ['Trote', 'jog', ['0685', 'shipped']],
+  ['M2 Max DB´s Farmer Hold', 'dumbbell farmer hold', ['2917', 'shipped']],
+  ['M3 25 Seg KB Farmer Bends R', 'kettlebell farmer bend', ['4396', 'shipped']],
+  ['20 KB Goblet Lunges', 'kettlebell goblet lunge', ['3574', 'shipped']],
+  ['M2 12 DB High sumo pull', 'dumbbell sumo deadlift high pull', ['5666', 'shipped']],
+]
+
+describe('crossfit resolve: the 20-image batch', () => {
+  it.each(BATCH_20)('%s (%s) → %j', (raw, name, want) => {
+    const r = resolveMovement({ rawName: rawNameOf(raw), name })
+    expect([r.exId, r.via]).toEqual(want)
+  })
+})
+
 describe('crossfit resolve: misspellings', () => {
   it.each(MISSPELT)('%s → %s', (rawName, tier, ok) => {
     const r = guessMovement({ rawName })
@@ -546,8 +569,9 @@ describe('crossfit resolve: misspellings', () => {
   })
 
   it('leaves the known confident-wrong names to choose, with no exercise', () => {
+    // guessMovement for "kb goblet lunges": the shipped table maps it now (T22), the guess must not.
     for (const rawName of ['machine', 'kb goblet lunges']) {
-      const r = resolveMovement({ rawName })
+      const r = guessMovement({ rawName })
       expect([r.exId, r.via], rawName).toEqual([null, null])
       expect(r.candidates.length, rawName).toBeGreaterThan(0)
     }
