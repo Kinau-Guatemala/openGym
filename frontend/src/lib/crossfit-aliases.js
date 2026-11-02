@@ -10,7 +10,7 @@ export const SHIPPED_ALIASES = {
   'row': '1161', 'easy row': '1161',
   'ski': '2142', 'easy ski': '2142',
   'bike': '3893', 'easy bike': '3893', 'echo bike': '3893', 'assault bike': '3893', 'bike erg': '3893',
-  'run': '0685', 'easy run': '0685',
+  'run': '0685', 'easy run': '0685', 'trote': '0685',
   'swim': '2870',
   'sled push': '4428',
   'sled pull': '9939', 'sled pull drag just arm': '9939',
@@ -26,6 +26,8 @@ export const SHIPPED_ALIASES = {
   'push press': '1200', 'back push press': '4857', 'press estricto': '1162', 's2oh': '1200',
   'high sumo pull': '1199',
   'land mine press': '5074', 'bb land mine press': '5074',
+  // A DL jump (a deadlift that leaves the floor) is the catalogue's barbell jump shrug.
+  'dl jump': '4964',
 
   // Dumbbell (DB, DB´s). A skull crusher with no equipment printed is the dumbbell one at the box.
   'db bench press': '0289', 'db elevated bench press': '0314',
@@ -41,6 +43,9 @@ export const SHIPPED_ALIASES = {
   'db squat': '0413', 'db bs': '0413', 'db front squat': '2966', 'db goblet squat': '1760', 'db goblet sumo squat': '7547',
   'db split squat': '2960', 'db step up': '0431', 'db lunge': '0336', 'db farmer lunge': '0336',
   'db reverse lunge': '0381',
+  // A farmer hold is the carry without the walk; a DB high sumo pull is the DB high pull from a wide
+  // stance (the catalogue has no dumbbell sumo one).
+  'db copa': '0430', 'db farmer hold': '2133', 'db high sumo pull': '5666',
 
   // Kettlebell (KB, KB´s). A Russian swing is the eye-level swing, the catalogue's kettlebell swing.
   // KB OHS is printed 5/5 (per side), and the one-arm overhead squat is the catalogue's only KB one.
@@ -50,6 +55,9 @@ export const SHIPPED_ALIASES = {
   'kb high sumo pull': '4132', 'kb dl': '3322', 'kb c and j': '4542',
   'kb hang clean': '0535', 'kb jerk': '0527', 'kb bend over row': '6156', 'kb gorilla row': '7230',
   'kb goblet squat': '0534', 'kb sit up to shoulder press': '5072',
+  // KB farmer bends are timed per side: a side bend with the bell held at the side. A goblet lunge is
+  // the kettlebell forward lunge ("hold a kettlebell at your chest").
+  'kb farmer bend': '4396', 'kb goblet lunge': '3574',
 
   // Gymnastics and body weight
   't2b': '3891', 'knee to chest': '9819', 'k2c': '9819', 'bmu': '5194', 'rmu': '0631',
@@ -68,4 +76,9 @@ export const SHIPPED_ALIASES = {
   'russian twist': '0687', 'plank': '0463', 'hollow': '1246', 'm climber': '0630',
   'inch worm': '1471', 'pop jack': '7556', 'wall climb': '5234',
   'wall ball': '2458',
+  // From the 20-image batch. A hollow crunch has no catalogue exercise, so it is the hollow rock; a
+  // predator jack is the squat jack (stays low); a seated wall ball is the sit-up with a wall throw;
+  // a burpee broad jump is the burpee long jump.
+  'hollow crunch': '5649', 'predator jack': '7556', 'burpee bj': '8704', 'burpee broad jump': '5187',
+  'wall ball sentado': '0625', 'sit wall ball': '0625',
 }
