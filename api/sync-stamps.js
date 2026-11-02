@@ -31,6 +31,9 @@
 //      device changed it loses to that change, one that sends no record of edits at all (it never
 //      read a copy from an updated app) still wins as before, and the older app shows its own
 //      value until it next reads the profile;
+//   2b. for a writer that does not stamp: the Coach's chat, log and Undo snapshots are joined with
+//      the stored ones (mergeCoach), since its whole `coach` is a copy from before the other
+//      device's messages (#779);
 //   3. for every writer: an entry the document holds while a removal on record says it was
 //      deleted after its last edit is kept, and marked as added back. An updated app never sends
 //      such a document, so this is an older app's merge (or its Coach undo, or a backup it
@@ -62,15 +65,16 @@ const capStamps = m => {
   return m;
 };
 // The maps whose every entry carries its own edit time (sync-merge.js STAMPED_MAPS): merged per
-// key by the app, so never stamped here as a whole setting. dayNotes is a note per day off, wods a
-// posted program per date, exAliases a printed movement name's exercise (frontend lib/wods.js).
-export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'dayNotes', 'wods', 'exAliases'];
+// key by the app, so never stamped here as a whole setting. dayNotes is a note per day off,
+// dayPhotos a progress photo filed under a day (#557), one entry per photo, wods a posted program
+// per date, wodAliases a printed movement name's exercise (frontend lib/wods.js).
+export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'stackWeights', 'dayNotes', 'dayPhotos', 'wods', 'wodAliases'];
 export const OWN_MERGE = new Set([
   '_ts', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'active', 'unit', 'unitSet', 'resetAt', 'resetIds', 'deleted', 'edited', 'undone', 'routineOrder',
   'workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'bodyweight', 'measurements', 'favEx',
   'exWeights', ...STAMPED_MAPS,
 ]);
-const PER_KEY = new Set(['week', 'dayPlan', 'exNotes', 'barWeights']);
+const PER_KEY = new Set(['week', 'dayPlan', 'exNotes', 'barWeights', 'exAliases']);
 
 // The posted programs are kept for their last WODS_KEEP_DAYS by date key (frontend lib/wods.js
 // pruneWods, hand-copied): pruned on every PUT, as the app prunes on every merge and load.
@@ -83,6 +87,34 @@ export function pruneWods(map, today = utcToday()) {
   const cutoff = Number.isFinite(t) ? utcToday(t - WODS_KEEP_DAYS * 86400000) : '';
   const out = {};
   for (const [k, v] of Object.entries(map)) if (ISO.test(k) && k >= cutoff) out[k] = v;
+  return out;
+}
+// The fork's movement-name picks were S.exAliases up to 1.4.1-kinau.N; upstream now keeps its own
+// exercise aliases there ({ [exId]: [names] }), so the picks live in wodAliases (frontend lib/wods.js
+// migrateWodAliases, hand-copied). A phone still on the old build sends its picks under the old
+// name: an object entry of exAliases is a pick and moves, an array is upstream's and stays. Of a
+// name in both, the later `_ts`; a tie keeps wodAliases'. In place; true when it moved anything.
+export function migrateWodAliases(S) {
+  if (!isMap(S) || !isMap(S.exAliases)) return false;
+  const legacy = Object.entries(S.exAliases).filter(([, v]) => isMap(v));
+  if (!legacy.length) return false;
+  const ex = { ...S.exAliases };
+  const into = isMap(S.wodAliases) ? { ...S.wodAliases } : {};
+  for (const [k, v] of legacy) {
+    delete ex[k];
+    const c = into[k];
+    if (!isMap(c) || (Number(v._ts) || 0) > (Number(c._ts) || 0)) into[k] = v;
+  }
+  S.exAliases = ex;
+  S.wodAliases = into;
+  return true;
+}
+// Two stamped maps per key (frontend sync-merge.js mergeStampedMap): the later `_ts`, `b` on a tie.
+function unionByStamp(a, b) {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(isMap(b) ? b : {})) {
+    if (!(k in out) || (Number(v?._ts) || 0) >= (Number(out[k]?._ts) || 0)) out[k] = v;
+  }
   return out;
 }
 const ENTRY_META = new Set(['id', '_ts', '_f', '_u']);
@@ -347,6 +379,61 @@ function stampUnstamped(cur, next, sent, now, own = null) {
   }
 }
 
+// The Coach's chat, log and Undo snapshots (sync-merge.js mergeCoach): joined with the stored
+// ones rather than replaced, for a writer that does not stamp. It keeps `coach` as one value it read
+// earlier, so its push dropped every line another device had added since (#779). An Undo's log
+// entry names the snapshot it used, which then stays out.
+export const COACH_CAPS = { chat: 40, log: 50, snapshots: 3 };
+const COACH_NAMESPACE_MAX = 256 * 1024;
+export const snapshotKey = x => (isMap(x) ? (x.id != null ? String(x.id) : `${Number(x.at) || 0}|${x.proposalId ?? ''}`) : null);
+const coachKey = { chat: x => (isMap(x) && x.id != null ? String(x.id) : null), log: x => (isMap(x) && x.id != null ? String(x.id) : null), snapshots: snapshotKey };
+function unionInTime(xs, ys, key) {
+  const seen = new Set(), out = [];
+  let i = 0;
+  for (const [from, l] of [[0, list(xs)], [1, list(ys)]]) {
+    let at = 0;
+    for (const x of l) {
+      if (x == null) continue;
+      const k = key(x);
+      if (Number(x?.at) > 0) at = Number(x.at);
+      if (k == null) { if (!from) out.push({ x, at, from, i: i++ }); continue; }
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ x, at, from, i: i++ });
+    }
+  }
+  out.sort((a, b) => a.at - b.at || a.from - b.from || a.i - b.i);
+  return out.map(e => e.x);
+}
+/** `win`'s Coach namespace with its chat, log and snapshots joined with `other`'s (sync-merge.js mergeCoach). */
+export function mergeCoach(win, other) {
+  if (!isMap(win) || !isMap(other)) return win === undefined ? win : clone(win);
+  const out = clone(win);
+  for (const f of ['chat', 'log', 'snapshots']) {
+    if (!Array.isArray(win[f]) && !Array.isArray(other[f])) continue;
+    out[f] = clone(unionInTime(win[f], other[f], coachKey[f]));
+  }
+  const used = new Set(), byProposal = [];
+  for (const e of list(out.log)) {
+    if (!isMap(e) || e.kind !== 'revert') continue;
+    if (e.snap != null) used.add(String(e.snap));
+    else if (e.proposalId != null) byProposal.push(e);
+  }
+  if (out.snapshots) {
+    out.snapshots = out.snapshots.filter(x => !used.has(snapshotKey(x)) &&
+      !byProposal.some(e => x?.proposalId === e.proposalId && (Number(x?.at) || 0) <= (Number(e.at) || 0)));
+  }
+  for (const [f, max] of Object.entries(COACH_CAPS)) if (Array.isArray(out[f]) && out[f].length > max) out[f] = out[f].slice(-max);
+  let guard = 0;
+  while (JSON.stringify(out).length > COACH_NAMESPACE_MAX && guard++ < 60) {
+    if (list(out.chat).length > 8) out.chat.shift();
+    else if (list(out.snapshots).length > 1) out.snapshots.shift();
+    else if (list(out.log).length > 1) out.log.shift();
+    else break;
+  }
+  return out;
+}
+
 const ORDER_KEY = 'routineOrder';
 /** Whether two lists hold the routines both have in a different order (sync-merge.js orderMoved). */
 export function orderMoved(a, b) {
@@ -488,8 +575,13 @@ function keepHeld(next, now) {
 const BOOKKEEPING = new Set(['_ts', '_f', '_u', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'edited', 'deleted', 'undone']);
 const content = S => JSON.stringify(S, (k, v) => (BOOKKEEPING.has(k) ? undefined : v));
 
-export function stampPut(cur, next, { overRead = false, stamped = false, now = Date.now(), report = null } = {}) {
+export function stampPut(cur0, next, { overRead = false, stamped = false, now = Date.now(), report = null } = {}) {
   if (!next || typeof next !== 'object') return next;
+  // Both copies with the fork's picks where they belong now, before anything compares them: the
+  // stored one (a file the old build wrote) on a shallow copy, the one being written in place.
+  let cur = cur0;
+  if (isMap(cur) && isMap(cur.exAliases) && Object.values(cur.exAliases).some(isMap)) { cur = { ...cur }; migrateWodAliases(cur); }
+  migrateWodAliases(next);
   const t = Math.max(Number(now) || 0, highestStamp(cur) + 1, highestStamp(next) + 1);
   const reset = (Number(next.resetAt) || 0) > (Number(cur?.resetAt) || 0);
   const sent = isMap(next.edited) ? { ...next.edited } : null;
@@ -501,6 +593,22 @@ export function stampPut(cur, next, { overRead = false, stamped = false, now = D
   delete next._unstamped;
   delete next._prior;
   if (cur && !reset) {
+    // The old build does not know wodAliases (an unstamped field to it, so its merge can leave the
+    // stored picks out): the picks are a stamped map, merged here per name as the app merges them,
+    // the later `_ts`.
+    if (isMap(cur.wodAliases)) next.wodAliases = unionByStamp(cur.wodAliases, next.wodAliases);
+    // Nor does it know upstream's alias arrays: to it exAliases is a stamped map, both stamps of an
+    // array read 0 and the newer copy's wins, and its merge skips `edited['exAliases.<id>']`. So
+    // an array that differs from the stored one (left out included: upstream clears with [], never
+    // by removing the key), with no later per-key stamp of the writer's own, was not edited by
+    // it and is put back. A new build's own edit is stamped later and goes through.
+    if (stamped && isMap(cur.exAliases)) {
+      for (const [k, v] of Object.entries(cur.exAliases)) {
+        if (!Array.isArray(v) || same(next.exAliases?.[k], v)) continue;
+        if ((Number(sent?.[`exAliases.${k}`]) || 0) > (Number(cur.edited?.[`exAliases.${k}`]) || 0)) continue;
+        next.exAliases = { ...(isMap(next.exAliases) ? next.exAliases : {}), [k]: clone(v) };
+      }
+    }
     const d = mergeDeletions(cur.deleted, next.deleted);
     if (d) next.deleted = d; else delete next.deleted;
     const e = mergeEdits(cur.edited, next.edited);
@@ -520,6 +628,7 @@ export function stampPut(cur, next, { overRead = false, stamped = false, now = D
       const rec = ownRecord(next, NaN, prevOwn, prevOwn.fp);
       if (rec) next._unstamped = rec;
     }
+    if (!stamped && isMap(next.coach) && isMap(cur.coach)) next.coach = mergeCoach(next.coach, cur.coach);
     if (before != null && content(next) !== before) report.changed = true;
   }
   keepHeld(next, t);

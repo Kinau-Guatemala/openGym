@@ -46,8 +46,8 @@ describe('store actions', () => {
     expect(setAlias('hang cleans', '1234')).toBe(true)
     expect(clearAlias('t2b')).toBe(true)
     expect(aliasesOf(S())).toEqual({ 'hang cleans': '1234' })
-    expect(S().exAliases.t2b._ts).toBeGreaterThan(0)
-    expect(S().edited?.exAliases).toBeUndefined()
+    expect(S().wodAliases.t2b._ts).toBeGreaterThan(0)
+    expect(S().edited?.wodAliases).toBeUndefined()
     expect(setAlias('', '1')).toBe(false)
     expect(setAlias('x', '')).toBe(false)
     expect(clearAlias(null)).toBe(false)
@@ -74,15 +74,24 @@ describe('load, export and import', () => {
     useStore.getState().setAlias('t2b', '0099')
     const exported = JSON.parse(JSON.stringify(S()))
     expect(exported.wods['2026-10-23'].title).toBe('A')
-    expect(exported.exAliases.t2b.exId).toBe('0099')
+    expect(exported.wodAliases.t2b.exId).toBe('0099')
     expect(exported.hypTarget).toBe(10)
-    const older = clone(DEF); delete older.wods; delete older.exAliases; delete older.hypTarget
+    const older = clone(DEF); delete older.wods; delete older.wodAliases; delete older.hypTarget
     useStore.setState({ S: clone(DEF) })
     useStore.getState().importBackup({ ...older, _ts: 1, restSec: 77 })
     expect(S().restSec).toBe(77)
     expect(S().wods).toEqual({})
-    expect(S().exAliases).toEqual({})
+    expect(S().wodAliases).toEqual({})
     expect(S().hypTarget).toBe(10)
+  })
+
+  it('a backup from the old build (picks under exAliases) imports with them moved to wodAliases', () => {
+    const old = { ...clone(DEF), _ts: 1, exAliases: { '1162': ['Zentara lift'], 'hang cleans': { exId: '1234', _ts: 5 } } }
+    delete old.wodAliases
+    useStore.getState().importBackup(old)
+    expect(S().exAliases).toEqual({ '1162': ['Zentara lift'] })
+    expect(S().wodAliases).toEqual({ 'hang cleans': { exId: '1234', _ts: 5 } })
+    expect(aliasesOf(S())).toEqual({ 'hang cleans': '1234' })
   })
 })
 

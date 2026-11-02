@@ -93,14 +93,17 @@ export async function pair(url, code) {
  */
 export async function connect(url) {
   checkUrl(url)
-  const saved = loadToken(url)
-  if (!saved?.token) throw pairAgain(url)
-  let token = saved.token
+  // OPENGYM_TOKEN (upstream's log_workout setup, scripts/pair.mjs) wins over the stored file; a
+  // token from the environment is used as given and never written to disk.
+  const envToken = (process.env.OPENGYM_TOKEN || '').trim()
+  const saved = envToken ? null : loadToken(url)
+  if (!envToken && !saved?.token) throw pairAgain(url)
+  let token = envToken || saved.token
   const request = (method, p, body) => call(url, method, p, { token, body })
   const me = await request('GET', '/api/me')
   if (me?.token) {
     token = me.token
-    saveToken(url, { ...saved, token, user: me.user })
+    if (saved) saveToken(url, { ...saved, token, user: me.user })
   }
   const user = { id: me.user.id, name: me.user.name, created: null }
   return {

@@ -10,7 +10,7 @@
 //
 // The editor works on a draft (lib/wod-draft.js) and writes nothing until Save. A movement's
 // exercise chip opens the exercise picker; the pick is remembered for that printed name
-// (S.exAliases), so the same name resolves by itself in every later program. A misspelled name
+// (S.wodAliases), so the same name resolves by itself in every later program. A misspelled name
 // arrives as a best guess ("Did you mean?", one tap confirms it) or with suggestions to choose
 // from (lib/crossfit-resolve.js); confirming or choosing is a pick like any other.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
@@ -83,7 +83,7 @@ export default function CrossFit() {
   }
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/home" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('CrossFit')}</h1>
         <div className="sub">{t('The programs your box posts, one per day.')}</div></div>
     </div>
@@ -245,7 +245,7 @@ function Intake() {
   const failed = failureOf(run)
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
         <h1>{t('New program')}</h1>
         <div className="sub">{fmtDate(run.date, true)}</div>
@@ -277,7 +277,7 @@ function Editor() {
   const store = useStore.getState
   const handed = loc.state?.draft || null
   const [date, setDate] = useState(() => editDate || loc.state?.date || new URLSearchParams(loc.search).get('date') || tomorrowISO())
-  const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.exAliases))
+  const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.wodAliases))
   const [tab, setTab] = useState(0)
   const [dirty, setDirty] = useState(!!handed)
   // Edited beyond the date: what an upload would throw away (the date goes along with it).
@@ -358,7 +358,7 @@ function Editor() {
 
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={leave} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/crossfit" onClick={leave} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
         <h1>{editDate ? t('Edit program') : t('New program')}</h1>
         <div className="sub">{ISO.test(date) ? fmtDate(date, true) : ''}</div>
@@ -596,8 +596,8 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
     if (!text) { toast(t('Type the movement')); return }
     const changed = text !== (m0.raw || m0.rawName || '')
     // A new line is a new name to resolve: the parser's English name no longer describes it.
-    const base = !movement ? movementFromText(text, null, S.exAliases)
-      : changed ? resolveInto({ ...m0, raw: text, rawName: rawNameOf(text), name: undefined }, S.exAliases)
+    const base = !movement ? movementFromText(text, null, S.wodAliases)
+      : changed ? resolveInto({ ...m0, raw: text, rawName: rawNameOf(text), name: undefined }, S.wodAliases)
       : m0
     // The rest printed on the line (`x 1 De pausa`) is shown, not edited here: it rides along.
     const d = { ...(dose ? { [kind]: dose, ...(kind === 'reps' && doseMax > dose ? { repsMax: doseMax } : {}) } : {}),
@@ -613,7 +613,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
   const addAlt = () => {
     const rawName = rawNameOf(altText.trim()) || altText.trim().toLowerCase()
     if (!rawName) return
-    setAlts(a => [...a, { ...resolveInto({ rawName }, S.exAliases), dose: {} }])
+    setAlts(a => [...a, { ...resolveInto({ rawName }, S.wodAliases), dose: {} }])
     setAltText('')
   }
   const field = (label, value, onChange, unit, decimal = true) => <label className="measure-field"><span>{label}</span>

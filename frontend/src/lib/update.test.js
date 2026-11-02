@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { checkForUpdate, sha256, resetUpdateCheck, fetchChecksum, compareSemver } from './update.js'
+import { checkForUpdate, sha256, resetUpdateCheck, fetchChecksum, compareSemver, pickApk, APK_VARIANT, apkKind } from './update.js'
 
 // __APP_VERSION__ is defined at build time by vite.config.js (reads package.json).
 // In the test environment vitest applies the same define, so it's available here.
@@ -243,6 +243,19 @@ describe('compareSemver: fork builds (-<word>.N) count on top of their base', ()
     expect(compareSemver('v1.4.10-kinau.1', '1.4.9-kinau.7')).toBe(1)
   })
 
+  it('offers the first fork build on upstream 1.4.3 to a phone on 1.4.1-kinau.4, and 1.4.4 over it', () => {
+    expect(compareSemver('v1.4.3-kinau.1', '1.4.1-kinau.4')).toBe(1)
+    expect(compareSemver('1.4.3-kinau.1', '1.4.3')).toBe(1)
+    expect(compareSemver('1.4.4', '1.4.3-kinau.1')).toBe(1)
+  })
+
+  it('the fork\'s one APK per release (android-release.yml) is the Standard kind, with its checksum', () => {
+    const a = n => ({ name: n, browser_download_url: `https://github.com/Kinau-Guatemala/openGym/releases/download/v1.4.3-kinau.1/${n}` })
+    const { apk, hash } = pickApk(['openGym-1.4.3-kinau.1.apk', 'openGym-1.4.3-kinau.1.apk.sha256'].map(a), APK_VARIANT)
+    expect(apk.name).toBe('openGym-1.4.3-kinau.1.apk')
+    expect(hash.name).toBe('openGym-1.4.3-kinau.1.apk.sha256')
+  })
+
   it('reads the tag and the app version alike, with or without v and build metadata', () => {
     expect(compareSemver('v1.4.1-kinau.2', '1.4.1-kinau.2+abc')).toBe(0)
   })
@@ -253,5 +266,92 @@ describe('compareSemver: fork builds (-<word>.N) count on top of their base', ()
     }
     expect(compareSemver('1.4.1-kinau', '1.4.1')).toBe(0)
     expect(compareSemver('garbage', '0.0.0')).toBe(0)
+  })
+})
+
+// v1.4.2: a release carries a Standard and an HD APK. GitHub lists assets by name, so for the
+// names we publish the HD file would come first; each build must still find its own.
+describe('pickApk: Standard and HD APKs', () => {
+  const url = n => `https://github.com/DuarteSantos8/openGym/releases/download/v1.4.2/${n}`
+  const a = n => ({ name: n, browser_download_url: url(n) })
+  const RELEASE = ['openGym-1.4.2.apk', 'openGym-1.4.2.apk.sha256', 'openGym-HD-1.4.2.apk', 'openGym-HD-1.4.2.apk.sha256'].map(a)
+
+  it('a test build without a variant is the Standard APK', () => {
+    expect(APK_VARIANT).toBe('standard')
+  })
+
+  it('the Standard APK updates to the Standard APK and its own checksum', () => {
+    const { apk, hash } = pickApk(RELEASE, 'standard')
+    expect(apk.name).toBe('openGym-1.4.2.apk')
+    expect(hash.name).toBe('openGym-1.4.2.apk.sha256')
+  })
+
+  it('the HD APK updates to the HD APK and its own checksum, whatever the order', () => {
+    for (const list of [RELEASE, [...RELEASE].reverse()]) {
+      const { apk, hash } = pickApk(list, 'hd')
+      expect(apk.name).toBe('openGym-HD-1.4.2.apk')
+      expect(hash.name).toBe('openGym-HD-1.4.2.apk.sha256')
+    }
+  })
+
+  it('the Standard APK is never offered the HD one, even when it is listed first', () => {
+    const { apk, hash } = pickApk([...RELEASE].reverse(), 'standard')
+    expect(apk.name).toBe('openGym-1.4.2.apk')
+    expect(hash.name).toBe('openGym-1.4.2.apk.sha256')
+  })
+
+  it('also knows a -hd suffix', () => {
+    expect(pickApk(['openGym-1.5.0-hd.apk', 'openGym-1.5.0.apk'].map(a), 'hd').apk.name).toBe('openGym-1.5.0-hd.apk')
+    expect(pickApk(['openGym-1.5.0-hd.apk', 'openGym-1.5.0.apk'].map(a), 'standard').apk.name).toBe('openGym-1.5.0.apk')
+  })
+
+  it('an HD build is not moved to Standard when a release has no HD APK', () => {
+    const { apk, hash } = pickApk(['openGym-1.3.10.apk', 'openGym-1.3.10.apk.sha256'].map(a), 'hd')
+    expect(apk).toBe(null)
+    expect(hash).toBe(null)
+  })
+
+  it('names that only contain the letters hd are not HD', () => {
+    expect(pickApk([a('openGym-shdw-1.4.2.apk')], 'standard').apk.name).toBe('openGym-shdw-1.4.2.apk')
+  })
+
+  it('a checksum that belongs to another APK is not used', () => {
+    const { apk, hash } = pickApk(['openGym-HD-1.4.2.apk.sha256', 'openGym-1.4.2.apk'].map(a), 'standard')
+    expect(apk.name).toBe('openGym-1.4.2.apk')
+    expect(hash).toBe(null)
+  })
+})
+
+describe('pickApk: Standard, Plus and HD', () => {
+  const a = n => ({ name: n, browser_download_url: `https://github.com/DuarteSantos8/openGym/releases/download/v1.4.2/${n}` })
+  const NAMES = ['openGym-1.4.2.apk', 'openGym-1.4.2.apk.sha256', 'openGym-HD-1.4.2.apk', 'openGym-HD-1.4.2.apk.sha256',
+    'openGym-Plus-1.4.2.apk', 'openGym-Plus-1.4.2.apk.sha256']
+  const sorted = [...NAMES].sort().map(a)  // GitHub lists assets by name
+
+  it('names the three kinds', () => {
+    expect(apkKind('openGym-1.4.2.apk')).toBe('standard')
+    expect(apkKind('openGym-Plus-1.4.2.apk')).toBe('plus')
+    expect(apkKind('openGym-HD-1.4.2.apk')).toBe('hd')
+    expect(apkKind('openGym-1.5.0-plus.apk')).toBe('plus')
+    expect(apkKind('openGym-surplus-1.4.2.apk')).toBe('standard')
+  })
+
+  it('each kind updates only to itself, with its own checksum, in any order', () => {
+    for (const list of [sorted, [...sorted].reverse()]) {
+      for (const [variant, name] of [['standard', 'openGym-1.4.2.apk'], ['plus', 'openGym-Plus-1.4.2.apk'], ['hd', 'openGym-HD-1.4.2.apk']]) {
+        const { apk, hash } = pickApk(list, variant)
+        expect(apk.name).toBe(name)
+        expect(hash.name).toBe(`${name}.sha256`)
+      }
+    }
+  })
+
+  it('a phone from before v1.4.2 (first .apk, first .sha256 in name order) lands on Standard, checksum matching', () => {
+    expect(sorted.find(x => /\.apk$/i.test(x.name)).name).toBe('openGym-1.4.2.apk')
+    expect(sorted.find(x => /\.apk\.sha256$/i.test(x.name)).name).toBe('openGym-1.4.2.apk.sha256')
+  })
+
+  it('a Plus build is not moved to another kind when a release has no Plus APK', () => {
+    expect(pickApk(['openGym-1.4.3.apk', 'openGym-HD-1.4.3.apk'].map(a), 'plus').apk).toBe(null)
   })
 })

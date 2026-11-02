@@ -371,7 +371,7 @@ const FIXTURE = [
 
 // The names no shipped alias or clear search hit covers, and no guess is sure of: the first time
 // one shows up, the user picks the exercise (from the suggestions or the search) and the pick is
-// remembered (S.exAliases).
+// remembered (S.wodAliases).
 const NEEDS_PICK = [
   'machine', 'sushy rolls', 'sit wall balls', 'nastys', 'burpee pull ups', 'blast off push ups',
   'hollow crunches', 'burpee bj', 'db´s farmer hold', 'predator jacks', 'sled pull & push',

@@ -1,5 +1,5 @@
 /* The CrossFit maps in PUT /api/data's stamping (sync-stamps.js): S.wods (a program per date) and
-   S.exAliases (a movement name's exercise) are stamped maps the app merges per key, so the server
+   S.wodAliases (a movement name's exercise; S.exAliases up to 1.4.1-kinau.N) are stamped maps the app merges per key, so the server
    never stamps them as a whole setting (critique C1), keeps a clear an older app does not know
    about, and prunes programs older than WODS_KEEP_DAYS on every write. The two-device merges on
    top of this are in frontend/src/lib/wods.test.js. */
@@ -10,23 +10,23 @@ import { OWN_MERGE, STAMPED_MAPS, WODS_KEEP_DAYS, pruneWods, stampPut } from '..
 const clone = v => JSON.parse(JSON.stringify(v));
 const T = 1_800_000_000_000;
 const NOW = Date.UTC(2026, 9, 24, 12);
-const doc = (over = {}) => ({ _ts: T, _rev: 1, unit: 'kg', restSec: 90, workouts: [], routines: [], wods: {}, exAliases: {}, ...over });
+const doc = (over = {}) => ({ _ts: T, _rev: 1, unit: 'kg', restSec: 90, workouts: [], routines: [], wods: {}, wodAliases: {}, ...over });
 const put = (cur, next, opts = {}) => { stampPut(cur, next, { now: NOW, ...opts }); return next; };
 
 test('both maps are merged on their own, never as a setting', () => {
-  for (const k of ['wods', 'exAliases']) { assert.ok(OWN_MERGE.has(k)); assert.ok(STAMPED_MAPS.includes(k)); }
+  for (const k of ['wods', 'wodAliases']) { assert.ok(OWN_MERGE.has(k)); assert.ok(STAMPED_MAPS.includes(k)); }
   assert.equal(WODS_KEEP_DAYS, 120);
 });
 
-test('a writer that does not stamp changing either map gets no edited.wods or edited.exAliases', () => {
+test('a writer that does not stamp changing either map gets no edited.wods or edited.wodAliases', () => {
   const cur = doc({ wods: { '2026-10-23': { title: 'A', _ts: T + 10 } } });
   const next = clone(cur); delete next._rev;
   next.wods['2026-10-24'] = { title: 'B', _ts: T + 20 };
-  next.exAliases = { t2b: { exId: '0099', _ts: T + 20 } };
+  next.wodAliases = { t2b: { exId: '0099', _ts: T + 20 } };
   next.restSec = 60;
   put(cur, next, { overRead: true });
   assert.equal(next.edited?.wods, undefined);
-  assert.equal(next.edited?.exAliases, undefined);
+  assert.equal(next.edited?.wodAliases, undefined);
   assert.ok(next.edited?.restSec > 0);   // a plain setting still is
   assert.equal(next._prior?.wods, undefined);
   assert.deepEqual(Object.keys(next.wods).sort(), ['2026-10-23', '2026-10-24']);
@@ -40,11 +40,11 @@ test('the same date is stored as the writer sent it: the later stamp is not lowe
 });
 
 test('an older app that leaves the maps out keeps the stored ones, clears included', () => {
-  const cur = doc({ wods: { '2026-10-23': { _ts: T + 20 }, '2026-10-22': { title: 'A', _ts: T + 5 } }, exAliases: { t2b: { _ts: T + 20 } } });
-  const old = clone(cur); delete old.wods; delete old.exAliases; delete old._rev; old.restSec = 60;
+  const cur = doc({ wods: { '2026-10-23': { _ts: T + 20 }, '2026-10-22': { title: 'A', _ts: T + 5 } }, wodAliases: { t2b: { _ts: T + 20 } } });
+  const old = clone(cur); delete old.wods; delete old.wodAliases; delete old._rev; old.restSec = 60;
   put(cur, old, { overRead: true });
   assert.deepEqual(old.wods, cur.wods);
-  assert.deepEqual(old.exAliases, cur.exAliases);
+  assert.deepEqual(old.wodAliases, cur.wodAliases);
 });
 
 test('programs older than 120 days are pruned on every write, by the server\'s clock', () => {

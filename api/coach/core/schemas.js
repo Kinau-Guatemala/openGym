@@ -166,6 +166,13 @@ export const WOD_SCHEMA = {
   required: ['tracks']
 };
 
+// A question in the chat: one plain-text answer, nothing to apply.
+export const ASK_SCHEMA = {
+  type: 'object',
+  properties: { coach_contract: { type: 'integer' }, answer: STR },
+  required: ['coach_contract', 'answer']
+};
+
 // Every kind by name. No fallback: a kind missing here gets no schema, and the prompt and the
 // validator refuse it before a schema would matter.
-export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA, 'parse-wod': WOD_SCHEMA };
+export const SCHEMAS = { review: REVIEW_SCHEMA, create: CREATE_SCHEMA, refine: CREATE_SCHEMA, debrief: DEBRIEF_SCHEMA, ask: ASK_SCHEMA, 'parse-wod': WOD_SCHEMA };

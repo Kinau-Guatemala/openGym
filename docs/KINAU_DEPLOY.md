@@ -15,7 +15,7 @@ github.com/orgs/Kinau-Guatemala/packages → `opengym-api` / `opengym-web` → P
 
 Check with `docker logout ghcr.io && docker pull ghcr.io/kinau-guatemala/opengym-web:edge`.
 
-Release tags follow upstream with a counter: `v1.4.1-kinau.1`, `v1.4.1-kinau.2`, … After pulling in an upstream release (say 1.4.2), start again at `v1.4.2-kinau.1`. Never mark these as pre-releases, because the in-app updater reads `releases/latest`.
+Release tags follow upstream with a counter: `v1.4.1-kinau.1`, `v1.4.1-kinau.2`, … After pulling in an upstream release, start again at its version: the sync with upstream 1.4.3 (Nov 2026) makes the next tag `v1.4.3-kinau.1`. Never mark these as pre-releases, because the in-app updater reads `releases/latest`.
 
 ## Home server (Docker Compose)
 

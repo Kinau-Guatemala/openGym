@@ -41,7 +41,29 @@ async function load(dir, uid = 'alex') {
 afterEach(() => { vi.unstubAllEnvs() })
 afterAll(() => { dirs.forEach(d => fs.rmSync(d, { recursive: true, force: true })) })
 
+// The fork's picks were S.exAliases up to 1.4.1-kinau.N; upstream now keeps { [exId]: [names] } there.
+test('a state file the old build wrote reads with its picks under wodAliases, the arrays left alone', async () => {
+  const old = { unit: 'kg', exAliases: { '1162': ['Zentara lift'], 'hang cleans': { exId: '1234', _ts: 5 } } }
+  const { getState } = await load(mk({ 'db.json': DB, 'state-alex.json': JSON.stringify(old) }))
+  const S = await getState()
+  expect(S.exAliases).toEqual({ '1162': ['Zentara lift'] })
+  expect(S.wodAliases).toEqual({ 'hang cleans': { exId: '1234', _ts: 5 } })
+})
+
 describe('a read failure is not "you never signed in"', () => {
+  test('without a watcher, a state file that goes away stops being served from the cache (#653)', async () => {
+    const dir = mk({ 'db.json': DB, 'state-alex.json': JSON.stringify({ unit: 'lb' }) })
+    const watch = vi.spyOn(fs, 'watch').mockImplementation(() => { throw new Error('no fs.watch here') })
+    try {
+      const { getState } = await load(dir)
+      expect((await getState()).unit).toBe('lb')
+      fs.rmSync(path.join(dir, 'state-alex.json'))
+      expect(await getState()).toBeNull()
+      fs.writeFileSync(path.join(dir, 'state-alex.json'), JSON.stringify({ unit: 'kg' }))
+      expect((await getState()).unit).toBe('kg')
+    } finally { watch.mockRestore() }
+  })
+
   test('no state file at all is still null — that account really has never synced', async () => {
     const { getState } = await load(mk({ 'db.json': DB }))
     expect(await getState()).toBeNull()

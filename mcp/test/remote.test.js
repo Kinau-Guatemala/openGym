@@ -7,6 +7,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { stubApi, TOKEN } from './source.js'
 import { pair, connect, tokenFile, saveToken, loadToken, checkUrl } from '../src/remote.js'
+import { apiConfig } from '../src/api-client.js'
 
 const USER = { id: 'u1', name: 'Diego', admin: true }
 let dir, api
@@ -65,6 +66,26 @@ describe('connect', () => {
     expect(loadToken(api.url).token).toBe('renewed')
     expect(fs.statSync(tokenFile(api.url)).mode & 0o777).toBe(0o600)
     expect(await src.read()).toEqual({ by: 'Bearer renewed' })
+  })
+
+  // Upstream's log_workout setup puts the token in OPENGYM_TOKEN; the same config then reads too.
+  test('OPENGYM_TOKEN is used as given, ahead of a stored file, and never written to disk', async () => {
+    api = await stubApi({
+      'GET /api/me': req => [200, { user: USER, ...(req.headers.authorization === 'Bearer env-token' ? { token: 'renewed' } : {}) }],
+      'GET /api/data': req => [200, { state: { by: req.headers.authorization }, rev: 1 }]
+    }, ['env-token', 'renewed'])
+    vi.stubEnv('OPENGYM_TOKEN', 'env-token')
+    const src = await connect(api.url)
+    expect(await src.read()).toEqual({ by: 'Bearer renewed' })
+    expect(fs.existsSync(tokenFile(api.url))).toBe(false)
+  })
+
+  test('log_workout (apiConfig) falls back to the token `pair` stored when OPENGYM_TOKEN is not set', () => {
+    const url = 'https://gym.example.com'
+    expect(() => apiConfig({ OPENGYM_URL: url })).toThrow(/OPENGYM_TOKEN/)
+    saveToken(url, { url, token: TOKEN, user: USER })
+    expect(apiConfig({ OPENGYM_URL: url })).toEqual({ base: url, token: TOKEN })
+    expect(apiConfig({ OPENGYM_URL: url, OPENGYM_TOKEN: 'other' }).token).toBe('other')
   })
 
   test('a token the server refuses says to pair again', async () => {
