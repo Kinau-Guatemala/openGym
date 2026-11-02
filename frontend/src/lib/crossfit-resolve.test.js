@@ -631,3 +631,43 @@ describe('crossfit resolve: a leading unit word (T23)', () => {
     expect(rawNameOf('1x1000 mts Row')).toBe('row')
   })
 })
+
+// The 2 Nov re-test (27 images, T25): rawName as the model gave it, with its English name. The model
+// keeps "max" in `12 DL + Max Squat Cleans`, so norm drops it the way it drops a leading unit.
+const RETEST_2NOV = [
+  ['max squat cleans', 'barbell squat clean', ['5287', 'shipped']],
+  ['max sled push', 'sled push', ['4428', 'shipped']],
+  ['max squat hold', 'bodyweight squat hold', ['6344', 'shipped']],
+  ['squat hold', 'bodyweight squat hold', ['6344', 'shipped']],
+  ['m.climbers', 'mountain climber', ['0630', 'shipped']],
+  ['push ups s.tap', 'push-up with shoulder tap', ['0699', 'shipped']],
+  ['push up shoulder tap', 'push-up with shoulder tap', ['0699', 'shipped']],
+  ['kb goblet sumo squat', 'kettlebell goblet sumo squat', ['4089', 'shipped']],
+  ['db goblet sumo squat', 'dumbbell goblet sumo squat', ['7547', 'shipped']],
+  ['db´s step up over', 'dumbbell step-over', ['9612', 'shipped']],
+  ['kb´s step up over', 'kettlebell step-over', ['4400', 'shipped']],
+  ['tempo dl', 'barbell tempo deadlift', ['0032', 'shipped']],
+  ['kb´s tempo dl', 'kettlebell tempo deadlift', ['3322', 'shipped']],
+  ['sb lunges', 'sandbag lunge', ['9940', 'shipped']],
+  ['kb farmer side bends', 'kettlebell farmer side bend', ['4396', 'shipped']],
+  ['db´s hang squat cleans', 'dumbbell hang squat clean', ['4449', 'shipped']],
+  ['kb´s / db´s hang squat cleans', 'hang squat clean', ['4449', 'shipped']],
+  ['bb land mine row', 'barbell landmine row', ['4038', 'shipped']],
+  ['land mine row', 'landmine row', ['4038', 'shipped']],
+]
+
+describe('crossfit resolve: the 2 Nov re-test', () => {
+  it.each(RETEST_2NOV)('%s (%s) → %j', (rawName, name, want) => {
+    const r = resolveMovement({ rawName, name })
+    expect([r.exId, r.via]).toEqual(want)
+  })
+
+  it('a leading "max" is the dose: only as a whole first word, and a bare "max" stays', () => {
+    expect(norm('max squat cleans')).toBe('squat clean')
+    expect(norm('Max Sled Push')).toBe(norm('sled push'))
+    expect(norm('max mts row')).toBe('row')
+    expect(norm('maxi squat')).toBe('maxi squat')
+    expect(norm('max')).toBe('max')
+    for (const s of ['max squat clean', 'max max row', 'max']) expect(norm(norm(s))).toBe(norm(s))
+  })
+})

@@ -36,8 +36,9 @@ const plain = text => String(text || '')
   .replace(/[^a-z0-9]+/g, ' ').trim()
 
 // A leading unit word is the dose's, not the name's: "mts row" is row (`1x1000 mts Row`). Not a bare
-// "m", which is also "M.Climbers". The plurals are in the set so norm stays idempotent.
-const UNIT_WORD = /^(?:mts?|cals?|segs?)$/
+// "m", which is also "M.Climbers". The plurals are in the set so norm stays idempotent. A leading
+// "max" is the dose too: `12 DL + Max Squat Cleans` is squat clean (a bare "max" stays "max").
+const UNIT_WORD = /^(?:mts?|cals?|segs?|max)$/
 export const norm = text => {
   const words = plain(text).split(' ')
   while (words.length > 1 && UNIT_WORD.test(words[0])) words.shift()
