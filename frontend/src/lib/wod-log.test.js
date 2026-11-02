@@ -63,6 +63,18 @@ describe('wodToSession: sets per block format', () => {
     expect(capped.entries[0].sets.map(s => s.r)).toEqual([12, 12, 12, 7])
   })
 
+  it('EVERY 3x4 (an interval with everySec): one set per repeat; a round range logs its low end (T23)', () => {
+    const every = program([block('b0', 'interval', [mv('m0', PUSHUP, { reps: 7 }), mv('m1', SNATCH, { reps: 5 })], { everySec: 180, rounds: 4, capMin: 12 })])
+    expect(wodToSession(every, all, {}, S0()).entries.map(e => e.sets.map(s => s.r))).toEqual([[7, 7, 7, 7], [5, 5, 5, 5]])
+    const range = program([block('b3', 'fortime', [mv('m0', PUSHUP, { reps: 18 })], { rounds: 3, roundsMax: 4, capMin: 10 })])
+    expect(wodToSession(range, all, {}, S0()).entries[0].sets.map(s => s.r)).toEqual([18, 18, 18])
+    // 10x300mts Row + 15 Sit Wall Balls: the wall balls' 10 sets are logged, not one
+    const nxd = program([block('b1', 'fortime', [mv('m0', ROW, { m: 300, sets: 10 }), mv('m1', '2458', { reps: 15, sets: 10 })])])
+    const [row, wb] = wodToSession(nxd, all, {}, S0()).entries
+    expect(row.sets[0].m).toBe(3000)
+    expect(wb.sets.map(s => s.r)).toEqual(Array(10).fill(15))
+  })
+
   it('a ladder: one set per rung, the rung as its reps', () => {
     const p = program([block('b3', 'fortime', [mv('m0', BURPEE, {}), mv('m1', PUSHUP, {})], { scheme: '50-40-30-20-10', capMin: 10 })])
     const out = wodToSession(p, all, {}, S0())

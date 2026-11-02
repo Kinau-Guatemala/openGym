@@ -2257,6 +2257,9 @@ export default {
   'or': 'o',
   '{0} already has a program. Saving replaces it.': '{0} ya tiene un programa. Guardar lo reemplaza.',
   '{0} rounds': '{0} rondas',
+  'Every {0} × {1}': 'Cada {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} rondas',
+  'Every (seconds)': 'Cada (segundos)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'No se pudo abrir esta imagen.',
   'No routine found in this image.': 'No se encontró ninguna rutina en esta imagen.',

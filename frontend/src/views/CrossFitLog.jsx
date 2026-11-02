@@ -11,7 +11,7 @@ import { bestWeightForEntry } from '../lib/history.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
-import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
+import { rxFor, doseFor, fmtDose, fmtRounds } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf } from '../lib/wod-draft.js'
 import { SCORE_OF, isCardioRow, isMetcon, ladderOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
@@ -112,7 +112,7 @@ function LogBlock({ S, track, block, on, logged, onInclude, onBlock, onMove }) {
   const lb = logged.blocks[ref] || {}
   const score = lb.score || { type: SCORE_OF[block.format] || 'none' }
   const setScore = patch => onBlock(x => { x.score = { ...score, ...patch } })
-  const meta = [block.capMin ? t('{0} min', block.capMin) : null, block.rounds ? t('{0} rounds', block.rounds) : null, block.scheme, block.benchmark].filter(Boolean).join(' · ')
+  const meta = [block.capMin ? t('{0} min', block.capMin) : null, fmtRounds(block) || null, block.scheme, block.benchmark].filter(Boolean).join(' · ')
   return <div className="card" style={on ? undefined : { opacity: 0.62 }}>
     <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
       <div style={{ flex: 1, minWidth: 0 }}>

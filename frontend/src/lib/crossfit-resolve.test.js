@@ -618,3 +618,16 @@ describe('crossfit resolve: a leading set count (T17)', () => {
     expect(rawNameOf('3 Sets of 10 Pull ups')).toBe('pull ups')
   })
 })
+
+describe('crossfit resolve: a leading unit word (T23)', () => {
+  it('"mts row" is row: the unit is the dose\'s, and a pick for it is a pick for row', () => {
+    expect(norm('mts row')).toBe('row')
+    expect(norm('Mts Sled Push')).toBe(norm('sled push'))
+    expect(norm('cal row')).toBe('row')
+    expect(norm('m.climbers')).toBe('m climber')
+    expect(norm('mts')).toBe('mt')
+    for (const s of ['mts row', 'cals bike', 'segs plank', 'mts mts row']) expect(norm(norm(s))).toBe(norm(s))
+    expect(resolveMovement({ rawName: 'mts row' })).toEqual(resolveMovement({ rawName: 'row' }))
+    expect(rawNameOf('1x1000 mts Row')).toBe('row')
+  })
+})

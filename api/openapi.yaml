@@ -4200,6 +4200,12 @@ components:
                         format: { type: string, enum: [amrap, emom, fortime, rounds, interval, strength, other] }
                         capMin: { oneOf: [{ type: number }, { type: 'null' }] }
                         rounds: { oneOf: [{ type: integer }, { type: 'null' }] }
+                        everySec:
+                          description: The period of an `EVERY` block in seconds (`EVERY 3x4` → 180, with `rounds` 4).
+                          oneOf: [{ type: integer, minimum: 10, maximum: 3600 }, { type: 'null' }]
+                        roundsMax:
+                          description: The top of a printed round range (`3-4 RONDAS` → `rounds` 3, `roundsMax` 4).
+                          oneOf: [{ type: integer, maximum: 100 }, { type: 'null' }]
                         scheme: { oneOf: [{ type: string }, { type: 'null' }] }
                         benchmark: { oneOf: [{ type: string }, { type: 'null' }] }
                         raw: { type: string }

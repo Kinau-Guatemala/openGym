@@ -22,7 +22,7 @@ import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
-import { rxFor, doseFor, fmtDose } from '../lib/rx.js'
+import { rxFor, doseFor, fmtDose, fmtRounds } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
@@ -442,7 +442,7 @@ function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMoveme
   const meta = [
     formatLabel(block.format),
     block.capMin ? t('{0} min', block.capMin) : null,
-    block.rounds ? t('{0} rounds', block.rounds) : null,
+    fmtRounds(block) || null,
     block.scheme || null,
     block.benchmark || null,
   ].filter(Boolean).join(' · ')
@@ -538,7 +538,7 @@ function BlockSheet({ block, onSave, onDelete, close }) {
   const set = (k, v) => setB(x => ({ ...x, [k]: v }))
   const done = () => {
     onSave({ ...b, label: b.label.trim(), scheme: (b.scheme || '').trim() || null, benchmark: (b.benchmark || '').trim() || null,
-      capMin: numOrNull(b.capMin), rounds: numOrNull(b.rounds) })
+      capMin: numOrNull(b.capMin), rounds: numOrNull(b.rounds), everySec: numOrNull(b.everySec), roundsMax: numOrNull(b.roundsMax) })
     close()
   }
   return <>
@@ -553,6 +553,10 @@ function BlockSheet({ block, onSave, onDelete, close }) {
         <span className="measure-input"><NumberField decimal={false} nullable value={b.capMin} onChange={v => set('capMin', v)} /></span></label>
       <label className="measure-field"><span>{t('Rounds')}</span>
         <span className="measure-input"><NumberField decimal={false} nullable value={b.rounds} onChange={v => set('rounds', v)} /></span></label>
+      <label className="measure-field"><span>{t('Up to')}</span>
+        <span className="measure-input"><NumberField decimal={false} nullable value={b.roundsMax} onChange={v => set('roundsMax', v)} /></span></label>
+      <label className="measure-field"><span>{t('Every (seconds)')}</span>
+        <span className="measure-input"><NumberField decimal={false} nullable value={b.everySec} onChange={v => set('everySec', v)} /></span></label>
       <label className="measure-field"><span>{t('Rep scheme')}</span>
         <input className="field" value={b.scheme || ''} placeholder="21-15-9" onChange={e => set('scheme', e.target.value)} /></label>
       <label className="measure-field"><span>{t('Benchmark')}</span>

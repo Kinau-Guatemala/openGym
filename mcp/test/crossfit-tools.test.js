@@ -93,6 +93,16 @@ describe('get_wods', () => {
     expect([wb.dose, wb.rest_sec]).toEqual(['2 × Max', null])
   })
 
+  test('an EVERY block carries every_sec, a printed round range rounds_max (T23)', async () => {
+    const p = structuredClone(program)
+    Object.assign(p.tracks[0].blocks[1], { format: 'interval', everySec: 180, rounds: 4, capMin: 12 })
+    Object.assign(p.tracks[1].blocks[0], { rounds: 3, roundsMax: 4 })
+    S.wods[TODAY] = p
+    const [full, pump] = (await call('get_wods')).programs[0].tracks
+    expect(full.blocks[1]).toMatchObject({ format: 'interval', every_sec: 180, rounds: 4, cap_min: 12, rounds_max: null })
+    expect(pump.blocks[0]).toMatchObject({ rounds: 3, rounds_max: 4, every_sec: null })
+  })
+
   test('a best guess for a misspelled name is flagged with its candidates, never passed as the exercise', async () => {
     const p = structuredClone(program)
     const emom = p.tracks[0].blocks[1]

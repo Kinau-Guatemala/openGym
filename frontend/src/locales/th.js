@@ -2268,6 +2268,9 @@ export default {
   'or': 'หรือ',
   '{0} already has a program. Saving replaces it.': '{0} มีโปรแกรมอยู่แล้ว การบันทึกจะแทนที่',
   '{0} rounds': '{0} รอบ',
+  'Every {0} × {1}': 'ทุก {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} รอบ',
+  'Every (seconds)': 'ทุก (วินาที)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'ไม่สามารถเปิดรูปภาพนี้ได้',
   'No routine found in this image.': 'ไม่พบโปรแกรมฝึกในรูปภาพนี้',

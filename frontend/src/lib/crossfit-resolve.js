@@ -35,7 +35,14 @@ const plain = text => String(text || '')
   .replace(/&/g, ' and ')
   .replace(/[^a-z0-9]+/g, ' ').trim()
 
-export const norm = text => plain(text).split(' ').map(singular).join(' ')
+// A leading unit word is the dose's, not the name's: "mts row" is row (`1x1000 mts Row`). Not a bare
+// "m", which is also "M.Climbers". The plurals are in the set so norm stays idempotent.
+const UNIT_WORD = /^(?:mts?|cals?|segs?)$/
+export const norm = text => {
+  const words = plain(text).split(' ')
+  while (words.length > 1 && UNIT_WORD.test(words[0])) words.shift()
+  return words.map(singular).join(' ')
+}
 
 const LEAD = /^(?:[mr]\d+\s+|\d[\d.,/x-]*\s*(?:km|k|mts|mt|m|cal|seg|sec|min|(?:sets?|rondas?|rounds?)(?:\s+(?:de|of)(?![a-z]))?)(?![a-z])|\d[\d.,/x-]*|(?:max|mts|cal)(?![a-z]))\s*/i
 const TRAIL = /(?:\s+(?:r|l|alt|unbroken)|\s+parner\s+[a-c]|(?:\s*\/?\s*\d[\d.]*\s*(?:kg|lbs?|km|k|mts|m)?)+)\s*$/i

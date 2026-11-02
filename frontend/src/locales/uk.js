@@ -2254,6 +2254,9 @@ export default {
   'or': 'або',
   '{0} already has a program. Saving replaces it.': 'На {0} уже є програма. Збереження замінить її.',
   '{0} rounds': '{0} раундів',
+  'Every {0} × {1}': 'Кожні {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} раундів',
+  'Every (seconds)': 'Кожні (секунди)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'Не вдалося відкрити це зображення.',
   'No routine found in this image.': 'На цьому зображенні не знайдено тренування.',

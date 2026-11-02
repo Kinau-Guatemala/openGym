@@ -56,3 +56,13 @@ export function fmtDose(dose) {
     : n('cal') ? `${dose.cal} cal` : n('m') ? `${dose.m} m` : n('sec') ? `${dose.sec} s` : ''
   return Number(dose.sets) > 1 ? `${dose.sets} × ${one || t('Max')}` : one
 }
+
+/** A block's rounds as the program, review and log screens show them: "Every 3:00 × 4" for an
+ *  EVERY block, "3–4 rounds" for a printed range, "5 rounds"; '' for none. */
+export function fmtRounds(block) {
+  const n = k => Number(block?.[k]) > 0
+  if (!n('rounds')) return ''
+  if (n('everySec')) return t('Every {0} × {1}', `${Math.floor(block.everySec / 60)}:${String(block.everySec % 60).padStart(2, '0')}`, block.rounds)
+  if (block.roundsMax > block.rounds) return t('{0}–{1} rounds', block.rounds, block.roundsMax)
+  return t('{0} rounds', block.rounds)
+}

@@ -20,6 +20,8 @@ The usual graphic has columns. Each column is a **track**:
 Within a track, a **block** is one piece of work under one heading: `WARM UP`, then each `WOD` part, `AMRAP 5`, `EMOM 10`, `TC 12` + `2 RONDAS`, a `COMPLEX`. A heading such as `MIN 1-10` splits a long WOD into blocks; put it in `label`.
 
 - **A cap over all the parts** (`WOD` / `TC 40` above `MIN 1-10`, `MIN 11-20`, …) is not a block of its own: put it as the first line of **each** part block's `raw` (`"TC 40\nMIN 1-10\nEMOM 10\n…"`). Each part keeps its own `capMin`.
+- **Several `N RONDAS` groups under one cap** (`TC 12` / `2 RONDAS` / A, B / `2 RONDAS` / C, D / `2 RONDAS` / E, F + G / `COMPLEX`): one block per group, each with its own `rounds` and only its own movements. The cap goes on the first group only (`capMin: 12`, the others `null`), and each group's `raw` starts with the shared `TC 12` (`"TC 12\n2 RONDAS\n12 S2OH 95/65\n6 BMU"`). A `COMPLEX` line belongs to the group it follows. When the groups are `MIN` windows (`AMRAP 42` / `2 RONDAS` / `MIN 1-7 TC 7` …), each window is the block and the `N RONDAS` over it is that window's `rounds`.
+- **A minute window with nothing in it but a rest** (`MIN 7-8 TC 1` / `REST`, or `Descanso`) is not a block: leave it out. A window with work and a rest (`MIN 1-2` / `1 Set Max T2B` / `REST REMAIN`) is a block as usual.
 - **A warm-up given only as a duration** (`Calentamiento 15 min`, `Warm up 10 min`) is a warm-up block with that `capMin` and no movements (`capMin: 15`, `warmup: true`). Only a warm-up: anywhere else a duration line is work, and it is a movement (`Easy 20 min` in a running track → `rawName: "run"`, `dose: { "sec": 1200 }`).
 
 ## The box's dialect
@@ -31,9 +33,11 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 | `EMOM 10`, `M1` / `M2` | `format: "emom"`, `capMin: 10`; `M1`/`M2` go in each movement's `slot` |
 | `FOR TIME` | `format: "fortime"` |
 | `5 RONDAS`, `2 RONDAS`, `3 Rondas de:` | a line of its own over the movements: the block's `rounds: 5` (`format: "rounds"` unless the block is for time or capped). Never also `dose.sets` on the movements under it |
+| `3-4 RONDAS` | a round range: `rounds: 3`, `roundsMax: 4` |
+| `EVERY 3x4`, `EVERY 1:30 x 8`, `EVERY 2 + :30 x 4` | one go every period, so many times: `format: "interval"`, `everySec` the period in seconds (a bare number is minutes, `:30` is seconds, `+` adds the parts), `rounds` the times, `capMin` the printed cap or else `everySec × rounds / 60`. `TC 12` / `EVERY 3x4` → `everySec: 180`, `rounds: 4`, `capMin: 12`; `EVERY 1:30 x 8` → `everySec: 90`, `rounds: 8`; `EVERY 2 + :30 x 4` → `everySec: 150`, `rounds: 4`. Never also `dose.sets` on the movements under it |
 | `50-40-30-20-10` | a ladder: `scheme: "50-40-30-20-10"`, movements without their own rep count |
 | `BUILD HEAVY`, `COMPLEX`, `1RM` | `format: "strength"` |
-| `10x300mts`, `2x200`, `1x8000` | a distance **only** with a unit (`mts`, `m`, `K`) or in a running, rowing or other cardio track: intervals, `format: "interval"`, the repeats in `dose.sets` and the distance in `dose.m` (`2x200` in the running track → `dose: { "sets": 2, "m": 200 }`, `1x8000` → `{ "sets": 1, "m": 8000 }`) |
+| `10x300mts`, `2x200`, `1x8000` | a distance **only** with a unit (`mts`, `m`, `K`) or in a running, rowing or other cardio track: intervals, `format: "interval"`, the repeats in `dose.sets` and the distance in `dose.m` (`2x200` in the running track → `dose: { "sets": 2, "m": 200 }`, `1x8000` → `{ "sets": 1, "m": 8000 }`). When the line goes on with `+ B`, the `N×` is the whole line: every movement on it gets `sets: N` (`10x300mts Row + 15 Sit Wall Balls` → row `{ "m": 300, "sets": 10 }` **and** wall balls `{ "reps": 15, "sets": 10 }`) |
 | `3x12 Copas`, `5x5 Back Squat` | on a lift, `NxR` is sets × reps: `dose: { "sets": 3, "reps": 12 }`, and the block's format stays what its heading says |
 | `x 1 De pausa`, `x 3 min pausa`, `REST 2 MIN` on a movement's line | rest after each repeat, in seconds: `dose.restSec` (`x 3 de pausa` → `180`). The number is minutes unless `seg` is printed (`x 30 seg pausa` → `30`) |
 | `2 Set de Max`, `3 Sets of 10`, `2 Rondas de` with the movement **on the same line** | the times that line is done: `dose.sets` (`2 Set de Max Wall Balls` → `dose: { "sets": 2 }`; `3 Sets of 10 Pull ups` → `{ "sets": 3, "reps": 10 }`; `2 Rondas de 400 m Run` → `{ "sets": 2, "m": 400 }`) |
@@ -56,7 +60,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 ## Each movement
 
 - `raw`: the printed line, verbatim (`"M1 5 Hang Cleans 185/135"`).
-- `rawName`: the movement **without** its slot label (`M1`, `R1`), its leading dose (`5`, `12-15`, `Max`, `40 seg`, `20/15 Cal`, `14 mts`, `2x200`, and a leading `N Set(s) de`, `N Sets of` or `N Rondas de`), a trailing rest (`x 1 De pausa`), its trailing load or Rx pair (`185/135`, `20KG/12KG`), an R/L or `6/6` marker, `Sincro` or a trailing `/ 2`, in lowercase. Everything else stays exactly as printed — the box's typos, `´s`, and words like `easy` or `estrictos`; do not correct, singularise or translate it. Examples: `"M1 5 Hang Cleans 185/135"` → `"hang cleans"`, `"15 DB´s Skull Cruches"` → `"db´s skull cruches"`, `"Max Diamond push ups"` → `"diamond push ups"`, `"2 Set de Max Wall Balls"` → `"wall balls"`, `"20/15 Cal Row"` → `"row"`, `"M1 12 DB Split Squat 6/6"` → `"db split squat"`, `"Easy Run"` → `"easy run"`. A line in a running track that prints no movement (`"2x200 x 1 De pausa"`, `"Easy 20 min"`) is the track's movement: `"run"`; elsewhere it is the line minus its dose. Each alternative's `rawName` follows the same rule (`Row/Ski/Bike` → `"row"`, alts `"ski"`, `"bike"`).
+- `rawName`: the movement **without** its slot label (`M1`, `R1`), its leading dose (`5`, `12-15`, `Max`, `40 seg`, `20/15 Cal`, `14 mts`, `2x200`, and a leading `N Set(s) de`, `N Sets of` or `N Rondas de`), a trailing rest (`x 1 De pausa`), its trailing load or Rx pair (`185/135`, `20KG/12KG`), an R/L or `6/6` marker, `Sincro` or a trailing `/ 2`, in lowercase. Everything else stays exactly as printed — the box's typos, `´s`, and words like `easy` or `estrictos`; do not correct, singularise or translate it. Examples: `"M1 5 Hang Cleans 185/135"` → `"hang cleans"`, `"15 DB´s Skull Cruches"` → `"db´s skull cruches"`, `"Max Diamond push ups"` → `"diamond push ups"`, `"2 Set de Max Wall Balls"` → `"wall balls"`, `"20/15 Cal Row"` → `"row"`, `"M1 12 DB Split Squat 6/6"` → `"db split squat"`, `"Easy Run"` → `"easy run"`. A unit word (`mts`, `m`, `cal`, `seg`) is part of the dose and never stays in `rawName`, wherever it sits on the line: `"1x1000 mts Row"` → `"row"`, `"14 Mts Sled Push"` → `"sled push"`. A line in a running track that prints no movement (`"2x200 x 1 De pausa"`, `"Easy 20 min"`) is the track's movement: `"run"`; elsewhere it is the line minus its dose. Each alternative's `rawName` follows the same rule (`Row/Ski/Bike` → `"row"`, alts `"ski"`, `"bike"`).
 - `name`: a short English canonical exercise name in catalogue style, singular, equipment first (`"barbell hang clean"`, `"dumbbell skull crusher"`, `"dumbbell devils press"`, `"rowing machine"`). **Correct obvious misspellings here, and only here**: `"Skull Cruches"` → `"dumbbell skull crusher"`, `"Trhusters"` → `"barbell thruster"`, `"Dymond push ups"` → `"diamond push-up"`. `raw` and `rawName` keep the box's spelling.
 - `dose`: `reps`, `cal`, `m` or `sec`, plus `repsMax` for a range, `sets` for the times the line is done (only when printed on the movement's line: `2x200`, `3x12`, `2 Set de`) and `restSec` for a rest printed on the line. `{}` when no number is printed (`Max Diamond push ups`); `{ "sets": 2 }` for `2 Set de Max`.
 - `doseFemale`: **only** when the dose itself is printed as a male/female split (`20/15 Cal Row` → `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }`), same keys as `dose`; otherwise leave it out. Different doses for different alternatives (`250 mts Row/Ski/500 mts Bike`) are not a split: each alternative carries its own `dose`. A load pair (`185/135`) is `rx`, never `doseFemale`.
@@ -66,6 +70,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 ## Each block
 
 - `warmup: true` for a `WARM UP` block, false otherwise.
+- `everySec`: the period of an `EVERY` block in seconds, `roundsMax`: the top of a `3-4 RONDAS` range (see the dialect above); `null` otherwise.
 - `format`: one of `amrap`, `emom`, `fortime`, `rounds`, `interval`, `strength`, `other`.
 - `benchmark`: only for a well-known named WOD (`"Fran"`, `"DT"`, `"Murph"`), otherwise `null`.
 - `raw`: the block's printed lines, verbatim, joined by `\n`.
@@ -87,6 +92,8 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
           "format": "emom",
           "capMin": 10,
           "rounds": null,
+          "everySec": null,
+          "roundsMax": null,
           "scheme": null,
           "benchmark": null,
           "raw": "EMOM 10\nM1 5 Hang Cleans 185/135\nM2 5 Jerks 185/135",

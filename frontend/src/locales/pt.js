@@ -2257,6 +2257,9 @@ export default {
   'or': 'ou',
   '{0} already has a program. Saving replaces it.': '{0} já tem um programa. Guardar substitui-o.',
   '{0} rounds': '{0} rondas',
+  'Every {0} × {1}': 'A cada {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} rondas',
+  'Every (seconds)': 'A cada (segundos)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'Não foi possível abrir esta imagem.',
   'No routine found in this image.': 'Nenhum treino encontrado nesta imagem.',
