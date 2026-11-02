@@ -2336,6 +2336,10 @@ export default {
   'or': 'অথবা',
   '{0} already has a program. Saving replaces it.': '{0}-এর জন্য আগেই একটি প্রোগ্রাম আছে। সংরক্ষণ করলে তা বদলে যাবে।',
   '{0} rounds': '{0} রাউন্ড',
+  'Every {0}': 'প্রতি {0}',
+  'Every {0} × {1}': 'প্রতি {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} রাউন্ড',
+  'Every (seconds)': 'প্রতি (সেকেন্ড)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'এই ছবিটি খোলা যায়নি।',
   'No routine found in this image.': 'এই ছবিতে কোনো ওয়ার্কআউট পাওয়া যায়নি।',

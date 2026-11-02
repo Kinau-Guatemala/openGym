@@ -2261,6 +2261,10 @@ export default {
   'or': 'или',
   '{0} already has a program. Saving replaces it.': 'На {0} уже есть программа. Сохранение заменит её.',
   '{0} rounds': '{0} раундов',
+  'Every {0}': 'Каждые {0}',
+  'Every {0} × {1}': 'Каждые {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} раундов',
+  'Every (seconds)': 'Каждые (секунды)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'Не удалось открыть это изображение.',
   'No routine found in this image.': 'На этом изображении не найдено тренировки.',

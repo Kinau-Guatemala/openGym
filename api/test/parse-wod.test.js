@@ -13,7 +13,7 @@ const DIR = tempData();
 const cfg = await import('../coach/config.js');
 const jobs = await import('../coach/jobs.js');
 const { coachRoutes } = await import('../coach/routes.js');
-const { validateWod } = await import('../coach/core/validate.js');
+const { validateWod, everyOf } = await import('../coach/core/validate.js');
 const { taskOf } = await import('../coach/core/prompt.js');
 const { attemptOnce } = await import('../coach/core/pipeline.js');
 const { PROMPTS } = await import('../coach/core/prompts.js');
@@ -75,7 +75,7 @@ test('fixture: 202, then status shows a checked program in `parsed`, and the ack
     assert.equal(s.parsed.jobId, r.body.job.id);
     assert.equal(s.parsed.date, DATE);
     assert.ok(validateWod(s.parsed.program).ok, 'the stored program passes the validator again');
-    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra'], ['pump', 'extra']]);
+    assert.deepEqual(s.parsed.program.tracks.map(t => [t.id, t.kind]), [['full', 'main'], ['evo', 'main'], ['running', 'extra'], ['rox', 'extra'], ['conditioning', 'extra'], ['pump', 'extra']]);
     assert.equal(s.parsed.program.tracks[0].blocks[0].warmup, true);
     assert.ok(s.parsed.program.tracks.every(t => t.blocks.every(b => b.movements.every(m => m.exId === null && m.rawName))));
     assert.equal(s.pending, null, 'a read image is never a proposal');
@@ -390,6 +390,99 @@ test('validateWod: a rest is never a movement — dropped, its seconds on a move
 test('the parse prompt says a rest inside a line or a minute is never a movement (T21)', () => {
   assert.match(PROMPTS['parse-wod'], /`Rest 30 seg`, `Rest 1 min`, `Descanso 30 seg` \*\*inside a line or a minute\*\*.*a rest, never a movement/);
   assert.match(PROMPTS['parse-wod'], /`"M3 Rest 30 seg \+ 40 DU"` → one movement, `rawName: "du"`, `slot: "M3"`, `dose: \{ "reps": 40, "restSec": 30 \}`/);
+});
+
+test('validateWod: EVERY intervals, round groups and ranges, rest windows, NxD A + B (T23 fixture)', () => {
+  const program = validateWod(FIXTURE_WOD).proposal.program;
+  const track = id => program.tracks.find(t => t.id === id);
+  const shape = b => [b.id, b.label, b.format, b.capMin, b.rounds, b.everySec, b.roundsMax, b.movements.length];
+  assert.deepEqual(track('evo').blocks.map(shape), [
+    ['b0', 'TC 12 · EVERY 3x4', 'interval', 12, 4, 180, null, 3],
+    ['b1', 'TC 12 · 2 RONDAS', 'fortime', 12, 2, null, null, 2],
+    ['b2', 'TC 12 · 2 RONDAS', 'fortime', null, 2, null, null, 2],
+    ['b3', 'TC 10 COLECTIVO', 'fortime', 10, 3, null, 4, 2],
+    ['b4', 'MIN 8-15 TC 7', 'amrap', 7, 3, null, null, 2]
+  ], 'the MIN 7-8 REST window is gone, and the ids after it close up');
+  assert.ok(track('evo').blocks.slice(1, 3).every(b => b.raw.startsWith('TC 12\n2 RONDAS\n')), 'each group keeps the shared cap in raw');
+  assert.deepEqual(track('conditioning').blocks[1].movements.map(m => [m.rawName, m.dose]),
+    [['row', { m: 300, sets: 10 }], ['sit wall balls', { reps: 15, sets: 10 }], ['row', { m: 1000, sets: 1 }]], '10x300mts Row + 15 Sit Wall Balls: N× is the whole line');
+  const names = program.tracks.flatMap(t => t.blocks.flatMap(b => b.movements.map(m => m.rawName)));
+  assert.deepEqual(names.filter(n => /\b(?:mts?|cal|seg)\b/.test(n)), [], 'no unit word in a rawName');
+  // Every other track and block of the fixture reads back as before.
+  assert.equal(track('full').blocks.length, 5);
+  assert.deepEqual(track('full').blocks.map(b => [b.everySec, b.roundsMax]), Array(5).fill([null, null]));
+});
+
+test('everyOf: the period and repeats of an EVERY heading', () => {
+  for (const [text, want] of [['EVERY 3x4', { sec: 180, times: 4 }], ['TC 12 EVERY 3x4', { sec: 180, times: 4 }], ['EVERY4x3', { sec: 240, times: 3 }],
+    ['EVERY 1:30 x 8', { sec: 90, times: 8 }], ['EVERY 2 + :30 x 4', { sec: 150, times: 4 }], ['AMRAP 12 PARNER WOD\nEVERY :30 + 1:00 x8\n:30', { sec: 90, times: 8 }],
+    ['every 2 min x 5', { sec: 120, times: 5 }], ['EVERY 3 X 4', { sec: 180, times: 4 }]]) {
+    assert.deepEqual(everyOf(text), want, text);
+  }
+  for (const text of ['', null, 'EMOM 12', 'Every set to failure', 'EVERY 3', '3x4 Back Squat', 'Everyday 3x4']) assert.equal(everyOf(text), null, String(text));
+});
+
+test('validateWod: the safety nets when the model leaves the structure in the text only (T23)', () => {
+  const one = (b, movements = [{ raw: 'x', rawName: 'burpees', dose: { reps: 5 } }]) => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: '', format: 'other', movements, ...b }] }] });
+  const block = (b, ms) => one(b, ms).proposal.program.tracks[0].blocks[0];
+  const pick = b => [b.format, b.capMin, b.rounds, b.everySec];
+  // EVERY in the label or the raw: everySec and rounds, the cap when none is printed, `other` becomes `interval`.
+  assert.deepEqual(pick(block({ label: 'TC 12 EVERY 3x4', capMin: 12 })), ['interval', 12, 4, 180]);
+  assert.deepEqual(pick(block({ label: 'WOD', raw: 'WOD\nEVERY 3x4\n7 BMU' })), ['interval', 12, 4, 180]);
+  assert.deepEqual(pick(block({ format: 'interval', raw: 'TC 12\nEVERY 1:30 x 8' })), ['interval', 12, 8, 90]);
+  // A partner WOD shares the repeats, and its lines are team totals: everySec only, rounds as given.
+  assert.deepEqual(pick(block({ format: 'interval', label: 'TC 12 Parner Wod Squat Clean War', capMin: 12,
+    raw: 'TC 12 PARNER WOD\nSQUAT CLEAN WAR\nEVERY 1:30 x 8\nR1 12 DL + Max Squat Cleans 155/105' })), ['interval', 12, null, 90], '5 Oct');
+  assert.deepEqual(pick(block({ format: 'amrap', label: 'Amrap 12 Parner WOD', capMin: 12,
+    raw: 'AMRAP 12 PARNER WOD\nEVERY :30 + 1:00 x8\n:30\nMax Bike/Row/Ski\nTHEN 1:00 TEAM TARGET\n120 DB´s Lunges\n*PARNER A WORK 1:30\n*PARNER B REST 1:30' })), ['amrap', 12, null, 90], '28 Sep');
+  assert.deepEqual(pick(block({ label: 'Partner WOD', raw: 'Partner WOD\nEVERY 3x4' })), ['interval', null, null, 180]);
+  // An EVERY read as an EMOM logs by the repeat, not the minute (22 Oct); an EVERY 1 stays an EMOM.
+  assert.deepEqual(pick(block({ format: 'emom', label: 'AMRAP 12', capMin: 12, rounds: 4, raw: 'AMRAP 12\nEVERY 3x4\n9 Burpee BJ' })), ['interval', 12, 4, 180], '22 Oct');
+  assert.deepEqual(pick(block({ format: 'emom', label: 'EVERY 1 x 10', capMin: 10 })), ['emom', 10, 10, 60]);
+  assert.deepEqual(pick(block({ format: 'amrap', label: 'AMRAP 10', capMin: 10, raw: 'AMRAP 10\nEVERY 2 + :30 x 4' })), ['amrap', 10, 4, 150], 'a format the model chose stays');
+  assert.deepEqual(pick(block({ label: 'EVERY 3x4', rounds: 4 })), ['interval', 12, 4, 180], 'rounds that agree');
+  assert.deepEqual(pick(block({ label: 'EVERY 3x4', rounds: 2 })), ['other', null, 2, null], 'rounds that disagree: nothing guessed');
+  assert.deepEqual(pick(block({ label: 'EVERY 3x4', everySec: 120, rounds: 6 })), ['interval', 12, 6, 120], 'what the model filled in wins');
+  // N-M RONDAS: rounds and roundsMax, when both are null.
+  const range = b => { const v = block(b); return [v.rounds, v.roundsMax]; };
+  assert.deepEqual(range({ format: 'fortime', label: 'TC 10 COLECTIVO', raw: 'WOD\nTC 10 COLECTIVO\n3-4 RONDAS\n18 Sit ups' }), [3, 4]);
+  assert.deepEqual(range({ label: 'TC 10 · 3-4 Rounds' }), [3, 4]);
+  assert.deepEqual(range({ label: '4-5 RONDAS' }), [4, 5]);
+  assert.deepEqual(range({ raw: '3-4 Rondas de 400 m Run' }), [null, null], 'a line\'s own sets are not the block\'s rounds');
+  assert.deepEqual(range({ label: '3-4 RONDAS', rounds: 3 }), [3, null], 'rounds already set: left alone');
+  assert.deepEqual(range({ label: '50-40-30-20-10' }), [null, null]);
+  // A minute window with nothing in it but a rest is dropped; anything else stays.
+  const blocks = bs => validateWod({ tracks: [{ id: 'evo', label: 'Evo', kind: 'main', blocks: bs.map(b => ({ format: 'other', movements: [], ...b })) }] }).proposal.program.tracks[0].blocks.map(b => [b.id, b.label]);
+  assert.deepEqual(blocks([
+    { label: 'MIN 1-7 TC 7', movements: [{ rawName: 'run', dose: { m: 1000 } }] },
+    { label: 'MIN 7-8 TC 1', raw: 'WOD\nAMRAP 42\nMIN 7-8 TC 1\nREST' },
+    { label: 'MIN 15-16 · REST' },
+    { label: 'MIN 23-24', raw: 'MIN 23-24 TC 1\nDescanso' },
+    { label: 'MIN 9- 16 TC 1', raw: 'TC 48\nTHEN\nMIN 9- 16 TC 1\nREST 1 MIN' },
+    { label: 'AFTER PARTY' }, { label: 'FONDO', raw: 'FONDO' },
+    { label: 'MIN 1-2', raw: 'TC 12\nMIN 1-2\nREST REMAIN THEN TC 10' },
+    { label: 'WOD', raw: 'WOD\nAMRAP 42\nREST' },
+    { label: 'Calentamiento', raw: 'REST', warmup: true },
+    { label: 'MIN 3-4', raw: 'MIN 3-4\nREST', movements: [{ rawName: 'wall balls', dose: { reps: 10 } }] }
+  ]), [['b0', 'MIN 1-7 TC 7'], ['b1', 'AFTER PARTY'], ['b2', 'FONDO'], ['b3', 'MIN 1-2'], ['b4', 'WOD'], ['b5', 'Calentamiento'], ['b6', 'MIN 3-4']]);
+  // Bounds: bad values are errors, like rounds.
+  const errs = b => (one(b).errors || []).join();
+  for (const everySec of [5, 3601, 1.5, '180']) assert.match(errs({ everySec }), /everySec must be whole seconds from 10 to 3600/, String(everySec));
+  for (const b of [{ rounds: 4, roundsMax: 3 }, { roundsMax: 4 }, { rounds: 3, roundsMax: 101 }, { rounds: 3, roundsMax: 3.5 }]) assert.match(errs(b), /roundsMax must be a whole number from rounds to 100/, JSON.stringify(b));
+  assert.ok(one({ everySec: 90, rounds: 8, roundsMax: 8 }).ok);
+});
+
+test('the parse prompt carries the T23 rows: EVERY, round groups and ranges, rest windows, NxD A + B, unit words', () => {
+  const p = PROMPTS['parse-wod'];
+  assert.match(p, /`EVERY 3x4`, `EVERY 1:30 x 8`, `EVERY 2 \+ :30 x 4` \| .*`format: "interval"`, `everySec` the period in seconds/);
+  assert.match(p, /`TC 12` \/ `EVERY 3x4` → `everySec: 180`, `rounds: 4`, `capMin: 12`; `EVERY 1:30 x 8` → `everySec: 90`, `rounds: 8`; `EVERY 2 \+ :30 x 4` → `everySec: 150`, `rounds: 4`/);
+  assert.match(p, /In a partner WOD \(`PARNER WOD`, `PARNER A WORK` \/ `PARNER B REST`\) the repeats are shared: `everySec` as above, `rounds: null`/);
+  assert.match(p, /\*\*Several `N RONDAS` groups under one cap\*\*.*one block per group.*The cap goes on the first group only.*shared `TC 12`.*A `COMPLEX` line belongs to the group it follows/);
+  assert.match(p, /\| `3-4 RONDAS` \| a round range: `rounds: 3`, `roundsMax: 4` \|/);
+  assert.match(p, /\*\*A minute window with nothing in it but a rest\*\* \(`MIN 7-8 TC 1` \/ `REST`, or `Descanso`\) is not a block/);
+  assert.match(p, /`10x300mts Row \+ 15 Sit Wall Balls` → row `\{ "m": 300, "sets": 10 \}` \*\*and\*\* wall balls `\{ "reps": 15, "sets": 10 \}`/);
+  assert.match(p, /A unit word \(`mts`, `m`, `cal`, `seg`\) is part of the dose and never stays in `rawName`.*`"1x1000 mts Row"` → `"row"`/);
+  assert.match(p, /"everySec": null,\n\s+"roundsMax": null,/);
 });
 
 /* ---------- forget ---------- */

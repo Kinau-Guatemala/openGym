@@ -787,27 +787,79 @@ function withoutRests(moves) {
   return work;
 }
 
+// `EVERY 3x4`, `EVERY4x3`, `EVERY 1:30 x 8`, `EVERY 2 + :30 x 4`: the period in seconds (a bare
+// number is minutes, `:30` seconds, parts added up) and the repeats, or null.
+const EVERY_PART = String.raw`(?:\d{1,2}(?::\d{2})?|:\d{2})`;
+const EVERY = new RegExp(String.raw`\bevery\s*(${EVERY_PART}(?:\s*\+\s*${EVERY_PART})*)\s*(?:min\s*)?x\s*(\d{1,3})\b`, 'i');
+export function everyOf(text) {
+  const r = EVERY.exec(text || '');
+  if (!r) return null;
+  const sec = r[1].split('+').reduce((s, p) => {
+    const [m, ss] = p.trim().split(':');
+    return s + (+m || 0) * 60 + (+ss || 0);
+  }, 0);
+  return { sec, times: +r[2] };
+}
+const PARTNER = /\bpar[tn]n?er\b/i;   // the box prints PARNER
+// `3-4 RONDAS` as a heading (not `3-4 Rondas de 400 m Run`, which is that line's sets).
+const ROUNDS_RANGE = /(?:^|[\s·])(\d{1,3})\s*-\s*(\d{1,3})\s+(?:rondas?|rounds?)\b(?!\s+(?:de|of)\s+\w)/i;
+// A minute window with nothing in it but a rest (`MIN 7-8 TC 1` / `REST`) is not a block. The
+// window is the text from its last `MIN a-b` line on, so an umbrella `WOD` / `AMRAP 42` above it
+// does not count; with no window line it is the whole text. `REST REMAIN` is not a rest here.
+// ponytail: the dropped window's minutes no longer count towards the session; keep them on the
+// block before it if session time matters.
+const WINDOW_BITS = /\b(?:min\s*\d+\s*-\s*\d+|tc\s*\d+|then)\b|·/gi;
+function isRestWindow(text) {
+  const lines = (text || '').split('\n');
+  const from = Math.max(0, lines.findLastIndex(l => /\bmin\s*\d+\s*-\s*\d+/i.test(l)));
+  const rest = lines.slice(from).join(' ').replace(WINDOW_BITS, ' ').replace(/\s+/g, ' ').trim();
+  return REST_ONLY.test(rest);
+}
+
 function wodBlock(b, i, where, errors) {
   const at = `${where}.blocks[${i}]`;
   if (!b || typeof b !== 'object') { errors.push(`${at} must be an object`); return null; }
   if (!WOD_FORMATS.includes(b.format)) errors.push(`${at}.format must be one of ${WOD_FORMATS.join(', ')}`);
   if (b.capMin != null && (!isNum(b.capMin) || b.capMin < 0 || b.capMin > 600)) errors.push(`${at}.capMin must be minutes from 0 to 600, or null`);
   if (b.rounds != null && !isInt(b.rounds, 0, 100)) errors.push(`${at}.rounds must be a whole number from 0 to 100, or null`);
+  if (b.everySec != null && !isInt(b.everySec, 10, 3600)) errors.push(`${at}.everySec must be whole seconds from 10 to 3600, or null`);
+  if (b.roundsMax != null && !(isInt(b.rounds, 0, 100) && isInt(b.roundsMax, b.rounds, 100))) errors.push(`${at}.roundsMax must be a whole number from rounds to 100 (and rounds set), or null`);
   if (!Array.isArray(b.movements)) { errors.push(`${at}.movements must be an array`); return null; }
   if (b.movements.length > MAX_WOD_MOVES) errors.push(`${at} has ${b.movements.length} movements — at most ${MAX_WOD_MOVES}`);
+  const label = clampStr(isStr(b.label) ? b.label.trim() : '', 80);
+  const raw = clampStr(isStr(b.raw) ? b.raw.trim() : '', 1000);
+  let { format, capMin = null, rounds = null, everySec = null, roundsMax = null } = b;
+  // The model can leave the structure in the text only; what the heading prints is read back here.
+  // ponytail: in a partner WOD (`PARNER A WORK / PARNER B REST`) the repeats are shared and each
+  // line is a team total, so rounds is left as the model gave it (null logs one set per line, which
+  // undercounts an `EVERY4x3` team block); model the partners to log each one's share.
+  const every = everySec == null ? everyOf(label) || everyOf(raw) : null;
+  const partner = PARTNER.test(label) || PARTNER.test(raw);
+  if (every && isInt(every.sec, 10, 3600) && isInt(every.times, 1, 100) && (partner || rounds == null || rounds === every.times)) {
+    everySec = every.sec;
+    if (!partner) rounds = every.times;
+  }
+  if (everySec != null && rounds != null && capMin == null && everySec * rounds <= 600 * 60) capMin = Math.round(everySec * rounds / 6) / 10;
+  // An EMOM logs by the minute; an EVERY of anything but a minute (`AMRAP 12 / EVERY 3x4` read as
+  // an EMOM) logs by the repeat.
+  if (everySec != null && (format === 'other' || (format === 'emom' && everySec !== 60))) format = 'interval';
+  const range = rounds == null && roundsMax == null ? ROUNDS_RANGE.exec(label) || ROUNDS_RANGE.exec(raw) : null;
+  if (range && +range[1] >= 1 && +range[1] < +range[2] && +range[2] <= 100) { rounds = +range[1]; roundsMax = +range[2]; }
   return {
-    id: 'b' + i,
-    label: clampStr(isStr(b.label) ? b.label.trim() : '', 80),
+    label,
     warmup: b.warmup === true,
-    format: b.format,
-    capMin: b.capMin ?? null,
-    rounds: b.rounds ?? null,
+    format,
+    capMin,
+    rounds,
+    everySec,
+    roundsMax,
     scheme: strOrNull(b.scheme, 60),
     benchmark: strOrNull(b.benchmark, 40),
-    raw: clampStr(isStr(b.raw) ? b.raw.trim() : '', 1000),
+    raw,
     movements: withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean))
   };
 }
+const restWindowBlock = b => !b.warmup && !b.movements.length && (isRestWindow(b.raw) || isRestWindow(b.label));
 
 export function validateWod(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return fail(['the answer was not an object']);
@@ -830,7 +882,9 @@ export function validateWod(data) {
       id,
       label: clampStr(isStr(tr.label) ? tr.label.trim() : '', 80),
       kind: tr.kind,
-      blocks: tr.blocks.slice(0, MAX_WOD_BLOCKS).map((b, j) => wodBlock(b, j, at, errors)).filter(Boolean)
+      // Ids after the rest windows are gone, so they stay b0, b1… with no gap.
+      blocks: tr.blocks.slice(0, MAX_WOD_BLOCKS).map((b, j) => wodBlock(b, j, at, errors)).filter(b => b && !restWindowBlock(b))
+        .map((b, j) => ({ id: 'b' + j, ...b }))
     };
   }).filter(Boolean);
   if (errors.length) return fail(errors);

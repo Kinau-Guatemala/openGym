@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rxFor, doseFor, fmtDose } from './rx.js'
+import { rxFor, doseFor, fmtDose, fmtRounds } from './rx.js'
 
 const hang = { rx: { male: { w: 185, unit: 'lb' }, female: { w: 135, unit: 'lb' } } }
 
@@ -56,5 +56,17 @@ describe('doseFor / fmtDose', () => {
     expect(fmtDose({ sets: 3, reps: 10 })).toBe('3 × 10')
     expect(fmtDose({ sets: 2 })).toBe('2 × Max')
     expect(fmtDose({ sets: 1, m: 8000 })).toBe('8000 m')
+  })
+})
+
+describe('fmtRounds (T23)', () => {
+  it('an EVERY block, a round range, plain rounds, none', () => {
+    expect(fmtRounds({ rounds: 4, everySec: 180 })).toBe('Every 3:00 × 4')
+    expect(fmtRounds({ rounds: 8, everySec: 90 })).toBe('Every 1:30 × 8')
+    expect(fmtRounds({ rounds: 3, roundsMax: 4 })).toBe('3–4 rounds')
+    expect(fmtRounds({ rounds: 3, roundsMax: 3 })).toBe('3 rounds')
+    expect(fmtRounds({ rounds: 5, everySec: null, roundsMax: null })).toBe('5 rounds')
+    expect(fmtRounds({ rounds: null, everySec: 90 })).toBe('Every 1:30')
+    expect(fmtRounds({})).toBe('')
   })
 })

@@ -152,6 +152,7 @@ export const WOD_SCHEMA = {
                 label: STR, warmup: { type: 'boolean' },
                 format: { type: 'string', enum: ['amrap', 'emom', 'fortime', 'rounds', 'interval', 'strength', 'other'] },
                 capMin: NUM_OR_NULL, rounds: { type: ['integer', 'null'] },
+                everySec: { type: ['integer', 'null'] }, roundsMax: { type: ['integer', 'null'] },
                 scheme: STR_OR_NULL, benchmark: STR_OR_NULL, raw: STR,
                 movements: { type: 'array', maxItems: 20, items: MOVEMENT_SCHEMA }
               },

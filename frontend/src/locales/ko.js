@@ -2257,6 +2257,10 @@ export default {
   'or': '또는',
   '{0} already has a program. Saving replaces it.': '{0}에 이미 프로그램이 있어요. 저장하면 바뀌어요.',
   '{0} rounds': '{0}라운드',
+  'Every {0}': '{0}마다',
+  'Every {0} × {1}': '{0}마다 × {1}',
+  '{0}–{1} rounds': '{0}–{1}라운드',
+  'Every (seconds)': '간격 (초)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': '이 이미지를 열 수 없습니다.',
   'No routine found in this image.': '이 이미지에서 운동을 찾지 못했습니다.',

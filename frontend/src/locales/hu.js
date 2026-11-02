@@ -2260,6 +2260,10 @@ export default {
   'or': 'vagy',
   '{0} already has a program. Saving replaces it.': '{0} napra már van program. A mentés lecseréli.',
   '{0} rounds': '{0} kör',
+  'Every {0}': 'Minden {0}',
+  'Every {0} × {1}': 'Minden {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} kör',
+  'Every (seconds)': 'Időköz (másodperc)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'Ezt a képet nem sikerült megnyitni.',
   'No routine found in this image.': 'Ezen a képen nem található edzés.',

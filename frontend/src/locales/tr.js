@@ -2257,6 +2257,10 @@ export default {
   'or': 'veya',
   '{0} already has a program. Saving replaces it.': '{0} için zaten bir program var. Kaydetmek onu değiştirir.',
   '{0} rounds': '{0} tur',
+  'Every {0}': 'Her {0}',
+  'Every {0} × {1}': 'Her {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} tur',
+  'Every (seconds)': 'Aralık (saniye)',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': 'Bu görsel açılamadı.',
   'No routine found in this image.': 'Bu görselde antrenman bulunamadı.',

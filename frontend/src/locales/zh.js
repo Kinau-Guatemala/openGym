@@ -2257,6 +2257,10 @@ export default {
   'or': '或',
   '{0} already has a program. Saving replaces it.': '{0} 已有计划。保存会替换它。',
   '{0} rounds': '{0} 轮',
+  'Every {0}': '每 {0}',
+  'Every {0} × {1}': '每 {0} × {1}',
+  '{0}–{1} rounds': '{0}–{1} 轮',
+  'Every (seconds)': '间隔（秒）',
   // T05 · image intake (Share / upload → parse → review)
   'This image could not be opened.': '无法打开此图片。',
   'No routine found in this image.': '此图片中未找到训练内容。',
