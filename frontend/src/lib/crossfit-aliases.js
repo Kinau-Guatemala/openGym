@@ -43,9 +43,9 @@ export const SHIPPED_ALIASES = {
   'db squat': '0413', 'db bs': '0413', 'db front squat': '2966', 'db goblet squat': '1760', 'db goblet sumo squat': '7547',
   'db split squat': '2960', 'db step up': '0431', 'db lunge': '0336', 'db farmer lunge': '0336',
   'db reverse lunge': '0381',
-  // A farmer hold is the carry without the walk; a DB high sumo pull is the DB high pull from a wide
-  // stance (the catalogue has no dumbbell sumo one).
-  'db copa': '0430', 'db farmer hold': '2133', 'db high sumo pull': '5666',
+  // A farmer hold is the dumbbell carry without the walk (grip, not the farmers walk's quads); a DB
+  // high sumo pull is the DB high pull from a wide stance (the catalogue has no dumbbell sumo one).
+  'db copa': '0430', 'db farmer hold': '2917', 'db high sumo pull': '5666',
 
   // Kettlebell (KB, KB´s). A Russian swing is the eye-level swing, the catalogue's kettlebell swing.
   // KB OHS is printed 5/5 (per side), and the one-arm overhead squat is the catalogue's only KB one.
