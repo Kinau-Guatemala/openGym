@@ -29,7 +29,7 @@ import { DEFAULT_TEMPLATE_ID } from '../lib/structuralBalanceTemplates.js'
 
 import { WC_DEFAULT } from '../lib/workout-controls.js'
 import { sanitizeAccent } from '../lib/accent.js'
-import { pruneWods, validWod, withWod, withAlias, wodOf } from '../lib/wods.js'
+import { pruneWods, validWod, withWod, withAlias, wodOf, migrateWodAliases } from '../lib/wods.js'
 import { buildWodWorkout } from '../lib/wod-log.js'
 import { fileBackfill } from '../lib/finish-workout.js'
 import { registerExerciseAliases } from '../lib/exercise-aliases.js'
@@ -261,8 +261,9 @@ export const DEF = {
   balanceTemplate: DEFAULT_TEMPLATE_ID, balanceOverrides: {},
   // CrossFit (lib/wods.js): the posted programs by the date they are for ({ [iso]: { …, _ts } },
   // the last 120 days only), and the exercise picked for a printed movement name
-  // ({ [norm(rawName)]: { exId, _ts } }). Both merge per key on their own stamp, a clear included.
-  wods: {}, exAliases: {},
+  // ({ [norm(rawName)]: { exId, _ts } }; S.exAliases up to 1.4.1-kinau.N, which upstream now uses
+  // for its own exercise aliases). Both merge per key on their own stamp, a clear included.
+  wods: {}, wodAliases: {},
   // The weekly hard-set target per muscle the gap report holds each muscle against.
   hypTarget: 10,
   // Whether a main track's warm-up block counts as work by default (the program editor's include
@@ -346,6 +347,7 @@ function loadState() {
       const s = sanitizeAccent(Object.assign(clone(DEF), saved))
       if (!saved.lang) s.lang = detectedLang()
       s.wods = pruneWods(s.wods)
+      migrateWodAliases(s)
       return s
     }
   } catch (e) { /* ignore */ }
@@ -640,6 +642,9 @@ export const useStore = create((set, get) => {
     // goes out with it on the next push, without a stamp of its own (healCustomEx).
     S.customEx = healCustomEx(S.customEx)
     registerCustom(S.customEx)
+    // A copy from the old fork build (a backup, a pull its push left behind) has its CrossFit
+    // picks under exAliases, which is upstream's now: moved before anything reads either.
+    migrateWodAliases(S)
     registerExerciseAliases(S.exAliases)
     // A refused write used to take the change with it — Finish looked like it simply did
     // nothing. The copy is kept in memory either way and marked as owed to the server, so a
@@ -927,6 +932,7 @@ export const useStore = create((set, get) => {
     handedOver = false
     meta.set(S, { base: readStoredSync(), owed: storedOwed() })
     registerCustom(S.customEx)
+    migrateWodAliases(S)
     registerExerciseAliases(S.exAliases)
     set({ S })
     followSignIn()
@@ -1465,12 +1471,12 @@ export const useStore = create((set, get) => {
     // (norm(rawName), lib/crossfit-resolve.js); a clear is stamped like a program's.
     setAlias(key, exId) {
       if (typeof key !== 'string' || !key || typeof exId !== 'string' || !exId) return false
-      get().update(S => { S.exAliases = withAlias(S.exAliases, key, exId, highestStamp(S) + 1) })
+      get().update(S => { S.wodAliases = withAlias(S.wodAliases, key, exId, highestStamp(S) + 1) })
       return true
     },
     clearAlias(key) {
       if (typeof key !== 'string' || !key) return false
-      get().update(S => { S.exAliases = withAlias(S.exAliases, key, null, highestStamp(S) + 1) })
+      get().update(S => { S.wodAliases = withAlias(S.wodAliases, key, null, highestStamp(S) + 1) })
       return true
     },
     // The program posted for `date` logged after class (lib/wod-log.js): filed into the past like

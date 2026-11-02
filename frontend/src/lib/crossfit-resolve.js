@@ -58,7 +58,7 @@ const clearHit = (score, words) => score >= 100 * words + 40
 // Those are certain and come with no candidates. Failing all three, the best guess (guessMovement):
 // `via: 'guess'` and its exId when one exercise clearly fits, else `exId: null, via: null`, which
 // the review screen shows as "choose", with the ranked candidates as suggestions either way.
-// userAliases is S.exAliases: { [norm(rawName)]: { exId, _ts } }, a removed pick being { _ts }.
+// userAliases is S.wodAliases: { [norm(rawName)]: { exId, _ts } }, a removed pick being { _ts }.
 export function resolveMovement({ rawName, name } = {}, userAliases = {}) {
   const key = norm(rawName)
   const user = key && userAliases?.[key]?.exId

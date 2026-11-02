@@ -37,7 +37,7 @@
  *     is the best of the merged history and of the editing copy's own, and the other copy's
  *     can no longer bring a corrected typo back. exNotes, barWeights: key union
  *   - balanceOverrides, loadKind, plates, dbLoad, dumbbells, stackWeights, dayNotes, dayPhotos,
- *     wods, exAliases: key union; of a key both have, the entry set last by its own `_ts`, a clear
+ *     wods, wodAliases: key union; of a key both have, the entry set last by its own `_ts`, a clear
  *     included (mergeStampedMap), the newer copy's on a tie. For plates and dumbbells the key is
  *     the unit, so the inventory of one unit is kept whole, as last edited; for dayNotes and wods
  *     the key is the date, so each day's note or program is its own. wods then keeps only its
@@ -80,15 +80,15 @@ import { bestWeightForEntry } from './history.js'
 import { convertStateUnit, convertBodyWeight } from './units.js'
 import { sanitizeAccent } from './accent.js'
 import { readDayNote as readNote } from './day-notes.js'
-import { pruneWods, wodOf, aliasesOf } from './wods.js'
+import { pruneWods, wodOf, aliasesOf, migrateWodAliases } from './wods.js'
 
 const clone = o => JSON.parse(JSON.stringify(o))
 const list = v => (Array.isArray(v) ? v : [])
 // The maps whose every entry carries its own edit time (mergeStampedMap). dayNotes is a day's
 // note on a day off (lib/day-notes.js), one entry per date.
 // dayPhotos is a progress photo filed under a day (lib/day-photos.js), one entry per photo.
-// wods is a posted program per date, and exAliases a printed movement name's exercise (lib/wods.js).
-export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'stackWeights', 'dayNotes', 'dayPhotos', 'wods', 'exAliases']
+// wods is a posted program per date, and wodAliases a printed movement name's exercise (lib/wods.js).
+export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'stackWeights', 'dayNotes', 'dayPhotos', 'wods', 'wodAliases']
 
 /** The copy with the later `_ts`; on a tie the first argument (callers pass local first). */
 export const newerOf = (a, b) => ((b?._ts || 0) > (a?._ts || 0) ? b : a)
@@ -809,9 +809,14 @@ function applyEdits(out, n, o) {
 // logged while signed out. Without it the newer copy decides, as for a conflict between devices.
 // `today` (an ISO date, UTC by default) is what the programs are pruned against (pruneWods).
 export function mergeStates(a0, b0, { prefer, today } = {}) {
-  if (!a0) return b0 ? clone(b0) : b0
-  if (!b0) return clone(a0)
-  let a = a0, b = b0
+  // The fork's picks under their old name (S.exAliases before 1.4.3-kinau.1) move to wodAliases
+  // first, so a copy from a phone still on the old build merges with the new one (lib/wods.js).
+  // Copied only when there is something to move: the usual merge reads its inputs as they are.
+  const legacy = S => isMap(S?.exAliases) && Object.values(S.exAliases).some(isMap)
+  const moved = S => { const c = clone(S); migrateWodAliases(c); return c }
+  if (!a0) return b0 ? moved(b0) : b0
+  if (!b0) return moved(a0)
+  let a = legacy(a0) ? moved(a0) : a0, b = legacy(b0) ? moved(b0) : b0
   // A reset seen by one copy only: the other keeps what was made after it, and the reset copy
   // decides the rest (the file's header).
   let side = prefer === 'a' || prefer === 'b' ? prefer : newerOf(a, b) === a ? 'a' : 'b'

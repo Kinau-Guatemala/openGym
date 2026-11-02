@@ -1,6 +1,6 @@
 // The box's dialect and gym shorthand, read as catalogue exercises: norm(rawName) → exercise id
 // (see crossfit-resolve.js for both). Built from the box's posted programs; a user's own pick for
-// a name (S.exAliases) always wins over this table.
+// a name (S.wodAliases) always wins over this table.
 //
 // Keys are already normalised (singular words, no ´s, "&" as "and"); the test checks each one is
 // its own norm() and that every id exists. A name that could mean several exercises (a plain

@@ -67,8 +67,8 @@ const capStamps = m => {
 // The maps whose every entry carries its own edit time (sync-merge.js STAMPED_MAPS): merged per
 // key by the app, so never stamped here as a whole setting. dayNotes is a note per day off,
 // dayPhotos a progress photo filed under a day (#557), one entry per photo, wods a posted program
-// per date, exAliases a printed movement name's exercise (frontend lib/wods.js).
-export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'stackWeights', 'dayNotes', 'dayPhotos', 'wods', 'exAliases'];
+// per date, wodAliases a printed movement name's exercise (frontend lib/wods.js).
+export const STAMPED_MAPS = ['balanceOverrides', 'loadKind', 'plates', 'dbLoad', 'dumbbells', 'stackWeights', 'dayNotes', 'dayPhotos', 'wods', 'wodAliases'];
 export const OWN_MERGE = new Set([
   '_ts', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'active', 'unit', 'unitSet', 'resetAt', 'resetIds', 'deleted', 'edited', 'undone', 'routineOrder',
   'workouts', 'routines', 'customEx', 'equipProfiles', 'gymCards', 'bodyweight', 'measurements', 'favEx',
@@ -87,6 +87,34 @@ export function pruneWods(map, today = utcToday()) {
   const cutoff = Number.isFinite(t) ? utcToday(t - WODS_KEEP_DAYS * 86400000) : '';
   const out = {};
   for (const [k, v] of Object.entries(map)) if (ISO.test(k) && k >= cutoff) out[k] = v;
+  return out;
+}
+// The fork's movement-name picks were S.exAliases up to 1.4.1-kinau.N; upstream now keeps its own
+// exercise aliases there ({ [exId]: [names] }), so the picks live in wodAliases (frontend lib/wods.js
+// migrateWodAliases, hand-copied). A phone still on the old build sends its picks under the old
+// name: an object entry of exAliases is a pick and moves, an array is upstream's and stays. Of a
+// name in both, the later `_ts`; a tie keeps wodAliases'. In place; true when it moved anything.
+export function migrateWodAliases(S) {
+  if (!isMap(S) || !isMap(S.exAliases)) return false;
+  const legacy = Object.entries(S.exAliases).filter(([, v]) => isMap(v));
+  if (!legacy.length) return false;
+  const ex = { ...S.exAliases };
+  const into = isMap(S.wodAliases) ? { ...S.wodAliases } : {};
+  for (const [k, v] of legacy) {
+    delete ex[k];
+    const c = into[k];
+    if (!isMap(c) || (Number(v._ts) || 0) > (Number(c._ts) || 0)) into[k] = v;
+  }
+  S.exAliases = ex;
+  S.wodAliases = into;
+  return true;
+}
+// Two stamped maps per key (frontend sync-merge.js mergeStampedMap): the later `_ts`, `b` on a tie.
+function unionByStamp(a, b) {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(isMap(b) ? b : {})) {
+    if (!(k in out) || (Number(v?._ts) || 0) >= (Number(out[k]?._ts) || 0)) out[k] = v;
+  }
   return out;
 }
 const ENTRY_META = new Set(['id', '_ts', '_f', '_u']);
@@ -547,8 +575,13 @@ function keepHeld(next, now) {
 const BOOKKEEPING = new Set(['_ts', '_f', '_u', '_rev', '_wid', '_wids', '_unstamped', '_prior', 'edited', 'deleted', 'undone']);
 const content = S => JSON.stringify(S, (k, v) => (BOOKKEEPING.has(k) ? undefined : v));
 
-export function stampPut(cur, next, { overRead = false, stamped = false, now = Date.now(), report = null } = {}) {
+export function stampPut(cur0, next, { overRead = false, stamped = false, now = Date.now(), report = null } = {}) {
   if (!next || typeof next !== 'object') return next;
+  // Both copies with the fork's picks where they belong now, before anything compares them: the
+  // stored one (a file the old build wrote) on a shallow copy, the one being written in place.
+  let cur = cur0;
+  if (isMap(cur) && isMap(cur.exAliases) && Object.values(cur.exAliases).some(isMap)) { cur = { ...cur }; migrateWodAliases(cur); }
+  const oldBuild = migrateWodAliases(next);
   const t = Math.max(Number(now) || 0, highestStamp(cur) + 1, highestStamp(next) + 1);
   const reset = (Number(next.resetAt) || 0) > (Number(cur?.resetAt) || 0);
   const sent = isMap(next.edited) ? { ...next.edited } : null;
@@ -560,6 +593,14 @@ export function stampPut(cur, next, { overRead = false, stamped = false, now = D
   delete next._unstamped;
   delete next._prior;
   if (cur && !reset) {
+    // The old build does not know wodAliases (an unstamped field to it, so its merge can leave the
+    // stored picks out) nor upstream's alias arrays: the picks are a stamped map, merged here per
+    // name as the app merges them, the later `_ts`; and what that build left out of exAliases is
+    // put back (upstream clears an alias with [], never by removing its key).
+    if (isMap(cur.wodAliases)) next.wodAliases = unionByStamp(cur.wodAliases, next.wodAliases);
+    if (oldBuild && isMap(cur.exAliases)) {
+      for (const [k, v] of Object.entries(cur.exAliases)) if (Array.isArray(v) && !(k in next.exAliases)) next.exAliases[k] = clone(v);
+    }
     const d = mergeDeletions(cur.deleted, next.deleted);
     if (d) next.deleted = d; else delete next.deleted;
     const e = mergeEdits(cur.edited, next.edited);

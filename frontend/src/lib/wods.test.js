@@ -1,10 +1,10 @@
-// The CrossFit programs (S.wods) and alias picks (S.exAliases) across devices: the helpers, the
+// The CrossFit programs (S.wods) and alias picks (S.wodAliases) across devices: the helpers, the
 // merge on this side, and what the server's PUT (api/sync-stamps.js) does with them. Critique C1:
 // before both maps were in OWN_MERGE, stampEdits stamped `edited.wods` as a whole setting and
 // applyEdits handed the whole map to one copy — two devices, two dates, one survived.
 import { describe, expect, it } from 'vitest'
 import * as Server from '../../../api/sync-stamps.js'
-import { WODS_KEEP_DAYS, aliasesOf, pruneWods, validWod, withAlias, withWod, wodOf } from './wods.js'
+import { WODS_KEEP_DAYS, aliasesOf, migrateWodAliases, pruneWods, validWod, withAlias, withWod, wodOf } from './wods.js'
 import { mergeStates, stampChange, stampEdits, stampRestore } from './sync-merge.js'
 
 const clone = o => JSON.parse(JSON.stringify(o))
@@ -12,7 +12,7 @@ const T = 1_800_000_000_000
 const TODAY = '2026-10-24'
 const base = (over = {}) => ({
   unit: 'kg', week: {}, dayPlan: {}, workouts: [], routines: [], bodyweight: [], customEx: [], favEx: [],
-  exWeights: {}, exNotes: {}, barWeights: {}, equipProfiles: [], gymCards: [], wods: {}, exAliases: {}, _ts: T, ...over,
+  exWeights: {}, exNotes: {}, barWeights: {}, equipProfiles: [], gymCards: [], wods: {}, wodAliases: {}, _ts: T, ...over,
 })
 // One change on a copy, stamped the way the store stamps it (useStore update).
 const change = (prev, wall, mut) => { const n = clone(prev); mut(n); n._ts = stampChange(prev, n, wall); return n }
@@ -37,8 +37,14 @@ describe('wods helpers', () => {
     m = withAlias(m, 't2b', '0099', 6)
     m = withAlias(m, 't2b', null, 7)
     expect(m.t2b).toEqual({ _ts: 7 })
-    expect(aliasesOf({ exAliases: { ...m, junk: 'x', bad: { exId: 3 } } })).toEqual({ 'hang cleans': '1234' })
+    expect(aliasesOf({ wodAliases: { ...m, junk: 'x', bad: { exId: 3 } } })).toEqual({ 'hang cleans': '1234' })
     expect(aliasesOf({})).toEqual({})
+  })
+
+  it('aliasesOf reads a copy whose picks are still under exAliases (the old build), without changing it', () => {
+    const old = { exAliases: { '1162': ['Zentara lift'], 'hang cleans': { exId: '1234', _ts: 5 } } }
+    expect(aliasesOf(old)).toEqual({ 'hang cleans': '1234' })
+    expect(old.exAliases['hang cleans']).toEqual({ exId: '1234', _ts: 5 })
   })
 
   it('prunes by date key: the last 120 days and every later date stay, the rest and junk keys go', () => {
@@ -49,18 +55,18 @@ describe('wods helpers', () => {
   })
 })
 
-describe('wods and exAliases across two devices (this side)', () => {
+describe('wods and wodAliases across two devices (this side)', () => {
   const shared = base()
 
   it('are never stamped as a whole setting', () => {
-    const phone = change(shared, T + 10, s => { s.wods = withWod(s.wods, '2026-10-23', prog('A'), T + 10); s.exAliases = withAlias(s.exAliases, 't2b', '0099', T + 10) })
+    const phone = change(shared, T + 10, s => { s.wods = withWod(s.wods, '2026-10-23', prog('A'), T + 10); s.wodAliases = withAlias(s.wodAliases, 't2b', '0099', T + 10) })
     expect(phone.edited?.wods).toBeUndefined()
-    expect(phone.edited?.exAliases).toBeUndefined()
-    const n = clone(shared); n.wods = { '2026-10-23': { _ts: 1 } }; n.exAliases = { x: { exId: 'y', _ts: 1 } }
+    expect(phone.edited?.wodAliases).toBeUndefined()
+    const n = clone(shared); n.wods = { '2026-10-23': { _ts: 1 } }; n.wodAliases = { x: { exId: 'y', _ts: 1 } }
     expect(stampEdits(shared, n, T + 20).edited).toBeUndefined()
     const restored = stampRestore(clone(n), [shared], T + 30)
     expect(restored.edited.wods).toBeUndefined()
-    expect(restored.edited.exAliases).toBeUndefined()
+    expect(restored.edited.wodAliases).toBeUndefined()
   })
 
   it('different dates saved on each device are both kept', () => {
@@ -83,8 +89,8 @@ describe('wods and exAliases across two devices (this side)', () => {
   })
 
   it('a clear beats the older program and is not brought back by the other copy', () => {
-    const saved = change(shared, T + 10, s => { s.wods = withWod(s.wods, '2026-10-23', prog('A'), T + 10); s.exAliases = withAlias(s.exAliases, 't2b', '0099', T + 10) })
-    const cleared = change(saved, T + 20, s => { s.wods = withWod(s.wods, '2026-10-23', null, T + 20); s.exAliases = withAlias(s.exAliases, 't2b', null, T + 20) })
+    const saved = change(shared, T + 10, s => { s.wods = withWod(s.wods, '2026-10-23', prog('A'), T + 10); s.wodAliases = withAlias(s.wodAliases, 't2b', '0099', T + 10) })
+    const cleared = change(saved, T + 20, s => { s.wods = withWod(s.wods, '2026-10-23', null, T + 20); s.wodAliases = withAlias(s.wodAliases, 't2b', null, T + 20) })
     const stale = change(saved, T + 90, s => { s.restSec = 30 })   // still holds them, newer as a whole
     for (const m of both(cleared, stale)) {
       expect(wodOf(m, '2026-10-23')).toBeNull()
@@ -101,8 +107,8 @@ describe('wods and exAliases across two devices (this side)', () => {
       expect(Object.keys(m.wods)).toEqual(['2026-10-20'])
     }
     // the aliases are bounded by names, never pruned
-    const al = base({ exAliases: { 'old name': { exId: '1', _ts: 1 } } })
-    expect(mergeStates(al, base(), { today: TODAY }).exAliases).toEqual(al.exAliases)
+    const al = base({ wodAliases: { 'old name': { exId: '1', _ts: 1 } } })
+    expect(mergeStates(al, base(), { today: TODAY }).wodAliases).toEqual(al.wodAliases)
   })
 })
 
@@ -127,22 +133,22 @@ describe('the server\'s copy of the rules (api/sync-stamps.js)', () => {
     const cur = base({ _rev: 1, wods: { '2026-10-23': { ...prog('Phone'), _ts: T + 10 } } })
     const api = clone(cur); delete api._rev
     api.wods['2026-10-24'] = { ...prog('Planner'), _ts: T + 20 }
-    api.exAliases = { t2b: { exId: '0099', _ts: T + 20 } }
+    api.wodAliases = { t2b: { exId: '0099', _ts: T + 20 } }
     put(cur, api, { overRead: true })
     expect(api.edited?.wods).toBeUndefined()
-    expect(api.edited?.exAliases).toBeUndefined()
+    expect(api.edited?.wodAliases).toBeUndefined()
     expect(api._prior?.wods).toBeUndefined()
     const phone = change(cur, T + 30, s => { s.wods = withWod(s.wods, '2026-10-25', prog('Phone 25'), T + 30) })
     for (const m of both(phone, api)) expect(Object.keys(m.wods).sort()).toEqual(['2026-10-23', '2026-10-24', '2026-10-25'])
   })
 
   it('an older app that knows nothing of the maps keeps a clear on record', () => {
-    const cur = base({ _rev: 1, wods: { '2026-10-23': { _ts: T + 20 } }, exAliases: { t2b: { _ts: T + 20 } } })
-    const old = clone(cur); delete old.wods; delete old.exAliases; delete old._rev; old.restSec = 60
+    const cur = base({ _rev: 1, wods: { '2026-10-23': { _ts: T + 20 } }, wodAliases: { t2b: { _ts: T + 20 } } })
+    const old = clone(cur); delete old.wods; delete old.wodAliases; delete old._rev; old.restSec = 60
     put(cur, old, { overRead: true })
     expect(old.wods).toEqual(cur.wods)
-    expect(old.exAliases).toEqual(cur.exAliases)
-    const stale = base({ _ts: T + 99, wods: { '2026-10-23': { ...prog('A'), _ts: T + 10 } }, exAliases: { t2b: { exId: '0099', _ts: T + 10 } } })
+    expect(old.wodAliases).toEqual(cur.wodAliases)
+    const stale = base({ _ts: T + 99, wods: { '2026-10-23': { ...prog('A'), _ts: T + 10 } }, wodAliases: { t2b: { exId: '0099', _ts: T + 10 } } })
     for (const m of both(old, stale)) { expect(wodOf(m, '2026-10-23')).toBeNull(); expect(aliasesOf(m)).toEqual({}) }
   })
 
@@ -153,5 +159,50 @@ describe('the server\'s copy of the rules (api/sync-stamps.js)', () => {
     }
     // a reset's write too
     expect(Object.keys(put(base(), { ...doc(), resetAt: T + 1 }, {}).wods)).toEqual(['2026-10-20'])
+  })
+})
+
+// Up to 1.4.1-kinau.N the picks were S.exAliases; upstream took that name for { [exId]: [names] }.
+describe('the picks move from exAliases to wodAliases (migrateWodAliases)', () => {
+  it('splits a mixed map: object entries are picks and move, arrays are upstream\'s and stay', () => {
+    const S = { exAliases: { '1162': ['Zentara lift'], '0025': [], 'hang cleans': { exId: '1234', _ts: T }, row: { _ts: T + 1 } } }
+    expect(migrateWodAliases(S)).toBe(true)
+    expect(S.exAliases).toEqual({ '1162': ['Zentara lift'], '0025': [] })
+    expect(S.wodAliases).toEqual({ 'hang cleans': { exId: '1234', _ts: T }, row: { _ts: T + 1 } })
+  })
+
+  it('a second run changes nothing', () => {
+    const S = { exAliases: { a: ['A'], 'hang cleans': { exId: '1234', _ts: T } }, wodAliases: { t2b: { exId: '0099', _ts: T } } }
+    migrateWodAliases(S)
+    const once = clone(S)
+    expect(migrateWodAliases(S)).toBe(false)
+    expect(S).toEqual(once)
+  })
+
+  it('a name already in wodAliases keeps the later _ts, and wodAliases\' on a tie', () => {
+    const S = {
+      exAliases: { newer: { exId: 'old', _ts: T + 5 }, older: { exId: 'old', _ts: T }, tie: { exId: 'old', _ts: T } },
+      wodAliases: { newer: { exId: 'new', _ts: T }, older: { exId: 'new', _ts: T + 5 }, tie: { exId: 'new', _ts: T } },
+    }
+    migrateWodAliases(S)
+    expect(S.wodAliases).toEqual({ newer: { exId: 'old', _ts: T + 5 }, older: { exId: 'new', _ts: T + 5 }, tie: { exId: 'new', _ts: T } })
+  })
+
+  it('the app\'s hand copy and the server\'s agree', () => {
+    const S = { exAliases: { a: ['A'], x: { exId: '1', _ts: T + 9 }, y: { _ts: T } }, wodAliases: { x: { exId: '2', _ts: T } } }
+    const app = clone(S), srv = clone(S)
+    migrateWodAliases(app); Server.migrateWodAliases(srv)
+    expect(srv).toEqual(app)
+  })
+
+  it('a merge with a copy from the old build keeps both builds\' picks and the arrays', () => {
+    const fresh = base({ exAliases: { '1162': ['Zentara lift'] }, wodAliases: { t2b: { exId: '0099', _ts: T + 20 } } })
+    const old = base({ _ts: T + 40, exAliases: { '1162': ['Zentara lift'], 'hang cleans': { exId: '1234', _ts: T + 30 } } })
+    delete old.wodAliases
+    for (const m of both(fresh, old)) {
+      expect(m.exAliases).toEqual({ '1162': ['Zentara lift'] })
+      expect(m.wodAliases).toEqual({ t2b: { exId: '0099', _ts: T + 20 }, 'hang cleans': { exId: '1234', _ts: T + 30 } })
+    }
+    expect(old.exAliases['hang cleans']).toEqual({ exId: '1234', _ts: T + 30 })   // inputs untouched
   })
 })

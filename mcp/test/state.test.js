@@ -41,6 +41,15 @@ async function load(dir, uid = 'alex') {
 afterEach(() => { vi.unstubAllEnvs() })
 afterAll(() => { dirs.forEach(d => fs.rmSync(d, { recursive: true, force: true })) })
 
+// The fork's picks were S.exAliases up to 1.4.1-kinau.N; upstream now keeps { [exId]: [names] } there.
+test('a state file the old build wrote reads with its picks under wodAliases, the arrays left alone', async () => {
+  const old = { unit: 'kg', exAliases: { '1162': ['Zentara lift'], 'hang cleans': { exId: '1234', _ts: 5 } } }
+  const { getState } = await load(mk({ 'db.json': DB, 'state-alex.json': JSON.stringify(old) }))
+  const S = await getState()
+  expect(S.exAliases).toEqual({ '1162': ['Zentara lift'] })
+  expect(S.wodAliases).toEqual({ 'hang cleans': { exId: '1234', _ts: 5 } })
+})
+
 describe('a read failure is not "you never signed in"', () => {
   test('without a watcher, a state file that goes away stops being served from the cache (#653)', async () => {
     const dir = mk({ 'db.json': DB, 'state-alex.json': JSON.stringify({ unit: 'lb' }) })

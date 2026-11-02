@@ -1,7 +1,11 @@
 // Posted CrossFit programs and the movement-name picks made for them (the CrossFit module).
 //
-//   S.wods      = { '2026-10-22': { title, tracks, …, _ts }, … }   a program per date it is for
-//   S.exAliases = { 'hang cleans': { exId: '1234', _ts }, … }      a printed name → catalogue id
+//   S.wods       = { '2026-10-22': { title, tracks, …, _ts }, … }   a program per date it is for
+//   S.wodAliases = { 'hang cleans': { exId: '1234', _ts }, … }      a printed name → catalogue id
+//
+// The picks were S.exAliases up to 1.4.1-kinau.N. Upstream (v1.4.3) took that name for its own
+// exercise aliases, { [exId]: ['OHP', …] }, so the picks moved to S.wodAliases (migrateWodAliases,
+// with a hand copy in api/sync-stamps.js for a phone still on the old build).
 //
 // Both are stamped maps (lib/sync-merge.js STAMPED_MAPS), merged per key like dayNotes: two
 // devices that each saved a different date keep both, the same date keeps the one written last.
@@ -13,7 +17,7 @@
 // every push, and a year of programs would push it towards the 5 MB cap. Being by date alone, it
 // converges: a copy that still has an old key loses it again on the next merge anywhere.
 //
-// exAliases keys are already normalised (norm(rawName), lib/crossfit-resolve.js): the helpers here
+// wodAliases keys are already normalised (norm(rawName), lib/crossfit-resolve.js): the helpers here
 // take the key as given. Bounded by the distinct names printed, so never pruned.
 
 export const WODS_KEEP_DAYS = 120
@@ -57,16 +61,40 @@ export const wodOf = (S, date) => {
   return live(v) ? v : null
 }
 
-/** S.exAliases with `key` (already normalised) pointing at `exId`, stamped `now`; null clears it. */
+/** S.wodAliases with `key` (already normalised) pointing at `exId`, stamped `now`; null clears it. */
 export function withAlias(map, key, exId, now = Date.now()) {
   const entry = typeof exId === 'string' && exId ? { exId, _ts: now } : { _ts: now }
   return { ...(isMap(map) ? map : {}), [key]: entry }
 }
 
-/** The user's picks as `{ key: exId }`, cleared ones left out. */
-export function aliasesOf(S) {
+/**
+ * The fork's picks still under their old name moved into S.wodAliases: an object entry of
+ * S.exAliases is a pick (`{ exId, _ts }`, or a cleared `{ _ts }`), an array is upstream's own and
+ * stays. Of a name in both, the later `_ts`; a tie keeps wodAliases'. In place and idempotent: a
+ * phone on the old build keeps sending its picks there for a while. True when it moved anything.
+ */
+export function migrateWodAliases(S) {
+  if (!isMap(S) || !isMap(S.exAliases)) return false
+  const legacy = Object.entries(S.exAliases).filter(([, v]) => isMap(v))
+  if (!legacy.length) return false
+  const ex = { ...S.exAliases }
+  const into = isMap(S.wodAliases) ? { ...S.wodAliases } : {}
+  for (const [k, v] of legacy) {
+    delete ex[k]
+    const cur = into[k]
+    if (!isMap(cur) || (Number(v._ts) || 0) > (Number(cur._ts) || 0)) into[k] = v
+  }
+  S.exAliases = ex
+  S.wodAliases = into
+  return true
+}
+
+/** The user's picks as `{ key: exId }`, cleared ones left out. A copy not yet migrated reads the same. */
+export function aliasesOf(S0) {
+  let S = S0
+  if (isMap(S?.exAliases) && Object.values(S.exAliases).some(isMap)) { S = { exAliases: S.exAliases, wodAliases: S.wodAliases }; migrateWodAliases(S) }
   const out = {}
-  for (const [k, v] of Object.entries(isMap(S?.exAliases) ? S.exAliases : {})) {
+  for (const [k, v] of Object.entries(isMap(S?.wodAliases) ? S.wodAliases : {})) {
     if (isMap(v) && typeof v.exId === 'string' && v.exId) out[k] = v.exId
   }
   return out

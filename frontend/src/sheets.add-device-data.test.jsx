@@ -43,7 +43,7 @@ describe('addDeviceDataMessage', () => {
   // localExtras counts them under setup), and the question has to say so, or "Keep profile as
   // is" reads as safe and drops them.
   it('a guest with only CrossFit programs is told the programs are at stake', () => {
-    const local = { wods: { '2026-10-22': { title: 'A', tracks: [], _ts: 5 } }, exAliases: { copa: { exId: '42', _ts: 5 } } }
+    const local = { wods: { '2026-10-22': { title: 'A', tracks: [], _ts: 5 } }, wodAliases: { copa: { exId: '42', _ts: 5 } } }
     const extras = localExtras(local, { workouts: [] })
     expect(extras).toEqual({ workouts: 0, bodyweight: 0, customEx: 0, setup: 2 })
     expect(addDeviceSetupMessage(extras.routines)).toMatch(/CrossFit programs/)

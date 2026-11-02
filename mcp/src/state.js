@@ -7,6 +7,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { connect } from './remote.js'
+import { migrateWodAliases } from '../../frontend/src/lib/wods.js'
 
 const DATA_DIR = process.env.OPENGYM_DATA || path.join(process.cwd(), 'data')
 // Whether a data directory was asked for, as opposed to the ./data guess.
@@ -251,7 +252,14 @@ export function _useSourceForTests(source) { _source = source }
 
 // Same shape the frontend builds on pullState — defaults merged with stored state so any
 // field the app added since the snapshot was last saved shows up undefined-safe.
-const withDefaults = S => (S ? Object.assign({}, defaultsShape(), S) : null)
+// A profile last written by the old fork build has its CrossFit picks under exAliases, which is
+// upstream's own now: moved to wodAliases on the copy read (frontend lib/wods.js).
+const withDefaults = S => {
+  if (!S) return null
+  const out = Object.assign({}, defaultsShape(), S)
+  migrateWodAliases(out)
+  return out
+}
 
 function defaultsShape() {
   return {
@@ -260,6 +268,6 @@ function defaultsShape() {
     bodyweight: [], routines: [], week: {}, dayPlan: {},
     exWeights: {}, workouts: [], customEx: [], gifSize: 'full',
     reminder: { on: false, time: '08:00', tz: null },
-    wods: {}, exAliases: {}, hypTarget: 10, wodWarmup: false
+    wods: {}, wodAliases: {}, exAliases: {}, hypTarget: 10, wodWarmup: false
   }
 }
