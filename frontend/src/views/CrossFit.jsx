@@ -83,7 +83,7 @@ export default function CrossFit() {
   }
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/home" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12 }}><h1>{t('CrossFit')}</h1>
         <div className="sub">{t('The programs your box posts, one per day.')}</div></div>
     </div>
@@ -245,7 +245,7 @@ function Intake() {
   const failed = failureOf(run)
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
         <h1>{t('New program')}</h1>
         <div className="sub">{fmtDate(run.date, true)}</div>
@@ -358,7 +358,7 @@ function Editor() {
 
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={leave} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/crossfit" onClick={leave} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
         <h1>{editDate ? t('Edit program') : t('New program')}</h1>
         <div className="sub">{ISO.test(date) ? fmtDate(date, true) : ''}</div>

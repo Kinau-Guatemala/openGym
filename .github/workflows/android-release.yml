@@ -3,7 +3,7 @@
 # never be signed with the Kinau key: that would offer every phone a different app as an update.
 # The in-app updater (frontend/src/lib/update.js) reads Kinau-Guatemala/openGym's latest release
 # and takes its .apk and .apk.sha256 assets, so both are uploaded here. Mirrors upstream's
-# build:apk job in .gitlab-ci.yml: build:mobile, assembleRelease, zipalign, apksigner.
+# build:apk job in .gitlab-ci.yml: build:mobile, assembleSideloadRelease, zipalign, apksigner.
 #
 # The release is created as a full release, never a pre-release: releases/latest skips
 # pre-releases, so a phone would not see it. A release created here with GITHUB_TOKEN does not
@@ -83,7 +83,9 @@ jobs:
           npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --allow-same-version --ignore-scripts
           npm run build:mobile
           cd android
-          ./gradlew --no-daemon assembleRelease
+          # The sideload flavour, as upstream's build:apk: the APK that updates itself (play is the
+          # Google Play build, which the fork does not publish).
+          ./gradlew --no-daemon assembleSideloadRelease
 
       # The key only ever meets zipalign and apksigner from the SDK.
       - name: Sign the APK
@@ -103,7 +105,7 @@ jobs:
           KS="$RUNNER_TEMP/release.jks"
           trap 'rm -f "$KS"' EXIT
           printf '%s' "$ANDROID_KEYSTORE_B64" | base64 -d > "$KS"
-          UNSIGNED=frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          UNSIGNED=frontend/android/app/build/outputs/apk/sideload/release/app-sideload-release-unsigned.apk
           BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           APK="openGym-${GITHUB_REF_NAME#v}.apk"
           "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"

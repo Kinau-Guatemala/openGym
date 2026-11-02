@@ -212,7 +212,7 @@ describe('the write tools', () => {
   })
 
   test('every write tool takes dry_run and confirm, and describes them', () => {
-    for (const name of ['create_routine', 'update_routine', 'assign_weekday', 'log_workout']) {
+    for (const name of ['create_routine', 'update_routine', 'assign_weekday', 'log_session']) {
       const t = WRITE_TOOLS.find(x => x.name === name)
       expect(t.schema.dry_run.isOptional()).toBe(true)
       expect(t.schema.confirm.isOptional()).toBe(true)
@@ -285,11 +285,11 @@ describe('the write tools are off unless OPENGYM_MCP_WRITES=1', () => {
     vi.stubEnv('OPENGYM_MCP_WRITES', '')
     const ns = await names()
     expect(ns).toContain('muscle_gap')
-    for (const w of ['create_routine', 'update_routine', 'assign_weekday', 'log_workout']) expect(ns).not.toContain(w)
+    for (const w of ['create_routine', 'update_routine', 'assign_weekday', 'log_session']) expect(ns).not.toContain(w)
   })
 
   test('registered with OPENGYM_MCP_WRITES=1', async () => {
     vi.stubEnv('OPENGYM_MCP_WRITES', '1')
-    expect(await names()).toEqual(expect.arrayContaining(['muscle_gap', 'create_routine', 'update_routine', 'assign_weekday', 'log_workout']))
+    expect(await names()).toEqual(expect.arrayContaining(['muscle_gap', 'create_routine', 'update_routine', 'assign_weekday', 'log_session']))
   })
 })

@@ -75,7 +75,8 @@ afterAll(() => {
 
 beforeEach(async () => {
   vi.stubEnv('XDG_CONFIG_HOME', path.join(tmp, 'cfg'))
-  const { data } = await api('POST', '/api/pair/create')
+  // A pairing code is minted with the owner's proof (api proveOwner): the password, here.
+  const { data } = await api('POST', '/api/pair/create', { current: 'correct horse battery staple 42' })
   await pair(url, data.code)
   src = await connect(url)
 })
@@ -123,7 +124,7 @@ describe('MCP writes against the api', () => {
     for (const [name, args] of [
       ['create_routine', { name: 'Upper B', exercises: [{ id: '0662' }] }],
       ['assign_weekday', { weekday: 2, routine_ids: [] }],
-      ['log_workout', { date: '2026-10-01', entries: [{ id: '0685', sets: [{ min: 30 }] }] }]
+      ['log_session', { date: '2026-10-01', entries: [{ id: '0685', sets: [{ min: 30 }] }] }]
     ]) {
       const r = await TOOLS.find(t => t.name === name).handler(args)
       expect(r).toMatchObject({ dry_run: true, saved: false })

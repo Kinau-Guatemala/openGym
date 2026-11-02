@@ -23,9 +23,10 @@ import { runPipeline } from './core/pipeline.js';
 import { extractJSON } from './core/parse.js';
 import { hashPlan } from './core/plan-hash.js';
 import { buildPrompt } from './core/prompt.js';
+import { waitingProposal } from './core/pending.js';
 import { handleFor } from './handle.js';
 import { fetchFor } from './node-fetch.js';
-import { canDropPrivileges, unprivilegedIds } from './adapters/spawn.js';
+import { privilegeRefusal, unprivilegedIds } from './adapters/spawn.js';
 import { cohortForPayload, invalidate as invalidateCohort } from './cohort.js';
 import { CONSENT_VERSION } from './core/categories.js';
 
@@ -159,7 +160,7 @@ export function status(uid) {
 }
 function lastOutcome(rec) {
   const h = (rec.history || []).at(-1);
-  return h ? { id: h.id, kind: h.kind, outcome: h.outcome, errorClass: h.errorClass || null, at: h.at, ...(h.reading ? { reading: h.reading } : {}) } : null;
+  return h ? { id: h.id, kind: h.kind, outcome: h.outcome, errorClass: h.errorClass || null, at: h.at, ...(h.trigger === 'scheduled' ? { trigger: 'scheduled' } : {}), ...(h.reading ? { reading: h.reading } : {}) } : null;
 }
 function archive(uid, rec, outcome) {
   const history = [...(rec.history || []), {
@@ -196,7 +197,7 @@ export function clampMessage(text) {
 
 // Every job kind there is. Anything else is a programming error and throws as one — never a
 // CoachError a route would turn into a polite refusal, and never a plan by default.
-export const KINDS = ['create', 'review', 'debrief', 'parse-wod'];
+export const KINDS = ['create', 'review', 'debrief', 'ask', 'parse-wod'];
 // The providers that send an image. The fixture answers a canned program for CI and dev.
 // Gemini's adapter has no image part, so it is not here. `claude` sends it through the Agent
 // SDK's streaming input (adapters/claude.js promptFor).
@@ -237,22 +238,22 @@ export function enqueue(uid, opts) {
     if (cred.reason === 'shared-account') throw new CoachError('shared', cred.message);
     throw new CoachError('off', 'this profile has no provider account connected');
   }
-  // Spending is what binds: a personal credential (setup token, OAuth) belongs to the first
-  // profile that runs a job on it from here on; an API key binds to nobody and is shared.
-  cfgStore.bindInstanceCredential(uid);
-
   // The privilege drop is what keeps a provider runtime out of ./data. If it cannot be
   // performed, there is no job — see canDropPrivileges for why this is not a warning either.
   // A provider that spawns nothing has no process to drop, and is not refused for it.
-  if (adapterFor(cfgStore.load().provider)?.spawns !== false) {
-    const priv = canDropPrivileges();
-    if (!priv.ok) throw new CoachError('unprivileged', `Coach jobs are disabled: ${priv.why}`);
-  }
+  // Asked before the bind below: a job refused here spends nothing, so it must not bind.
+  const refusal = privilegeRefusal(adapterFor(cfgStore.load().provider));
+  if (refusal) throw new CoachError('unprivileged', refusal);
 
+  // The caps, before the bind for the same reason: a job refused for the day spends nothing.
   const caps = cfgStore.load().caps || {};
   const { used, limit } = capState(uid);
   if (limit > 0 && used >= limit) throw new CoachError('cap', 'daily limit reached');
   if (caps.instanceDaily > 0 && instanceUsedToday() >= caps.instanceDaily) throw new CoachError('cap', 'this instance has reached its daily limit');
+
+  // Spending is what binds: a personal credential (setup token, OAuth) belongs to the first
+  // profile that runs a job on it from here on; an API key binds to nobody and is shared.
+  cfgStore.bindInstanceCredential(uid);
 
   // Counted at enqueue, not at completion: the cap exists to bound what one profile can spend
   // of the owner's provider account, and queueing twenty jobs spends it whether or not the
@@ -270,6 +271,9 @@ export function enqueue(uid, opts) {
     intake: opts.intake || null,
     note: clampMessage(opts.note),
     refine: clampMessage(opts.refine),
+    // A question's running session, sent by the phone (the server never holds `active`). Kept on
+    // the in-memory job only, never in the user's file; the payload builder bounds it.
+    today: opts.kind === 'ask' && opts.today && typeof opts.today === 'object' ? opts.today : null,
     lang: payloadLib.langTag(opts.lang),              // the language the app was showing (#303)
     // parse-wod only. The image lives on this in-memory object and nowhere else: patchUser
     // below copies id/kind/state/startedAt, so it never reaches the user's file.
@@ -356,6 +360,11 @@ async function execute(job) {
   const cfg = cfgStore.load();
   const adapter = adapterFor(cfg.provider);
   if (!adapter) return finish(job, { outcome: 'failed', errorClass: 'off' });
+  // The gate again, for the provider this job actually runs on: enqueue asked about the one
+  // configured then, and a job that waited behind two others would otherwise spawn without the
+  // drop if the admin had switched from an HTTPS provider to a runtime-backed one meanwhile.
+  const refusal = privilegeRefusal(adapter);
+  if (refusal) return finish(job, { outcome: 'failed', errorClass: 'unprivileged', detail: refusal });
 
   // Before payload.build, on purpose: a parse sends the image and its date, and nothing the
   // payload builder would add — no plan, no history, no body weight, no profile.
@@ -374,6 +383,7 @@ async function execute(job) {
     refine: job.refine,
     previous: pendingCreate?.bundle || null,
     workoutId: job.workoutId,
+    today: job.today,
     // The app says which language it is in. A scheduled review has no app behind it: a profile
     // that never picked a language then gets the instance's DEFAULT_LANG, like its screens do.
     lang: job.lang || (S.langAuto === true ? payloadLib.langTag(process.env.DEFAULT_LANG) : null),
@@ -401,8 +411,12 @@ async function execute(job) {
     expiresAt: Date.now() + PENDING_DAYS * 86400000,
     planHash: hashPlan(payloadLib.canonicalPlan(S)),
     iteration: job.refine ? (pendingCreate?.iteration || 1) + 1 : 1,
+    // Nobody asked for a scheduled one, so nobody is watching for it: a phone app has no web
+    // push, and says so itself when it next comes to the foreground (lib/coach-schedule.js).
+    ...(job.trigger === 'scheduled' ? { trigger: 'scheduled' } : {}),
     // A debrief names the session it read, so the card can show it after the fact.
     ...(job.kind === 'debrief' ? { workout: payloadLib.workoutMeta(S, job.workoutId) } : {}),
+    ...(job.kind === 'ask' ? { prev: waitingProposal(readUser(job.uid).pending) } : {}),
     ...attempt.result
   };
   return finish(job, { outcome: 'ready', pending });
@@ -461,7 +475,9 @@ export function resolvePending(uid, { accepted = [], rejected = [], dismissed = 
     outcome: dismissed ? 'dismissed' : 'applied',
     accepted: accepted.length, rejected: rejected.length, at: Date.now()
   }].slice(-HISTORY_MAX);
-  writeUser(uid, { ...rec, pending: null, history });
+  // A read answer gives back the proposal it was asked beside (core/pending.js).
+  const back = rec.pending.kind === 'ask' ? waitingProposal(rec.pending.prev) : null;
+  writeUser(uid, { ...rec, pending: back, history });
   return { ok: true };
 }
 
@@ -523,6 +539,10 @@ export async function testRun() {
   const cfg = cfgStore.load();
   const adapter = adapterFor(cfg.provider);
   if (!adapter) return { ok: false, error: 'no provider configured' };
+  // The same gate as enqueue: this spawns the runtime a job would, and without the drop the
+  // child runs as this process and can read ./data.
+  const refusal = privilegeRefusal(adapter);
+  if (refusal) return { ok: false, error: refusal };
   const jobDir = adapter.spawns === false ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'coach-test-'));
   try {
     // No user asked for this, so there is no profile whose account is being spent. In instance

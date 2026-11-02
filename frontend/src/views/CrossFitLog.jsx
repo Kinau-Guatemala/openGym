@@ -61,7 +61,7 @@ export default function CrossFitLog() {
 
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" onClick={() => ((window.history.state?.idx || 0) > 0 ? nav(-1) : nav('/crossfit', { replace: true }))} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <button className="iconbtn" data-back="/crossfit" onClick={() => ((window.history.state?.idx || 0) > 0 ? nav(-1) : nav('/crossfit', { replace: true }))} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
       <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
         <h1>{t('Log WOD')}</h1>
         <div className="sub">{[fmtDate(date, true), program.title].filter(Boolean).join(' · ')}</div>
