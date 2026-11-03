@@ -37,7 +37,7 @@ test('feedProgram keeps the allowlisted fields and drops everything else, unknow
           dose: { reps: 5 }, doseFemale: { reps: 4 }, rx: { male: { w: 95, unit: 'lb' }, female: null },
           steps: [{ reps: 3, rx: { male: { w: 135, unit: 'lb' } } }],
           perSide: false, slot: null,
-          alts: [{ rawName: 'ring rows', exId: '9', dose: { reps: 8 } }]
+          alts: [{ rawName: 'ring rows', exId: null, dose: { reps: 8 } }]
         }]
       }]
     }]
@@ -73,4 +73,18 @@ test('buildFeed: the document, and an empty one', () => {
     { v: 1, box: 'Holy Program', updatedAt: '2026-11-03T12:00:00.000Z', programs: [] });
   assert.deepEqual(buildFeed(null, { today: '2026-11-03', now: 0 }).programs, []);
   assert.equal(feedUrl('Kinau-Guatemala/holy-wods'), 'https://raw.githubusercontent.com/Kinau-Guatemala/holy-wods/main/feed.json');
+});
+
+test('only a catalogue exId travels: a custom exercise id goes as null, movements and alts alike', () => {
+  const p = { tracks: [{ label: 'A', kind: 'main', blocks: [{ label: 'B', format: 'other', movements: [
+    { rawName: 'a', exId: '0651', alts: [{ rawName: 'b', exId: '12345' }, { rawName: 'c', exId: 'lq3x9k2a' }] },
+    { rawName: 'd', exId: 'lq3x9k2b', alts: [{ rawName: 'e', exId: 651 }] },
+    { rawName: 'f', exId: null },
+    { rawName: 'g' }
+  ] }] }] };
+  const ms = feedProgram(p).tracks[0].blocks[0].movements;
+  assert.deepEqual(ms.map(m => m.exId), ['0651', null, null, undefined]);
+  assert.deepEqual(ms[0].alts.map(a => a.exId), ['12345', null]);
+  assert.deepEqual(ms[1].alts.map(a => a.exId), [null]);
+  assert.ok(!JSON.stringify(ms).includes('lq3x9k2'));
 });

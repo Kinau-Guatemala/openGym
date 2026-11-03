@@ -42,13 +42,13 @@ function fakeTimers() {
   };
 }
 
-function setup({ script, env = ENV } = {}) {
+function setup({ script, env = ENV, clock = { t: NOW } } = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'box-feed-'));
   const gh = fakeGitHub(script);
   const timers = fakeTimers();
   const lines = [];
   const log = { log: (...a) => lines.push(a.join(' ')), error: (...a) => lines.push(a.join(' ')) };
-  const make = () => createBoxFeed({ env, dataDir, fetch: gh.fetch, log, now: () => NOW, setTimer: timers.setTimer, clearTimer: timers.clearTimer });
+  const make = () => createBoxFeed({ env, dataDir, fetch: gh.fetch, log, now: () => clock.t, setTimer: timers.setTimer, clearTimer: timers.clearTimer });
   return { dataDir, gh, timers, lines, make, feed: make() };
 }
 
@@ -153,4 +153,18 @@ test('a failed push is logged and kept without the token, retried with backoff, 
   await timers.fire();
   assert.equal(gh.puts().length, 1);
   assert.equal(feed.status().error, null);
+});
+
+test('the debounce never holds a push back more than 5 minutes after the first unpublished save', async () => {
+  const clock = { t: NOW };
+  const { feed, timers, gh } = setup({ clock });
+  const save = (after, title) => { clock.t = NOW + after; feed.noteWrite('diego', { wods: { '2026-11-03': wod(title) } }); return timers.ms; };
+  assert.equal(save(0, 'a'), 30000);
+  assert.equal(save(200000, 'b'), 30000);
+  assert.equal(save(290000, 'c'), 10000);
+  assert.equal(save(320000, 'd'), 0);
+  await timers.fire();
+  assert.equal(gh.puts().length, 1);
+  // Published: the next save starts a fresh 30 s.
+  assert.equal(save(330000, 'e'), 30000);
 });

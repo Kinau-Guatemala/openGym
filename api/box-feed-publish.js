@@ -8,12 +8,13 @@
 //   BOX_FEED_TOKEN  a fine-grained token, Contents read and write on that one repo
 //   BOX_FEED_NAME   the box's display name
 //   BOX_FEED_DAYS   past days kept (default 14)
+//   BOX_FEED_API    the GitHub API base (default https://api.github.com), for the tests' stub
 //
 // The token goes into an Authorization header and nowhere else: not the state, not the status
 // the admin card reads, not a log line or an error (scrub() runs over every message kept).
 //
 // A save arms a 30 s timer and every later save re-arms it, so a review session that saves five
-// times pushes once. When it fires, the feed's programs are hashed and compared with the hash of
+// times pushes once; never later than 5 minutes after the first save not yet published. When it fires, the feed's programs are hashed and compared with the hash of
 // the last push (DATA_DIR/box-feed.json): unchanged, nothing goes out. A failed push is retried
 // after 1, 5 and 15 minutes, then left for the next save.
 import crypto from 'node:crypto';
@@ -25,6 +26,7 @@ import { fetchFor } from './coach/node-fetch.js';
 
 const REPO = /^[\w.-]+\/[\w.-]+$/;
 const DEBOUNCE_MS = 30000;
+const MAX_WAIT_MS = 300000;
 const RETRY_MS = [60000, 300000, 900000];
 
 /** The publishing settings from `env`, or null when any of them is missing (publishing off). */
@@ -33,7 +35,8 @@ export function boxFeedConfig(env = process.env) {
   const uid = s('BOX_FEED_UID'), repo = s('BOX_FEED_REPO'), token = s('BOX_FEED_TOKEN'), name = s('BOX_FEED_NAME');
   if (!uid || !REPO.test(repo) || !token || !name) return null;
   const days = s('BOX_FEED_DAYS') ? Math.floor(Number(s('BOX_FEED_DAYS'))) : NaN;
-  return { uid, repo, token, name, days: days >= 0 ? days : BOX_FEED_DAYS };
+  const api = (s('BOX_FEED_API') || 'https://api.github.com').replace(/\/+$/, '');
+  return { uid, repo, token, name, days: days >= 0 ? days : BOX_FEED_DAYS, api };
 }
 
 const scrubber = token => msg => String(msg || '').split(token).join('***').slice(0, 300);
@@ -43,9 +46,9 @@ const scrubber = token => msg => String(msg || '').split(token).join('***').slic
  * a 409 (the sha moved) or a 422 (a sha was needed) reads it again and tries once more.
  * Throws an Error whose message names the step and GitHub's answer, never the token.
  */
-export async function pushFeed({ repo, token, content, message, fetch }) {
+export async function pushFeed({ repo, token, content, message, fetch, api = 'https://api.github.com' }) {
   const scrub = scrubber(token);
-  const url = `https://api.github.com/repos/${repo}/contents/feed.json`;
+  const url = `${api}/repos/${repo}/contents/feed.json`;
   const headers = {
     authorization: `Bearer ${token}`, accept: 'application/vnd.github+json',
     'x-github-api-version': '2022-11-28', 'user-agent': 'opengym-box-feed'
@@ -84,7 +87,7 @@ const OFF = { on: false, noteWrite() {}, status: () => ({ on: false }), forUser:
  */
 export function createBoxFeed({
   env = process.env, dataDir, fetch = fetchFor(30000), log = console, now = Date.now,
-  setTimer = setTimeout, clearTimer = clearTimeout, debounceMs = DEBOUNCE_MS, retryMs = RETRY_MS
+  setTimer = setTimeout, clearTimer = clearTimeout, debounceMs = DEBOUNCE_MS, maxWaitMs = MAX_WAIT_MS, retryMs = RETRY_MS
 } = {}) {
   const cfg = boxFeedConfig(env);
   if (!cfg) return OFF;
@@ -99,16 +102,18 @@ export function createBoxFeed({
     try { atomicWrite(file, JSON.stringify(saved)); } catch (e) { log.error('box feed: cannot save its status:', e?.message); }
   };
 
-  let wods = null, timer = null, running = false, tries = 0;
+  // firstAt: when the oldest save not yet published landed, for the debounce's maximum wait.
+  let wods = null, timer = null, running = false, tries = 0, firstAt = null;
   const arm = ms => {
     if (timer) clearTimer(timer);
-    timer = setTimer(run, ms);
+    timer = setTimer(() => run().catch(e => log.error('box feed:', scrub(e?.message || e))), ms);
     timer?.unref?.();
   };
 
   async function run() {
     timer = null;
     if (running) return arm(debounceMs);           // saved again mid-push: once more after it
+    firstAt = null;
     const feed = buildFeed(wods, { name: cfg.name, today: new Date(now()).toISOString().slice(0, 10), days: cfg.days, now: now() });
     const hash = crypto.createHash('sha256').update(JSON.stringify([feed.box, feed.programs])).digest('hex');
     if (hash === saved.hash) return;
@@ -116,7 +121,7 @@ export function createBoxFeed({
     const message = dates.length ? `feed: ${dates[0]}..${dates[dates.length - 1]}` : 'feed: no programs';
     running = true;
     try {
-      await pushFeed({ repo: cfg.repo, token: cfg.token, content: JSON.stringify(feed, null, 1) + '\n', message, fetch });
+      await pushFeed({ repo: cfg.repo, token: cfg.token, content: JSON.stringify(feed, null, 1) + '\n', message, fetch, api: cfg.api });
       tries = 0;
       keep({ hash, pushedAt: now(), error: null, errorAt: null });
       log.log(`box feed: pushed ${dates.length} programs to ${cfg.repo}`);
@@ -135,7 +140,8 @@ export function createBoxFeed({
       if (uid !== cfg.uid) return;
       wods = state?.wods ?? null;
       tries = 0;
-      arm(debounceMs);
+      if (firstAt == null) firstAt = now();
+      arm(Math.max(0, Math.min(debounceMs, firstAt + maxWaitMs - now())));
     },
     status: () => ({
       on: true, repo: cfg.repo, url, pushedAt: saved.pushedAt || null,

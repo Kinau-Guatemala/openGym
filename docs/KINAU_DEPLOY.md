@@ -155,10 +155,10 @@ Every program one account saves can be published to a public `feed.json`, so the
    | `BOX_FEED_DAYS` | optional, past days kept (default 14); upcoming programs are always in |
 
    With any of the first four missing, publishing is off and nothing else changes.
-4. Restart the api. It checks the account's programs at start, and after every save it waits 30 seconds for more saves, then pushes once if what the feed carries changed. A failed push is retried after 1, 5 and 15 minutes, then waits for the next save.
+4. Restart the api. It checks the account's programs at start, and after every save it waits 30 seconds for more saves (5 minutes at most after the first), then pushes once if what the feed carries changed. A failed push is retried after 1, 5 and 15 minutes, then waits for the next save.
 5. **Admin dashboard → Box feed** shows when it last published, or the error. **Settings → CrossFit** on the publishing account shows the feed's link and a QR code for members to scan.
 
-The feed carries each program's date, title, tracks, blocks and movements (printed text, dose, Rx, steps, the exercise it resolved to), the box name and when it was updated. Never logged scores, picks, notes or anything else from the account: the fields are an allowlist (`api/box-feed.js`). The token is only ever sent to GitHub, never to the app, the data folder or the logs. `DATA_DIR/box-feed.json` keeps the hash of the last push and its status.
+The feed carries each program's date, title, tracks, blocks and movements (printed text, dose, Rx, steps, the catalogue exercise it resolved to; a custom exercise goes without its id), the box name and when it was updated. Never logged scores, picks, notes or anything else from the account: the fields are an allowlist (`api/box-feed.js`). The token is only ever sent to GitHub, never to the app, the data folder or the logs. `DATA_DIR/box-feed.json` keeps the hash of the last push and its status.
 
 ## The Android app
 

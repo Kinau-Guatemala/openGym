@@ -13,14 +13,18 @@ export const BOX_FEED_DAYS = 14
 
 // Every field a feed carries, by level. A value of `true` is copied as it is if it is a string,
 // number, boolean or null; an object names the fields of the object (or of each entry of the
-// array) it holds.
+// array) it holds; a function makes the value.
 const LOAD = { w: true, unit: true }
 const RX = { male: LOAD, female: LOAD }
 const DOSE = { reps: true, repsMax: true, cal: true, m: true, sec: true, sets: true, restSec: true }
 const STEP = { reps: true, cal: true, m: true, sec: true, rx: RX }
-const ALT = { raw: true, rawName: true, exId: true, dose: DOSE, doseFemale: DOSE, rx: RX, perSide: true }
+// A catalogue id (4 or 5 digits) travels; a custom exercise's (the owner's uid(), with letters)
+// points into a customEx the feed does not carry, so it goes as null and the reader resolves
+// the movement from its rawName.
+const EX_ID = v => (typeof v === 'string' && /^\d{4,5}$/.test(v) ? v : null)
+const ALT = { raw: true, rawName: true, exId: EX_ID, dose: DOSE, doseFemale: DOSE, rx: RX, perSide: true }
 export const MOVEMENT_FIELDS = {
-  raw: true, rawName: true, exId: true, dose: DOSE, doseFemale: DOSE, rx: RX, steps: STEP,
+  raw: true, rawName: true, exId: EX_ID, dose: DOSE, doseFemale: DOSE, rx: RX, steps: STEP,
   perSide: true, slot: true, alts: ALT
 }
 export const BLOCK_FIELDS = {
@@ -41,7 +45,8 @@ function pick(v, spec) {
   for (const [k, sub] of Object.entries(spec)) {
     if (!Object.hasOwn(v, k)) continue
     const x = v[k]
-    if (sub === true) { if (scalar(x)) out[k] = x }
+    if (typeof sub === 'function') out[k] = sub(x)
+    else if (sub === true) { if (scalar(x)) out[k] = x }
     else if (Array.isArray(x) || isMap(x)) out[k] = pick(x, sub)
     else if (x === null) out[k] = null
   }
