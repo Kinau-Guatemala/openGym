@@ -7,6 +7,7 @@ import {
   REFRESH_MS, MAX_FEED_BYTES, boxRows, cachedFeed, clearBoxFeed, cleanProgram, fetchFeed, forgetOtherFeeds,
   httpsUrl, keepFeed, parseFeed, refreshBoxFeed, _reset,
 } from './box-subscribe.js'
+import { buildFeed } from './box-feed.js'
 
 const URL1 = 'https://raw.githubusercontent.com/box/wods/main/feed.json'
 const CACHE_KEY = 'gym_box_feed_v1'
@@ -49,6 +50,18 @@ describe('parseFeed', () => {
     expect(p.tracks[0].id).toBe('t0')
     expect(p.tracks[0].blocks[0].id).toBe('b0')
     expect(p.tracks[0].blocks[0].movements.map(m => m.id)).toEqual(['m0', 'm1'])
+  })
+
+  it('reads back what the publisher builds (T31 buildFeed), editor ids and private fields gone', () => {
+    const saved = { ...program(), _ts: 5, tracks: program().tracks.map(tr => ({ ...tr, id: 'full', blocks: tr.blocks.map(b => ({ ...b, id: 'b3', include: false,
+      movements: b.movements.map((m, i) => ({ ...m, id: 'm' + (i + 4), via: 'guess' })) })) })) }
+    saved.tracks[0].blocks[0].movements[1].exId = 'abc123'   // a custom exercise of the publisher's
+    const feed = JSON.parse(JSON.stringify(buildFeed({ '2026-10-28': saved }, { name: 'Holy Program', today: '2026-10-28', now: 0 })))
+    const p = parseFeed(feed).programs['2026-10-28']
+    expect(p.tracks[0].blocks[0].id).toBe('b0')
+    expect(p.tracks[0].blocks[0].movements.map(m => [m.id, m.exId])).toEqual([['m0', '3305'], ['m1', null]])
+    expect(p.tracks[0].blocks[0].movements[1].alts[0].exId).toBe('0043')
+    expect(JSON.stringify(p)).not.toMatch(/"(include|via|_ts)"/)
   })
 
   it('keeps the feed’s catalogue exercise ids, and only those', () => {

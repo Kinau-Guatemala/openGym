@@ -35,6 +35,8 @@ describe('the box feed in Settings → CrossFit', () => {
     useStore.setState({ config: { coach: null } })
     await mount()
     expect(host.querySelector('canvas[data-qr]')).toBeNull()
-    expect(host.textContent).not.toContain('Box feed')
+    // The publisher's link and QR; the member's own Box feed row (T32) is there for everyone.
+    expect(host.querySelector(`a[href="${URL}"]`)).toBeNull()
+    expect(host.textContent).not.toContain("Your box's members scan this code")
   })
 })

@@ -35,7 +35,7 @@ import { MUSCLE_NAME } from '../lib/muscles.js'
 import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod, quotaText } from '../lib/coach-api.js'
-import { boxRows, cachedAt, cachedFeed, clearBoxFeed, fetchFeed, forgetOtherFeeds, httpsUrl, keepFeed, refreshBoxFeed, subscribeBoxFeed } from '../lib/box-subscribe.js'
+import { boxPrint, boxRows, cachedAt, cachedFeed, clearBoxFeed, fetchFeed, forgetOtherFeeds, httpsUrl, keepFeed, refreshBoxFeed, subscribeBoxFeed } from '../lib/box-subscribe.js'
 import { MOBILE } from '../lib/mobile.js'
 import { INTAKE_ROUTE, beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fromDataUrl, isoForChoice, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
@@ -100,7 +100,7 @@ export default function CrossFit() {
       <div className="grow" style={{ minWidth: 0 }}>
         <div className="tt">{w.title || fmtDate(d, true)}</div>
         <div className="ss">{[fromBox ? feed.box : null, w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</div>
-        {!fromBox && feed?.programs[d] && <button className="small" style={LINK} onClick={e => { e.stopPropagation(); nav('/crossfit/box/' + d) }}>
+        {!fromBox && feed?.programs[d] && boxPrint(feed.programs[d]) !== w.boxPrint && <button className="small" style={LINK} onClick={e => { e.stopPropagation(); nav('/crossfit/box/' + d) }}>
           {t('Box version available')}</button>}
       </div>
       {d <= today && <Button size="sm" variant="tinted" style={{ width: 'auto', flex: 'none' }}
@@ -165,10 +165,11 @@ function useBoxFeed(url) {
 // from then on it is theirs; a later feed does not change it. Their own program for the day is
 // replaced only once they say so. A movement the feed names no catalogue exercise for (the
 // publisher's own exercise, or none picked) is resolved from its printed name and the member's
-// picks, as a parsed program is (lib/wod-draft.js resolveInto).
+// picks, as a parsed program is (lib/wod-draft.js resolveInto). The copy remembers which version
+// of the box's it came from (boxPrint), so "Box version available" waits for a different one.
 export const boxCopy = (program, aliases) => {
   const fill = m => (m.exId ? m : resolveInto(m, aliases))
-  const p = structuredClone(program)
+  const p = { ...structuredClone(program), boxPrint: boxPrint(program) }
   for (const tr of p.tracks) for (const b of tr.blocks) b.movements = b.movements.map(m => ({ ...fill(m), alts: (m.alts || []).map(fill) }))
   return p
 }
@@ -807,6 +808,7 @@ export function CrossFitSettings({ S, update }) {
         <a href={feedUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all', fontSize: '.8rem' }}>{feedUrl}</a>
       </div>
     </Section>}
+    <BoxFeedSettings S={S} update={update} />
     <Section title={t('Programs')}>
       <Row icon="flame" iconTint="var(--orange)" title={t('Count warm-ups')}
         subtitle={t('Warm-up blocks in a main track start included. Extra tracks always count theirs.')}>
@@ -823,7 +825,6 @@ export function CrossFitSettings({ S, update }) {
         <button className="iconbtn" aria-label={t('Remove {0}', key)} onClick={() => useStore.getState().clearAlias(key)}><Icon name="xmark" /></button>
       </Row>)}
     </Section>
-    <BoxFeedSettings S={S} update={update} />
   </>
 }
 

@@ -2763,7 +2763,6 @@ export default {
   'The icon could not be changed.': 'Не удалось сменить значок.',
   'Try the Halloween app icon': 'Попробуй хеллоуинский значок приложения',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'Лента зала',
   'Box version available': 'Есть версия зала',
   'From {0}': 'От {0}',
   'Earlier from {0}': 'Раньше, от {0}',

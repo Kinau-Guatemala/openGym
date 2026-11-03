@@ -2759,7 +2759,6 @@ export default {
   'The icon could not be changed.': 'Não foi possível mudar o ícone.',
   'Try the Halloween app icon': 'Experimenta o ícone de Halloween da app',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'Feed da box',
   'Box version available': 'Versão da box disponível',
   'From {0}': 'Da {0}',
   'Earlier from {0}': 'Antes, da {0}',

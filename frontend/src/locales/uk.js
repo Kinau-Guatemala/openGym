@@ -2756,7 +2756,6 @@ export default {
   'The icon could not be changed.': 'Не вдалося змінити значок.',
   'Try the Halloween app icon': 'Спробуй гелловінський значок застосунку',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'Стрічка залу',
   'Box version available': 'Є версія залу',
   'From {0}': 'Від {0}',
   'Earlier from {0}': 'Раніше, від {0}',

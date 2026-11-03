@@ -2752,7 +2752,6 @@ export default {
   'The icon could not be changed.': '無法更換圖示。',
   'Try the Halloween app icon': '試試萬聖節 App 圖示',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': '館的訂閱來源',
   'Box version available': '有館的版本',
   'From {0}': '來自 {0}',
   'Earlier from {0}': '更早，來自 {0}',

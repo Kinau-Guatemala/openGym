@@ -2759,7 +2759,6 @@ export default {
   'The icon could not be changed.': '아이콘을 바꾸지 못했어요.',
   'Try the Halloween app icon': '핼러윈 앱 아이콘 써 보기',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': '박스 피드',
   'Box version available': '박스 버전 있음',
   'From {0}': '{0}에서',
   'Earlier from {0}': '이전, {0}에서',

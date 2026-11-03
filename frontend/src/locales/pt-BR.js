@@ -1841,7 +1841,6 @@ export const PT_BR_OVERRIDES = {
   'Just for this phone. Some home screens take a moment to catch up.': 'Só para este celular. Algumas telas iniciais demoram um pouco para perceber.',
   'Try the Halloween app icon': 'Experimente o ícone de Halloween do app',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'Feed do box',
   'Box version available': 'Versão do box disponível',
   'From {0}': 'Do {0}',
   'Earlier from {0}': 'Antes, do {0}',

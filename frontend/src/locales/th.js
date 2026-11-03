@@ -2770,7 +2770,6 @@ export default {
   'The icon could not be changed.': 'เปลี่ยนไอคอนไม่ได้',
   'Try the Halloween app icon': 'ลองไอคอนแอปฮาโลวีน',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'ฟีดของยิม',
   'Box version available': 'มีเวอร์ชันของยิม',
   'From {0}': 'จาก {0}',
   'Earlier from {0}': 'ก่อนหน้า จาก {0}',

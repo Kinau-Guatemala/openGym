@@ -2838,7 +2838,6 @@ export default {
   'The icon could not be changed.': 'আইকন বদলানো গেল না।',
   'Try the Halloween app icon': 'হ্যালোইন অ্যাপ আইকন চেষ্টা করুন',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'বক্স ফিড',
   'Box version available': 'বক্সের সংস্করণ আছে',
   'From {0}': '{0} থেকে',
   'Earlier from {0}': 'আগে, {0} থেকে',

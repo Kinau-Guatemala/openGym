@@ -2797,7 +2797,6 @@ export default {
   'Other day…': 'Annan dag…',
   'Replaces the program saved for {0}': 'Ersätter programmet som sparats för {0}',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'Boxens flöde',
   'Box version available': 'Boxens version finns',
   'From {0}': 'Från {0}',
   'Earlier from {0}': 'Tidigare från {0}',

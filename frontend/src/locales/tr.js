@@ -2759,7 +2759,6 @@ export default {
   'The icon could not be changed.': 'Simge değiştirilemedi.',
   'Try the Halloween app icon': 'Cadılar Bayramı uygulama simgesini dene',
   // T32 · box feed, member side (Settings → CrossFit, the program list)
-  'Box feed': 'Salon akışı',
   'Box version available': 'Salonun sürümü var',
   'From {0}': '{0} kaynağından',
   'Earlier from {0}': 'Daha önce, {0} kaynağından',

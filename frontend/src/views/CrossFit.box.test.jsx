@@ -11,9 +11,11 @@ import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { _reset, cachedFeed, keepFeed, parseFeed } from '../lib/box-subscribe.js'
 import CrossFit, { CrossFitBox, CrossFitSettings } from './CrossFit.jsx'
+import { _setLangState } from '../lib/i18n-core.js'
+import es from '../locales/es.js'
 
-const scan = vi.hoisted(() => ({ code: null }))
-vi.mock('../lib/scan.js', () => ({ scanCode: vi.fn(async () => scan.code) }))
+const scan = vi.hoisted(() => ({ code: null, fail: false }))
+vi.mock('../lib/scan.js', () => ({ scanCode: vi.fn(async () => { if (scan.fail) throw new Error('permission-denied'); return scan.code }) }))
 vi.mock('../lib/mobile.js', async orig => ({ ...await orig(), MOBILE: true }))
 
 const URL1 = 'https://raw.githubusercontent.com/box/wods/main/feed.json'
@@ -70,6 +72,7 @@ beforeEach(() => {
   useUI.setState({ sheets: [], toastMsg: '' })
   useStore.setState({ S: clone(DEF), user: null, ready: true })
   scan.code = null
+  scan.fail = false
 })
 afterEach(() => {
   unsub()
@@ -99,6 +102,19 @@ describe('subscribing', () => {
     await mount('/settings')
     await click(button(host, 'Scan QR code'))
     expect(useStore.getState().S.boxFeed).toBe(URL1)
+  })
+
+  // The scan button and its error only show in the phone app (MOBILE, mocked on here), which
+  // CrossFit.es.test.jsx does not render: their Spanish is checked here.
+  it('the scan button and its error, in Spanish', async () => {
+    _setLangState('es', es, null, null, false)
+    try {
+      scan.fail = true
+      await mount('/settings')
+      await click(button(host, es['Scan QR code']))
+      expect(host.textContent).toContain(es['The camera could not scan. Paste the address instead.'])
+      expect(host.textContent).not.toMatch(/Scan QR code|The camera could not scan/)
+    } finally { _setLangState('en', {}, null, null) }
   })
 
   it('an http address is refused without being fetched', async () => {
@@ -175,6 +191,17 @@ describe('the program list', () => {
     const own = useStore.getState().S.wods[TODAY]
     expect(own.title).toBe('Box today')
     expect(own.tracks[0].blocks[0].movements[0].exId).toBe('1160')
+  })
+
+  it('a copy hides the box’s version until the box changes it', async () => {
+    subscribed()
+    await mount('/crossfit')
+    await click(button([...host.querySelectorAll('.item')].find(r => r.textContent.includes('Box today')), 'Log'))
+    act(() => root.unmount()); host.remove()
+    await mount('/crossfit')
+    expect(button(host, 'Box version available')).toBe(undefined)
+    await act(async () => keepFeed(URL1, parseFeed({ ...FEED, programs: [{ date: TODAY, ...published('Changed by the box') }] })))
+    expect(button(host, 'Box version available')).toBeTruthy()
   })
 })
 
