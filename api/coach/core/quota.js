@@ -11,10 +11,12 @@ export function quotaResetsAt(text, now, retryAfter) {
     const at = Number.isFinite(secs) ? now + secs * 1000 : Date.parse(retryAfter);
     if (Number.isFinite(at) && at > now) return new Date(at).toISOString();
   }
-  const m = /\bresets\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?(?:\s*\(\s*([^)]*?)\s*\)|\s+(utc|gmt)\b)?/i.exec(String(text || ''));
+  // Nothing may stick to the time (a cut "10:50p" is no time), and whatever word or parenthesis
+  // follows it is its zone, cut or not: "UTC+2", "PT" or "(Ameri" refuse rather than read as UTC.
+  const m = /\bresets\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?(?![a-z\d])(?:\s*\(([^)]*)\)?|\s+([a-z][\w/+:-]*))?/i.exec(String(text || ''));
   if (!m || (!m[2] && !m[3])) return null;
   const zone = m[4] ?? m[5];
-  if (zone != null && !/^(utc|gmt|z)$/i.test(zone)) return null;
+  if (zone != null && !/^(utc|gmt|z)$/i.test(zone.trim())) return null;
   let h = Number(m[1]);
   const min = m[2] ? Number(m[2]) : 0;
   if (min > 59) return null;

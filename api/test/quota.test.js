@@ -72,6 +72,12 @@ test('am and pm, 12 o\'clock both ways, and no zone printed reads as UTC', () =>
   assert.equal(quotaResetsAt('resets 12am', NOW), '2026-11-03T00:00:00.000Z');
   assert.equal(quotaResetsAt('resets 12:30pm', NOW), '2026-11-03T12:30:00.000Z');
   assert.equal(quotaResetsAt('resets 21:00', NOW), '2026-11-02T21:00:00.000Z');
+  assert.equal(quotaResetsAt('resets 12:30am', NOW), '2026-11-03T00:30:00.000Z');
+  assert.equal(quotaResetsAt('resets 22:50 (UTC)', NOW), '2026-11-02T22:50:00.000Z');
+  for (const zone of ['UTC', 'GMT', 'Z', '(GMT)', '(Z)', '( UTC )', 'UTC.', '(UTC) · upgrade', 'UTC · upgrade']) {
+    assert.equal(quotaResetsAt(`resets 10:50pm ${zone}`, NOW), '2026-11-02T22:50:00.000Z', zone);
+  }
+  assert.equal(quotaResetsAt('resets 10:50pm (UTC). Upgrade for more', NOW), '2026-11-02T22:50:00.000Z');
 });
 
 test('a time already gone today is tomorrow, across the month too', () => {
@@ -88,7 +94,10 @@ test('a Retry-After wins, in seconds or as an HTTP date', () => {
 
 test('nothing usable is null, never a guess', () => {
   for (const text of [null, '', '429 Too Many Requests', 'resets soon', 'resets 13pm', 'resets 10:75pm', 'resets 25:00', 'resets 10',
-    'resets Nov 5 at 10pm', 'resets 10:50pm (America/New_York)', 'garbage ¯\\_(ツ)_/¯']) {
+    'resets Nov 5 at 10pm', 'resets 10:50pm (America/New_York)', 'garbage ¯\\_(ツ)_/¯',
+    // A zone it does not read, bare or in parentheses, and text cut mid-time or mid-zone.
+    'resets 10:50pm UTC+2', 'resets 10:50pm GMT-6', 'resets 10:50 PM PT', 'resets 3am EST', 'resets 10:50pm CST · try again',
+    '429 You\'ve hit your session limit · resets 10:50p', '429 You\'ve hit your session limit · resets 10:50pm (Ameri']) {
     assert.equal(quotaResetsAt(text, NOW), null, String(text));
   }
   assert.equal(quotaResetsAt('429', NOW, '0'), null, 'a Retry-After of now is not a time to wait for');

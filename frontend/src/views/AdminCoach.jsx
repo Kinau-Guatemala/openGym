@@ -438,7 +438,7 @@ const failureTitle = (cls, resetsAt) => ({
   unusable: 'The model answered, but not in a shape the app could use',
   novision: 'The model could not read the routine image (it refused it, or answered an empty program). Pick a vision model',
   quota: 'The AI provider’s usage limit is reached. This is the provider account’s limit, not openGym’s. '
-    + (resetsAt ? `Try again after ${new Date(resetsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : 'Try again later.'),
+    + (Date.parse(resetsAt) > Date.now() ? `Try again after ${new Date(resetsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : 'Try again later.'),
   restart: 'The server restarted while a job was running',
   nostate: 'The user\'s training data could not be read',
   off: 'The Coach was off when the job ran',

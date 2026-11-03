@@ -248,9 +248,9 @@ export const BYOK_ERRORS = {
 export function quotaText(resetsAt, now = Date.now()) {
   const at = resetsAt ? Date.parse(resetsAt) : NaN
   // Calendar days between now and then here, so 23:30 to 00:10 is tomorrow. Further out than
-  // that is not a session limit, and "later" says enough.
-  const days = Number.isFinite(at) ? Math.round((new Date(at).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86400000) : NaN
-  if (!(days >= 0 && days <= 1)) return t('The AI provider’s usage limit is reached. Try again later.')
+  // that is not a session limit, and "later" says enough; a time already gone says nothing.
+  const days = Number.isFinite(at) && at > now ? Math.round((new Date(at).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86400000) : NaN
+  if (!(days <= 1)) return t('The AI provider’s usage limit is reached. Try again later.')
   const time = new Date(at).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' })
   return days === 1 ? t('The AI provider’s usage limit is reached. Try again after {0} tomorrow.', time)
     : t('The AI provider’s usage limit is reached. Try again after {0}.', time)

@@ -27,6 +27,10 @@ describe('quotaText', () => {
     const at = new Date(2026, 10, 3, 0, 10)
     expect(quotaText(at.toISOString(), NOW)).toBe(`The AI provider’s usage limit is reached. Try again after ${clock(at)} tomorrow.`)
   })
+  it('a time already gone this evening says later, not "after" it', () => {
+    expect(quotaText(new Date(2026, 10, 2, 19, 30).toISOString(), NOW)).toBe(LATER)
+    expect(quotaText(new Date(NOW).toISOString(), NOW)).toBe(LATER)
+  })
   it('without a time, or with one that is gone or days out, it says later', () => {
     for (const r of [undefined, null, '', 'not a date', new Date(2026, 10, 1, 22, 50).toISOString(), new Date(2026, 10, 6, 9, 0).toISOString()]) {
       expect(quotaText(r, NOW), String(r)).toBe(LATER)
