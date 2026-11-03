@@ -2704,6 +2704,7 @@ export default {
   'Today’s WOD': 'Dagens WOD',
   'Track': 'Spår',
   'Track name': 'Spårets namn',
+  'Full Equipment': 'Full utrustning',
   'Track {0}': 'Spår {0}',
   'Type the movement': 'Skriv rörelsen',
   'Up to': 'Upp till',

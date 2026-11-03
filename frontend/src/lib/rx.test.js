@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { _setLangState } from './i18n-core.js'
 import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from './rx.js'
 
 const hang = { rx: { male: { w: 185, unit: 'lb' }, female: { w: 135, unit: 'lb' } } }
@@ -96,5 +97,13 @@ describe('steps (T26)', () => {
     expect(fmtSteps({ dose: { reps: 20 }, rx: { male: { w: 24, unit: 'kg' }, female: null }, steps: [20, 18, 16].map(reps => ({ reps })) }, { body: 'male', unit: 'kg' })).toBe('20-18-16 @ 24 kg')
     expect(fmtSteps({ dose: { cal: 10 }, steps: [{ cal: 10 }, { cal: 12 }] }, male)).toBe('10-12 cal')
     expect(fmtSteps({ dose: {} }, male)).toBe('')
+  })
+
+  // T28: a converted load keeps its half plate, written the language's way ("102,5" in Spanish).
+  it('fmtSteps: the loads are numbers in the app language', () => {
+    const kg = { body: 'male', unit: 'kg' }
+    expect(fmtSteps(jerks, kg)).toBe('60→102.5 kg')
+    _setLangState('es', {}, null, null)
+    try { expect(fmtSteps(jerks, kg)).toBe('60→102,5 kg') } finally { _setLangState('en', {}, null, null) }
   })
 })

@@ -2238,6 +2238,7 @@ export default {
   'Today’s WOD': '今日 WOD',
   'Track': '分組',
   'Track name': '分組名稱',
+  'Full Equipment': '完整器材',
   'Track {0}': '分組 {0}',
   'Type the movement': '請輸入動作',
   'Up to': '最多',

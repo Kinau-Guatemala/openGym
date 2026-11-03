@@ -2248,6 +2248,7 @@ export default {
   'Today’s WOD': 'Mai WOD',
   'Track': 'Sáv',
   'Track name': 'Sáv neve',
+  'Full Equipment': 'Teljes felszerelés',
   'Track {0}': '{0}. sáv',
   'Type the movement': 'Írd be a mozdulatot',
   'Up to': 'Legfeljebb',

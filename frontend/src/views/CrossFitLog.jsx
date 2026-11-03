@@ -16,7 +16,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf } from '../lib/wod-draft.js'
-import { SCORE_OF, isCardioRow, isMetcon, ladderOf, loggedIn, relogState, setsOf, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -138,7 +138,7 @@ function LogBlock({ S, unit, track, block, on, logged, explainInclude, explainRx
   return <div className="card" style={on ? undefined : { opacity: 0.62 }}>
     <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 17 }}>{block.label || block.format}</div>
+        <div style={{ fontWeight: 600, fontSize: 17 }}>{block.label || formatLabel(block.format)}</div>
         {meta && <div className="small muted">{meta}</div>}
       </div>
       <label className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

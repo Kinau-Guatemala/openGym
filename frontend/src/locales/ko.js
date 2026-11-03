@@ -2245,6 +2245,7 @@ export default {
   'Today’s WOD': '오늘의 WOD',
   'Track': '트랙',
   'Track name': '트랙 이름',
+  'Full Equipment': '전체 장비',
   'Track {0}': '트랙 {0}',
   'Type the movement': '동작을 입력하세요',
   'Up to': '최대',

@@ -2265,6 +2265,7 @@ export default {
   'Today’s WOD': 'Heutiges WOD',
   'Track': 'Track',
   'Track name': 'Track-Name',
+  'Full Equipment': 'Volle Ausrüstung',
   'Track {0}': 'Track {0}',
   'Type the movement': 'Gib die Bewegung ein',
   'Up to': 'Bis',

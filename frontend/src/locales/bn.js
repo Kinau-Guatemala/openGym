@@ -2324,6 +2324,7 @@ export default {
   'Today’s WOD': 'আজকের WOD',
   'Track': 'ট্র্যাক',
   'Track name': 'ট্র্যাকের নাম',
+  'Full Equipment': 'সম্পূর্ণ সরঞ্জাম',
   'Track {0}': 'ট্র্যাক {0}',
   'Type the movement': 'মুভমেন্ট লিখুন',
   'Up to': 'পর্যন্ত',

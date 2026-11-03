@@ -2249,6 +2249,7 @@ export default {
   'Today’s WOD': 'WOD на сегодня',
   'Track': 'Трек',
   'Track name': 'Название трека',
+  'Full Equipment': 'Полное оборудование',
   'Track {0}': 'Трек {0}',
   'Type the movement': 'Введите движение',
   'Up to': 'До',

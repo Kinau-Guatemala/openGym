@@ -2245,6 +2245,7 @@ export default {
   'Today’s WOD': '今日 WOD',
   'Track': '分组',
   'Track name': '分组名称',
+  'Full Equipment': '完整器械',
   'Track {0}': '分组 {0}',
   'Type the movement': '请输入动作',
   'Up to': '最多',
