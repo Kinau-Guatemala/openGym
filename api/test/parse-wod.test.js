@@ -401,7 +401,7 @@ test('validateWod: EVERY intervals, round groups and ranges, rest windows, NxD A
     ['b1', 'TC 12 · 2 RONDAS', 'fortime', 12, 2, null, null, 2],
     ['b2', 'TC 12 · 2 RONDAS', 'fortime', null, 2, null, null, 2],
     ['b3', 'TC 10 COLECTIVO', 'fortime', 10, 3, null, 4, 2],
-    ['b4', 'MIN 8-15 TC 7', 'amrap', 7, 3, null, null, 2],
+    ['b4', 'MIN 8-15 TC 7', 'amrap', 7, 3, null, null, 3],
     ['b5', '10-8-6-4-2', 'fortime', null, null, null, null, 1],
     ['b6', 'EMOM 10', 'emom', 10, null, null, null, 2],
     ['b7', 'TC 10', 'fortime', 10, null, null, null, 2]
@@ -414,6 +414,19 @@ test('validateWod: EVERY intervals, round groups and ranges, rest windows, NxD A
   // Every other track and block of the fixture reads back as before.
   assert.equal(track('full').blocks.length, 5);
   assert.deepEqual(track('full').blocks.map(b => [b.everySec, b.roundsMax]), Array(5).fill([null, null]));
+});
+
+test('the parse prompt splits two movements under one count, and keeps a named lift whole (T27)', () => {
+  assert.match(PROMPTS['parse-wod'], /two \*\*different\*\* movements joined by `\+` or `&` under one count are \*\*two\*\* movements/);
+  for (const line of ['5 Muscle Clean + Push press', '14 Mts Sled Pull & Push 200KG/150KG', '1 Clean + 2 Seg F.R tempo 3 Jerk']) assert.ok(PROMPTS['parse-wod'].includes(`\`${line}\``), line);
+  assert.match(PROMPTS['parse-wod'], /`"clean"` `\{ "reps": 1 \}` \*\*and\*\* `"jerk"` `\{ "reps": 3 \}`\. A pause or tempo \(`2 Seg F\.R tempo`\) stays in `raw`/);
+  assert.match(PROMPTS['parse-wod'], /\*\*Not\*\* a named lift that is one exercise: `Clean & Jerk`, `C&J`/);
+  // 8 Oct Evo, as the prompt asks: sled pull and sled push, each the 14 m and the Rx, the line as raw.
+  const [pull, push, devil] = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'evo').blocks[4].movements;
+  const rx = { male: { w: 200, unit: 'kg' }, female: { w: 150, unit: 'kg' } };
+  assert.deepEqual([pull, push].map(m => [m.id, m.rawName, m.dose, m.rx, m.raw]),
+    [['m0', 'sled pull', { m: 14 }, rx, '14 Mts Sled Pull & Push 200KG/150KG'], ['m1', 'sled push', { m: 14 }, rx, '14 Mts Sled Pull & Push 200KG/150KG']]);
+  assert.equal(devil.rawName, 'db devil press');
 });
 
 test('validateWod: a movement done once per set with its own reps or load carries steps (T26 fixture)', () => {
