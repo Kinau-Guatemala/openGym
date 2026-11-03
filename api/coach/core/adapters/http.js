@@ -273,7 +273,9 @@ export function httpAdapter(spec) {
             const tried = chosen !== asked ? ` (and neither is "${chosen}")` : '';
             return { code: 1, text: '', stderr: `${res.status} the model "${asked}" is not available to this key${tried}: ${shownError(spec, data, 200)}. Pick another one in the Coach settings.` };
           }
-          return { code: 1, text: '', stderr: `${res.status} ${shownError(spec, data, 280)}` };
+          // A spent limit may say when it lifts in a header; the pipeline hands it on (T24).
+          const retryAfter = res.status === 429 ? res.headers?.get?.('retry-after') : null;
+          return { code: 1, text: '', stderr: `${res.status} ${shownError(spec, data, 280)}`, ...(retryAfter ? { retryAfter } : {}) };
         }
         let out;
         try { out = spec.readText(data); } catch (e) { out = { error: `unexpected response shape: ${trim(e.message, 100)}` }; }

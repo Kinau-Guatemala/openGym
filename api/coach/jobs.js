@@ -20,6 +20,7 @@ import * as cfgStore from './config.js';
 import { adapterFor } from './adapters/index.js';
 import * as payloadLib from './core/payload.js';
 import { runPipeline } from './core/pipeline.js';
+import { quotaResetsAt } from './core/quota.js';
 import { extractJSON } from './core/parse.js';
 import { hashPlan } from './core/plan-hash.js';
 import { buildPrompt } from './core/prompt.js';
@@ -160,7 +161,7 @@ export function status(uid) {
 }
 function lastOutcome(rec) {
   const h = (rec.history || []).at(-1);
-  return h ? { id: h.id, kind: h.kind, outcome: h.outcome, errorClass: h.errorClass || null, at: h.at, ...(h.trigger === 'scheduled' ? { trigger: 'scheduled' } : {}), ...(h.reading ? { reading: h.reading } : {}) } : null;
+  return h ? { id: h.id, kind: h.kind, outcome: h.outcome, errorClass: h.errorClass || null, at: h.at, ...(h.trigger === 'scheduled' ? { trigger: 'scheduled' } : {}), ...(h.reading ? { reading: h.reading } : {}), ...(h.resetsAt ? { resetsAt: h.resetsAt } : {}) } : null;
 }
 function archive(uid, rec, outcome) {
   const history = [...(rec.history || []), {
@@ -312,7 +313,8 @@ function finish(job, result) {
   cfgStore.logJob({
     at: new Date().toISOString(), uid: job.uid, kind: job.kind, trigger: job.trigger,
     outcome: result.outcome, errorClass: result.errorClass || null,
-    ms: Date.now() - job.startedAt, detail: result.detail || null
+    ms: Date.now() - job.startedAt, detail: result.detail || null,
+    ...(result.resetsAt ? { resetsAt: result.resetsAt } : {})
   });
   // Forgotten while it ran: the record is gone and stays gone, and nobody is notified. The
   // job still ran and still spent, which is why the instance log above keeps its line.
@@ -321,6 +323,7 @@ function finish(job, result) {
   const history = [...(rec.history || []), {
     id: job.id, kind: job.kind, trigger: job.trigger, outcome: result.outcome,
     errorClass: result.errorClass || null, at: Date.now(),
+    ...(result.resetsAt ? { resetsAt: result.resetsAt } : {}),
     // "Nothing to change" is an answer with a reason attached, and throwing the reason away
     // leaves the user with a job that finished and nothing to show for it. It lives here, in
     // the profile's own file — deliberately not in `detail`, which goes to the instance log
@@ -400,7 +403,7 @@ async function execute(job) {
   }
 
   const attempt = await invokeProvider(job, cfg, adapter, payload);
-  if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
+  if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors), resetsAt: attempt.resetsAt });
   if (attempt.nochange) {
     return finish(job, { outcome: 'nochange', pending: null, detail: null, reading: attempt.reading });
   }
@@ -430,7 +433,7 @@ async function executeParse(job, cfg, adapter) {
   const images = [job.image];
   job.image = null;   // handed over; nothing here holds it past the call
   const attempt = await invokeProvider(job, cfg, adapter, payload, { images });
-  if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors) });
+  if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors), resetsAt: attempt.resetsAt });
   // Empty means no block anywhere: a blind model can still answer the full/evo skeleton the prompt names.
   if (!attempt.result.program.tracks.some(t => t.blocks.length) && !VISION_VERIFIED.includes(cfg.provider)) {
     return finish(job, { outcome: 'failed', errorClass: 'novision', detail: `${cfgStore.modelFor(cfg) || 'the model'} answered an empty program; it probably cannot read images` });
@@ -457,6 +460,10 @@ async function invokeProvider(job, cfg, adapter, payload, extra = {}) {
     });
     // Cancelled by a forget, not failed by the provider: the log must not blame the job budget.
     if (!attempt.ok && ctl.signal.aborted) return { ...attempt, errorClass: 'forgotten' };
+    // A spent limit says when to try again, if the provider printed it. The job stays failed:
+    // ponytail: no automatic retry; one earns its place with scheduled jobs, which have no one
+    // to press Try again at the time shown.
+    if (attempt.errorClass === 'quota') return { ...attempt, resetsAt: quotaResetsAt(attempt.detail, Date.now(), attempt.retryAfter) };
     return attempt;
   } finally {
     aborts.delete(job.uid);

@@ -396,9 +396,9 @@ test('a missing key is "missing", like an absent CLI — no request is made', as
   assert.equal(cls.errorClass, 'missing');
 });
 
-test('401 and 403 reach the pipeline as "auth"; other statuses as "provider"', async () => {
+test('401 and 403 reach the pipeline as "auth", 429 as "quota"; other statuses as "provider"', async () => {
   const payload = { plan: { routines: [], week: {} } };
-  for (const [status, expect] of [[401, 'auth'], [403, 'auth'], [429, 'provider'], [500, 'provider']]) {
+  for (const [status, expect] of [[401, 'auth'], [403, 'auth'], [429, 'quota'], [500, 'provider']]) {
     const f = fakeFetch([{ status, body: { error: { message: 'nope' } } }]);
     const r = await openai.invoke({ cfg: {}, prompt: 'P', env, fetch: f, retryDelayMs: 0 });
     assert.equal(r.code, 1);
@@ -412,13 +412,13 @@ test('"token" in an error is not a credential problem unless the error says so',
   const payload = { plan: { routines: [], week: {} } };
   for (const [stderr, expect] of [
     ['400 prompt is too long: 210000 tokens > 200000 maximum', 'provider'],
-    ['429 This request would exceed the rate limit for your organization of 30,000 input tokens per minute', 'provider'],
+    ['429 This request would exceed the rate limit for your organization of 30,000 input tokens per minute', 'quota'],
     ['400 invalid api key', 'provider'],   // a status says what it is: only 401/403 is auth
     ['401 invalid x-api-key', 'auth'],
     ['403 permission denied', 'auth'],
     // Without a status, a runtime's own words.
     ['prompt is too long: 210000 tokens > 200000 maximum', 'provider'],
-    ['rate limit: 30000 input tokens per minute', 'provider'],
+    ['rate limit: 30000 input tokens per minute', 'quota'],
     ['Not logged in · Please run /login', 'auth'],
     ['OAuth token has expired', 'auth'],
     ['invalid bearer token', 'auth'],

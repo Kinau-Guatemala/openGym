@@ -777,6 +777,24 @@ test('claude: an API error refusing the image is novision, and its text never ca
   assert.equal(login.s.last.errorClass, 'auth');
 });
 
+test('claude: a spent session limit is quota, and the job says when it lifts (T24)', async () => {
+  const limit = { type: 'result', subtype: 'success', is_error: true, api_error_status: 429, result: 'You\'ve hit your session limit · resets 10:50pm (UTC)' };
+  const before = Date.now();
+  const { s } = await parseWithClaude([limit], { throwAfter: true });
+  assert.equal(s.last.outcome, 'failed');
+  assert.equal(s.last.errorClass, 'quota');
+  // The next 22:50 UTC after the failure: today's, or tomorrow's once today's has gone.
+  const at = Date.parse(s.last.resetsAt);
+  assert.equal(new Date(at).toISOString().slice(11, 16), '22:50');
+  assert.ok(at > before && at - before <= 86400000, s.last.resetsAt);
+  assert.equal(cfg.lastError().resetsAt, s.last.resetsAt, 'the admin card reads it off the instance log');
+  assert.equal(cfg.lastError().detail, '429 You\'ve hit your session limit · resets 10:50pm (UTC)');
+  // Without a printed time there is no guess.
+  const bare = await parseWithClaude([{ ...limit, result: 'Too Many Requests' }], { throwAfter: true });
+  assert.equal(bare.s.last.errorClass, 'quota');
+  assert.equal(bare.s.last.resetsAt, undefined);
+});
+
 test('claude adapter: a non-success result names its errors, cut and without the image', async () => {
   stubSdk([{ type: 'result', subtype: 'error_during_execution', is_error: true, stop_reason: null, errors: ['stream closed', 'bad ' + IMAGE] }], { throwAfter: true });
   try {

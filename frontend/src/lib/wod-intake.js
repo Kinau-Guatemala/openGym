@@ -125,7 +125,7 @@ export async function readProgram(image, date, io) {
         // A skeleton (tracks, no block in any) is no routine either.
         return s.parsed.program?.tracks?.some(t => t.blocks?.length) ? { program: s.parsed.program, jobId: job.id } : { failed: 'empty', jobId: job.id }
       }
-      if (s.last?.id === job.id) return { failed: s.last.errorClass || 'unusable' }
+      if (s.last?.id === job.id) return { failed: s.last.errorClass || 'unusable', ...(s.last.resetsAt ? { resetsAt: s.last.resetsAt } : {}) }
       // Neither running nor ended: the server restarted and the in-memory job went with it.
       if (s.job?.id !== job.id) return { failed: 'restart' }
     }

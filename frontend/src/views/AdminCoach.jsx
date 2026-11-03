@@ -373,7 +373,7 @@ export default function AdminCoach() {
           {d.lastError && <>
             <div className="adm-group-t">Last failure</div>
             <div className="adm-result bad" style={{ marginTop: 0, marginBottom: 10 }}>
-              <b>{failureTitle(d.lastError.errorClass)}</b>
+              <b>{failureTitle(d.lastError.errorClass, d.lastError.resetsAt)}</b>
               {d.lastError.detail ? <span className="small">{d.lastError.detail}</span> : null}
               <div className="dim" style={{ fontSize: '.72rem', marginTop: 4 }}>{rel(d.lastError.at)}</div>
             </div>
@@ -430,13 +430,15 @@ const credentialLabel = type => ({
 }[type] || 'credential')
 
 // The failure classes jobs.js emits, in words an operator can act on.
-const failureTitle = cls => ({
+const failureTitle = (cls, resetsAt) => ({
   timeout: 'The provider took longer than the job budget (COACH_JOB_TIMEOUT_MS, default 5 minutes)',
   missing: 'The provider runtime or key is missing',
   auth: 'The provider rejected the credential',
   provider: 'The provider returned an error',
   unusable: 'The model answered, but not in a shape the app could use',
   novision: 'The model could not read the routine image (it refused it, or answered an empty program). Pick a vision model',
+  quota: 'The AI provider’s usage limit is reached. This is the provider account’s limit, not openGym’s. '
+    + (resetsAt ? `Try again after ${new Date(resetsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.` : 'Try again later.'),
   restart: 'The server restarted while a job was running',
   nostate: 'The user\'s training data could not be read',
   off: 'The Coach was off when the job ran',

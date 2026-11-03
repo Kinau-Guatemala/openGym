@@ -758,6 +758,16 @@ describe('AdminCoach — what the card refuses to show', () => {
     expect(host.textContent).not.toContain('undefined')
   })
 
+  it('a spent usage limit says whose limit it is and when it lifts (T24)', async () => {
+    const at = '2026-09-21T22:50:00Z'
+    mocks.routes['/api/admin/coach'] = status({ lastError: { at: '2026-09-21T18:00:00Z', errorClass: 'quota', detail: '429 You’ve hit your session limit · resets 10:50pm (UTC)', resetsAt: at } })
+    await mount()
+    const card = host.querySelector('.adm-result.bad').textContent
+    expect(card).toContain('The AI provider’s usage limit is reached. This is the provider account’s limit, not openGym’s.')
+    expect(card).toContain(`Try again after ${new Date(at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.`)
+    expect(card).toContain('resets 10:50pm (UTC)')
+  })
+
   it('a blocked privilege drop is stated in red as "nothing runs", not folded into a hint', async () => {
     mocks.routes['/api/admin/coach'] = status({
       provider: 'claude',

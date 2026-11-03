@@ -4159,8 +4159,9 @@ components:
                 outcome: { type: string, enum: [ready, nochange, applied, dismissed, expired, failed] }
                 errorClass:
                   oneOf: [{ type: string }, { type: 'null' }]
-                  description: e.g. `provider`, `unusable`, `restart`, `forgotten`, `consent`, `noworkout`, `novision`.
+                  description: e.g. `provider`, `unusable`, `restart`, `forgotten`, `consent`, `noworkout`, `novision`, `quota`.
                 at: { type: integer, description: Epoch ms. }
+                resetsAt: { type: string, format: date-time, description: "Present on a `quota` failure when the provider said when its usage limit lifts. The job is not retried." }
                 trigger: { type: string, enum: [scheduled], description: Present when it was an automatic review. }
                 reading: { type: string, description: "Present on `nochange`: why there was nothing to change." }
             - type: 'null'
@@ -4472,7 +4473,7 @@ components:
             why: { type: string }
         jobsToday: { type: integer }
         lastSuccess: { oneOf: [{ type: string, format: date-time }, { type: 'null' }] }
-        lastError: { description: "The last failure the instance log recorded, or null." }
+        lastError: { description: "The last failure the instance log recorded, or null. A `quota` failure carries `resetsAt` (date-time) when the provider said when its limit lifts." }
         recent:
           type: array
           description: The last 20 jobs, newest first. Counts and outcomes only, never contents.

@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from './api.js'
 import { DEMO } from './demo.js'
 import { MOBILE } from './mobile.js'
-import { t, tn, getLang } from './i18n.js'
+import { t, tn, getLang, dateLocale } from './i18n.js'
 import { useStore } from '../store/useStore.js'
 import { todayForCoach } from './coach-context.js'
 import { useUI } from '../store/useUI.js'
@@ -228,6 +228,8 @@ export const JOB_ERRORS = {
   get unsupported() { return t('This Coach provider can’t read images. Switch it to Anthropic or OpenAI.') },
   // The model behind an OpenAI-compatible endpoint refused the image or answered without seeing it.
   get novision() { return t('This model can’t read images. The instance owner needs to pick a vision model.') },
+  // The provider account's usage limit (api/coach/core/pipeline.js), without the time; quotaText adds it.
+  get quota() { return quotaText(null) },
   get internal() { return t('Something went wrong on the server.') }
 }
 
@@ -242,10 +244,23 @@ export const BYOK_ERRORS = {
   get internal() { return t('Something went wrong on this phone.') }
 }
 
+/** A spent usage limit, with when it lifts (the job's `resetsAt`) in this device's own time. */
+export function quotaText(resetsAt, now = Date.now()) {
+  const at = resetsAt ? Date.parse(resetsAt) : NaN
+  // Calendar days between now and then here, so 23:30 to 00:10 is tomorrow. Further out than
+  // that is not a session limit, and "later" says enough.
+  const days = Number.isFinite(at) ? Math.round((new Date(at).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86400000) : NaN
+  if (!(days >= 0 && days <= 1)) return t('The AI provider’s usage limit is reached. Try again later.')
+  const time = new Date(at).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' })
+  return days === 1 ? t('The AI provider’s usage limit is reached. Try again after {0} tomorrow.', time)
+    : t('The AI provider’s usage limit is reached. Try again after {0}.', time)
+}
+
 /** The line the person sees for a failed job — with the reason attached where they can act on it. */
-export function jobErrorText(cls, detail) {
+export function jobErrorText(cls, detail, resetsAt) {
   const own = LOCAL()
-  const base = (own && BYOK_ERRORS[cls]) || JOB_ERRORS[cls] || (own ? BYOK_ERRORS.internal : JOB_ERRORS.internal)
+  const base = cls === 'quota' ? quotaText(resetsAt)
+    : (own && BYOK_ERRORS[cls]) || JOB_ERRORS[cls] || (own ? BYOK_ERRORS.internal : JOB_ERRORS.internal)
   const why = own && detail ? String(detail).trim().slice(0, 300) : ''
   return why ? `${base}\n${why}` : base
 }
