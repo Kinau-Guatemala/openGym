@@ -2211,6 +2211,8 @@ export default {
   'Edit movement': '동작 편집',
   'Edit program': '프로그램 편집',
   'Exercise picks': '선택한 운동',
+  'Box feed': '박스 피드',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': '박스 회원들이 이 코드를 스캔하거나 링크를 열면 저장하는 모든 프로그램을 볼 수 있어요.',
   'Extra': '추가',
   'For time': 'For time',
   'Hard sets per muscle per week': '근육별 주간 고강도 세트',

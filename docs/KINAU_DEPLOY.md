@@ -138,6 +138,28 @@ The CrossFit module's image parsing runs on the Coach with Anthropic, OpenAI, an
 
 `COACH_DISABLED=1` in the api environment switches the Coach off everywhere, whatever the admin card says.
 
+## The box feed
+
+Every program one account saves can be published to a public `feed.json`, so the box's members read the day's program without parsing the image themselves. The api pushes the file into a dedicated GitHub repo through the contents API; members read it from `https://raw.githubusercontent.com/<owner>/<repo>/main/feed.json`. No GitHub Actions or Pages are involved.
+
+1. Create a **public** repo for it, e.g. `Kinau-Guatemala/holy-wods`, with a README saying what it is.
+2. Create a fine-grained token (GitHub → Settings → Developer settings → Fine-grained tokens) for that repo only, with **Contents: read and write** and nothing else.
+3. Set the api's environment (`.env` on the home server, the api service's variables on Railway):
+
+   | Variable | Value |
+   | --- | --- |
+   | `BOX_FEED_UID` | the publishing account's id (Settings → Account → Account ID, signed in as that account) |
+   | `BOX_FEED_REPO` | `owner/repo` |
+   | `BOX_FEED_TOKEN` | the token |
+   | `BOX_FEED_NAME` | the box's name, e.g. `Holy Program` |
+   | `BOX_FEED_DAYS` | optional, past days kept (default 14); upcoming programs are always in |
+
+   With any of the first four missing, publishing is off and nothing else changes.
+4. Restart the api. It checks the account's programs at start, and after every save it waits 30 seconds for more saves (5 minutes at most after the first), then pushes once if what the feed carries changed. A failed push is retried after 1, 5 and 15 minutes, then waits for the next save.
+5. **Admin dashboard → Box feed** shows when it last published, or the error. **Settings → CrossFit** on the publishing account shows the feed's link and a QR code for members to scan.
+
+The feed carries each program's date, title, tracks, blocks and movements (printed text, dose, Rx, steps, the catalogue exercise it resolved to; a custom exercise goes without its id), the box name and when it was updated. Never logged scores, picks, notes or anything else from the account: the fields are an allowlist (`api/box-feed.js`). The token is only ever sent to GitHub, never to the app, the data folder or the logs. `DATA_DIR/box-feed.json` keeps the hash of the last push and its status.
+
 ## The Android app
 
 Install the APK from the fork's latest GitHub release. It is `gt.kinau.opengym` and installs alongside the upstream app. Sign in or pair it with the instance. Turn on **Settings → Health Connect** so it writes workouts and reads runs. Updates are offered in-app from the fork's releases.

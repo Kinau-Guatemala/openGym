@@ -2211,6 +2211,8 @@ export default {
   'Edit movement': 'Modifica movimento',
   'Edit program': 'Modifica programma',
   'Exercise picks': 'Esercizi scelti',
+  'Box feed': 'Feed del box',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'I membri del tuo box scansionano questo codice, o aprono il link, per vedere ogni programma che salvi.',
   'Extra': 'Extra',
   'For time': 'For time',
   'Hard sets per muscle per week': 'Serie allenanti per muscolo a settimana',

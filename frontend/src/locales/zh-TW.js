@@ -2204,6 +2204,8 @@ export default {
   'Edit movement': '編輯動作',
   'Edit program': '編輯計畫',
   'Exercise picks': '已選動作',
+  'Box feed': '館內動態',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': '你館裡的會員掃描此碼或開啟連結，就能看到你儲存的每個計畫。',
   'Extra': '附加',
   'For time': '計時完成',
   'Hard sets per muscle per week': '每塊肌肉每週的高強度組數',

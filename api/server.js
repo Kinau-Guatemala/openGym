@@ -37,6 +37,7 @@ import { effectiveRoutineId } from './queue.js';
 import { stampPut } from './sync-stamps.js';
 import { atomicWrite as durableWrite } from './durable.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
+import { createBoxFeed } from './box-feed-publish.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -1959,6 +1960,9 @@ try { MEDIA.cleanTmp(); } catch (e) { console.error('media: boot cleanup failed'
 const MEDIA_BURST = createWindow({ max: MEDIA_LIMITS.uploadsPerHour, windowMs: 3600000 });
 // Deleting everything unreferenced is what "Reset everything" does; ten an hour is plenty.
 const MEDIA_SWEEPS = createWindow({ max: 10, windowMs: 3600000 });
+// The box feed (box-feed-publish.js): the BOX_FEED_UID account's programs, pushed to a public
+// feed.json after its saves. Off, and inert, unless the four BOX_FEED_* settings are all there.
+const BOX_FEED = createBoxFeed({ dataDir: DATA });
 // Uid -> until when its throttle has already been recorded, so a client hammering a closed
 // window writes one audit line per window, not one per request.
 const mediaThrottleNoted = new Map();
@@ -2135,6 +2139,8 @@ const routes = {
     // holds was made for a session: without the key it cannot tell "no Coach here" from "you
     // were not signed in when you asked", and would re-ask on every sign-in on every instance
     // that has no Coach. The key's absence is that answer.
+    const session = readSession(req);
+    const boxFeed = session && BOX_FEED.forUser(session.id);
     json(res, 200, {
       invite_only: INVITE_ONLY, allow_guest: ALLOW_GUEST,
       // Only when on, so an instance without passwords answers exactly as it did before (#118).
@@ -2144,7 +2150,9 @@ const routes = {
       // Public like the two flags above: the caps are not a secret, and the absence of the
       // block is how the app knows this server does not take photos and videos at all.
       ...(MEDIA_ON ? { media: mediaConfig(MEDIA_LIMITS) } : {}),
-      ...(readSession(req) ? { coach: coachConfig.publicConfig() } : {})
+      ...(session ? { coach: coachConfig.publicConfig() } : {}),
+      // Only for the account that publishes: Settings → CrossFit shows this URL and its QR code.
+      ...(boxFeed ? { boxFeed } : {})
     });
   },
 
@@ -2564,6 +2572,7 @@ const routes = {
     if (MEDIA_ON) {
       try { MEDIA.noteState(user.id, body.state); } catch (e) { console.error('media noteState', e); }
     }
+    try { BOX_FEED.noteWrite(user.id, body.state); } catch (e) { console.error('box feed noteWrite', e?.message); }
     json(res, 200, { ok: true, ts: body.state._ts || null, rev: curRev + 1, wid: body.state._wid });
   },
 
@@ -2718,6 +2727,12 @@ const routes = {
       };
     });
     json(res, 200, { users, invite_only: INVITE_ONLY, ...(PASSWORD_LOGIN ? { password_login: true } : {}), now: Date.now() });
+  },
+
+  // The box feed's last push, for the admin dashboard: when, or the error. Never the token.
+  'GET /api/admin/box-feed': async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    json(res, 200, BOX_FEED.status());
   },
 
   // Drill-down: full workout history + body-weight log for one user.
@@ -2938,6 +2953,9 @@ coachJobs.setProposalHook((uid, pending) => {
 });
 startCadence({ users: () => db.users.filter(u => !u.disabled), userNow, skip: uid => !stateSummary(uid)?.consent });
 startWarmup();
+// The publishing account's programs as they stand at boot: a first deploy, or a push that was
+// still failing when the server stopped, goes out without waiting for the next save.
+if (BOX_FEED.on) { const S = readState(BOX_FEED.uid); if (S) BOX_FEED.noteWrite(BOX_FEED.uid, S); }
 
 // node's requestTimeout is one number for every route, and it is half an hour (below) for the
 // sake of one: a video uploaded over a slow uplink. Every other request keeps node's old five

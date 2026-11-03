@@ -2211,6 +2211,8 @@ export default {
   'Edit movement': '编辑动作',
   'Edit program': '编辑计划',
   'Exercise picks': '已选动作',
+  'Box feed': '馆内动态',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': '你馆里的会员扫描此码或打开链接，就能看到你保存的每个计划。',
   'Extra': '附加',
   'For time': '计时完成',
   'Hard sets per muscle per week': '每块肌肉每周的高强度组数',

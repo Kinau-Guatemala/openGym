@@ -2214,6 +2214,8 @@ export default {
   'Edit movement': 'Mozdulat szerkesztése',
   'Edit program': 'Program szerkesztése',
   'Exercise picks': 'Kiválasztott gyakorlatok',
+  'Box feed': 'Terem hírfolyam',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'A terem tagjai beolvassák ezt a kódot, vagy megnyitják a linket, és látják minden programodat, amit mentesz.',
   'Extra': 'Extra',
   'For time': 'Időre',
   'Hard sets per muscle per week': 'Kemény sorozat izmonként hetente',

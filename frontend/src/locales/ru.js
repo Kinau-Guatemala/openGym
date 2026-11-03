@@ -2215,6 +2215,8 @@ export default {
   'Edit movement': 'Изменить движение',
   'Edit program': 'Изменить программу',
   'Exercise picks': 'Выбранные упражнения',
+  'Box feed': 'Лента зала',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'Участники вашего зала сканируют этот код или открывают ссылку и видят каждую программу, которую вы сохраняете.',
   'Extra': 'Дополнительно',
   'For time': 'На время',
   'Hard sets per muscle per week': 'Тяжёлых подходов на мышцу в неделю',

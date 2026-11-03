@@ -2266,6 +2266,8 @@ export default {
   'Edit movement': 'تعديل الحركة',
   'Edit program': 'تعديل البرنامج',
   'Exercise picks': 'التمارين المختارة',
+  'Box feed': 'موجز النادي',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'يمسح أعضاء ناديك هذا الرمز، أو يفتحون الرابط، ليروا كل برنامج تحفظه.',
   'Extra': 'إضافي',
   'For time': 'على الوقت',
   'Hard sets per muscle per week': 'مجموعات قوية لكل عضلة أسبوعيًا',
