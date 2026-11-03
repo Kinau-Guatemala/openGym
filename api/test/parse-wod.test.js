@@ -450,12 +450,12 @@ test('validateWod: steps are 2 to 30 sets with bounded doses and an rx like the 
 test('validateWod: the same movement on consecutive lines, differing only in load or reps, becomes one with steps (T26)', () => {
   const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: female ? { w: female, unit: 'lb' } : null });
   const line = (rawName, dose, rx = null, more = {}) => ({ raw: rawName, rawName, dose, rx, ...more });
-  const block = (movements, format = 'fortime') => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format, movements }] }] })
+  const block = (movements, format = 'fortime', more = {}) => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format, movements, ...more }] }] })
     .proposal.program.tracks[0].blocks[0].movements;
   const shape = ms => ms.map(m => [m.id, m.rawName, m.slot, m.steps ? m.steps.map(s => [s.reps ?? null, s.rx?.male.w ?? null]) : null]);
-  // An EMOM's even minutes: merged on the first slot, the movement before it untouched.
+  // An EMOM 6's even minutes: merged on the first slot, the movement before it untouched.
   assert.deepEqual(shape(block([line('wall balls', { reps: 15 }, null, { slot: 'M1' }), line('Lunges', { reps: 12 }, lb(95, 65), { slot: 'M2' }),
-    line('lunges', { reps: 10 }, lb(115, 75), { slot: 'M4' }), line('lunges', { reps: 8 }, lb(135, 95), { slot: 'M6' })], 'emom')),
+    line('lunges', { reps: 10 }, lb(115, 75), { slot: 'M4' }), line('lunges', { reps: 8 }, lb(135, 95), { slot: 'M6' })], 'emom', { capMin: 6 })),
   [['m0', 'wall balls', 'M1', null], ['m1', 'Lunges', 'M2', [[12, 95], [10, 115], [8, 135]]]]);
   // Reps only, rising, outside an EMOM; the run stops at a different movement and starts again after it.
   assert.deepEqual(shape(block([line('burpees', { reps: 10 }), line('burpees', { reps: 12 }), line('row', { cal: 10 }), line('burpees', { reps: 14 }), line('burpees', { reps: 16 })])),
@@ -467,6 +467,17 @@ test('validateWod: the same movement on consecutive lines, differing only in loa
   kept([line('row', { cal: 15 }, null, { alts: [{ rawName: 'ski' }] }), line('row', { cal: 12 })]);
   kept([line('run', { m: 500, sets: 5, restSec: 120 }), line('run', { m: 400, sets: 3, restSec: 120 })]);
   kept([line('thrusters', { reps: 5 }, lb(95), { slot: 'A1' }), line('thrusters', { reps: 5 }, lb(115), { slot: 'A2' })]);
+  // An EMOM rotation whose slots repeat is not one line per minute: EMOM 12 over M1 / M2 / M3 does
+  // each slot 4 times, so two hang clean slots stay two movements, as do M1 / M2 alternating.
+  const emom12 = ms => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 12', format: 'emom', capMin: 12, movements: ms }] }] })
+    .proposal.program.tracks[0].blocks[0].movements;
+  const rotation = [line('burpees', { reps: 10 }, null, { slot: 'M1' }), line('hang cleans', { reps: 3 }, lb(135, 95), { slot: 'M2' }), line('hang cleans', { reps: 3 }, lb(155, 105), { slot: 'M3' })];
+  assert.deepEqual(shape(emom12(rotation)), [['m0', 'burpees', 'M1', null], ['m1', 'hang cleans', 'M2', null], ['m2', 'hang cleans', 'M3', null]]);
+  assert.deepEqual(shape(emom12(rotation.slice(1))), [['m0', 'hang cleans', 'M2', null], ['m1', 'hang cleans', 'M3', null]]);
+  // With rounds instead of a cap the minutes are rounds × slots: EMOM 4 rounds of M1 + M2…M8 lunges.
+  assert.deepEqual(shape(validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM', format: 'emom', rounds: 4,
+    movements: [line('row', { cal: 10 }, null, { slot: 'M1' }), ...[2, 4, 6, 8].map(n => line('lunges', { reps: 14 - n }, null, { slot: 'M' + n }))] }] }] })
+    .proposal.program.tracks[0].blocks[0].movements).map(m => m[3]?.length ?? null), [null, 4]);
   // What the model gave as steps is kept as it is.
   assert.deepEqual(shape(block([line('jerks', {}, lb(135), { steps: [{ reps: 3 }, { reps: 2 }] }), line('jerks', {}, lb(155))])),
     [['m0', 'jerks', null, [[3, null], [2, null]]], ['m1', 'jerks', null, null]]);
@@ -477,6 +488,7 @@ test('the parse prompt reads a rising load or reps as steps, and side-by-side la
   assert.match(p, /\| The same movement on consecutive lines, or in an EMOM's minutes, that differs only in its load and\/or reps \| \*\*one\*\* movement with `steps`/);
   assert.match(p, /`10-8-6-4-2` \/ `Jerks 135\/95` \/ `Jerks 155\/105` \/ … \/ `Jerks 225\/155` → one block with `scheme: "10-8-6-4-2"` and one movement, `rawName: "jerks"`, `steps: \[\{ "reps": 10, "rx": <135\/95> \}/);
   assert.match(p, /lunges `slot: "M2"` with `steps: \[\{ "reps": 12, "rx": <95\/65> \}/);
+  assert.match(p, /In an EMOM only when each line is its own minute \(`M2`, `M4` … `M10`\): a rotation whose slots repeat .* keeps one movement per slot/);
   assert.match(p, /\| Ladders side by side for movements done alternately .*\| \*\*one\*\* block, `scheme` the first ladder/);
   assert.match(p, /- `steps`: \*\*only\*\* for the same movement printed once per set with its own load or reps/);
 });

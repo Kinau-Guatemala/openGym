@@ -158,7 +158,9 @@ export function wodToSession(program, choice, logged, S) {
         const printed = [m.exId, ...list(m.alts).map(a => a?.exId)].filter(Boolean)
         if (lm.exId && m.exId && !printed.includes(lm.exId)) entry.swappedFrom = m.exId
         const asPrinted = exId === m.exId
-        const rx = asPrinted ? rxPrinted(m, S) : null
+        // Rx vs lifted compares the heaviest set with entry.rx, so steps carry their heaviest step's.
+        const top = stepsOf(m)?.reduce((a, s) => ((stepRxFor(s, m, S)?.w || 0) > (stepRxFor(a, m, S)?.w || 0) ? s : a))
+        const rx = asPrinted ? (top && rxPrinted(top, S)) || rxPrinted(m, S) : null
         if (rx) entry.rx = rx
         const w0 = lm.w != null ? pos(lm.w) : (asPrinted ? rxFor(m, S)?.w || 0 : 0)
         const stepW = steps[i] && lm.w == null && asPrinted ? steps[i].map(s => stepRxFor(s, m, S)?.w || 0) : null

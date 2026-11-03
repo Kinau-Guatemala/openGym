@@ -459,7 +459,8 @@ describe('wodToSession: a movement with steps logs one set per step (T26)', () =
   it('2 Nov Full: the five jerk lines are 5 sets, the rung as reps and each its own load, by sex and unit', () => {
     const [jerks] = only('b5')
     expect(rows(jerks)).toEqual([[10, 135], [8, 155], [6, 185], [4, 205], [2, 225]])
-    expect(jerks.rx).toEqual({ w: 135, unit: 'lb' })
+    expect(jerks.rx).toEqual({ w: 225, unit: 'lb' }, 'the heaviest step\'s, which Rx vs lifted compares the top set with')
+    expect(only('b5', {}, S0({ unit: 'lb', body: 'female' }))[0].rx).toEqual({ w: 155, unit: 'lb' })
     expect(rows(only('b5', {}, S0({ unit: 'lb', body: 'female' }))[0])).toEqual([[10, 95], [8, 105], [6, 135], [4, 145], [2, 155]])
     expect(only('b5', {}, S0())[0].sets.map(s => s.w)).toEqual([60, 70, 85, 92.5, 102.5])
     expect(jerks.sets.every(s => s.wodRir === 5)).toBe(true)
@@ -481,6 +482,19 @@ describe('wodToSession: a movement with steps logs one set per step (T26)', () =
     expect(rows(only('b5', { moves: { 'evo/b5/m0': { w: 100 } } })[0])).toEqual([[10, 100], [8, 100], [6, 100], [4, 100], [2, 100]])
     expect(rows(only('b6', { moves: { 'evo/b6/m1': { r: 9 } } })[1])).toEqual(Array(5).fill([9, 95]))
     expect(rows(only('b5', { moves: { 'evo/b5/m0': { exId: SNATCH } } })[0])).toEqual([[10, 0], [8, 0], [6, 0], [4, 0], [2, 0]])
+  })
+
+  it('an EMOM rotation whose slots repeat logs each slot\'s minutes, not steps', () => {
+    const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+    const line = (slot, rawName, reps, rx) => ({ raw: rawName, rawName, slot, dose: { reps }, rx })
+    const emom12 = ms => {
+      const p = validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 12', format: 'emom', capMin: 12, movements: ms }] }] }).proposal.program
+      p.tracks[0].blocks[0].movements.forEach(m => { m.exId = PUSHUP })
+      return wodToSession(p, { tracks: ['full'] }, {}, S0({ unit: 'lb' })).entries.map(rows)
+    }
+    const hc = [line('M2', 'hang cleans', 3, lb(135, 95)), line('M3', 'hang cleans', 3, lb(155, 105))]
+    expect(emom12([line('M1', 'burpees', 10, null), ...hc])).toEqual([Array(4).fill([10, 0]), Array(4).fill([3, 135]), Array(4).fill([3, 155])])
+    expect(emom12(hc)).toEqual([Array(6).fill([3, 135]), Array(6).fill([3, 155])])
   })
 
   it('a strength block: a set per step with its load, until sets are typed', () => {

@@ -826,19 +826,29 @@ const nameKey = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const stepOf = m => ({ ...Object.fromEntries(WOD_STEP_KEYS.filter(k => m.dose[k] != null).map(k => [k, m.dose[k]])), ...(m.rx ? { rx: m.rx } : {}) });
 const restKey = m => JSON.stringify([nameKey(m.rawName), Object.entries(m.dose).filter(([k]) => !WOD_STEP_KEYS.includes(k)).sort(),
   m.doseFemale ?? null, m.alts.map(a => [nameKey(a.rawName), a.dose, a.doseFemale ?? null])]);
-function withSteps(moves, emom) {
-  const out = [];
+function withSteps(moves, emom, capMin, rounds) {
+  const runs = [];
   for (let i = 0; i < moves.length;) {
     const m = moves[i];
     let j = i + 1;
     const same = n => !n.steps && !n.perSide && restKey(n) === restKey(m) && (emom || n.slot === m.slot);
     if (!m.steps && !m.perSide && nameKey(m.rawName)) while (j < moves.length && j - i < 30 && same(moves[j])) j++;
-    const steps = moves.slice(i, j).map(stepOf);
-    out.push(j - i > 1 && new Set(steps.map(s => JSON.stringify(s))).size > 1 ? { ...m, steps } : m);
-    if (out.at(-1) === m) j = i + 1;
-    i = j;
+    const run = moves.slice(i, j);
+    if (new Set(run.map(n => JSON.stringify(stepOf(n)))).size > 1) { runs.push(run); i = j; } else { runs.push([m]); i++; }
   }
-  return out;
+  // In an EMOM each merged line must be its own minute (M2, M4 … M10): a run stands only when it
+  // holds every minute its slot gets, counted the way the log counts them (k slots share the
+  // minutes). A rotation whose slots repeat (`EMOM 12` / M1 / M2 3 HC 135 / M3 3 HC 155) keeps
+  // one movement per slot.
+  for (;;) {
+    const out = runs.map(r => (r.length > 1 ? { ...r[0], steps: r.map(stepOf) } : r[0]));
+    if (!emom) return out;
+    const k = new Set(out.map(m => m.slot).filter(Boolean)).size || 1;
+    const n = Math.floor(((capMin > 0 && capMin) || (rounds > 0 && rounds * k) || k) / k);
+    const bad = runs.findIndex(r => r.length > 1 && r.length !== n);
+    if (bad < 0) return out;
+    runs.splice(bad, 1, ...runs[bad].map(m => [m]));
+  }
 }
 
 // `EVERY 3x4`, `EVERY4x3`, `EVERY 1:30 x 8`, `EVERY 2 + :30 x 4`: the period in seconds (a bare
@@ -910,7 +920,7 @@ function wodBlock(b, i, where, errors) {
     scheme: strOrNull(b.scheme, 60),
     benchmark: strOrNull(b.benchmark, 40),
     raw,
-    movements: withSteps(withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean)), format === 'emom')
+    movements: withSteps(withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean)), format === 'emom', capMin, rounds)
   };
 }
 const restWindowBlock = b => !b.warmup && !b.movements.length && (isRestWindow(b.raw) || isRestWindow(b.label));
