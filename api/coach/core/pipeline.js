@@ -21,7 +21,7 @@ import { isChangeList, changesOntoPlan } from './refine-changes.js';
  * One attempt: prompt → provider → parse → validate.
  *
  * @returns {{ ok:true, nochange?:boolean, reading?:string, result?:object }
- *        | { ok:false, errorClass:string, detail?:string, repairable?:boolean, errors?:string[], raw?:string }}
+ *        | { ok:false, errorClass:string, detail?:string, retryAfter?:string, repairable?:boolean, errors?:string[], raw?:string }}
  */
 export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutMs, invokeOpts = {} }, repair) {
   // HTTP providers get the rules/payload split (prefix caching, schema-constrained decoding);
@@ -53,6 +53,12 @@ export async function attemptOnce({ adapter, cfg, kind, payload, model, timeoutM
     // Without one (a CLI's own words), `token` alone is not enough — "210000 tokens > 200000
     // maximum" and "input tokens per minute" are a long prompt and a rate limit.
     const status = /^(\d{3})\b/.exec(err);
+    // A spent usage limit (T24): led by its 429, or without a status in its own words (Claude's
+    // "You've hit your session limit · resets 10:50pm (UTC)", OpenAI's insufficient_quota).
+    // Checked after novision, which needs image words, and before the auth/provider fallback.
+    if (status ? status[1] === '429' : /session limit|usage limit|rate[ _]limit|insufficient_quota|too many requests/.test(err)) {
+      return { ok: false, errorClass: 'quota', detail: (r.stderr || r.text || '').slice(0, 300), ...(r.retryAfter != null ? { retryAfter: r.retryAfter } : {}) };
+    }
     const authish = status
       ? status[1] === '401' || status[1] === '403'
       : /auth|unauthor|api key|credential|(invalid|expired|revoked|missing|bad)\b[^.]{0,30}\btoken\b|\btoken\b[^.]{0,30}\b(invalid|expired|revoked|missing)|401|403|login|logged in/.test(err);

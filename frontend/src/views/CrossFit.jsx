@@ -33,7 +33,7 @@ import { muscleGap } from '../lib/muscle-gap.js'
 import { MUSCLE_NAME } from '../lib/muscles.js'
 import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { hasConsent } from '../lib/coach.js'
-import { JOB_ERRORS, ackParsed, parseStatus, parseWod } from '../lib/coach-api.js'
+import { JOB_ERRORS, ackParsed, parseStatus, parseWod, quotaText } from '../lib/coach-api.js'
 import { INTAKE_ROUTE, beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fromDataUrl, isoForChoice, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
 import CrossFitRecords from './CrossFitRecords.jsx'
@@ -214,7 +214,8 @@ const openRead = (nav, r, opts) => {
 }
 
 // What the person reads for a failure or a refusal (lib/wod-intake.js readProgram).
-const intakeErrorText = cls => cls === 'empty' ? t('No routine found in this image.')
+const intakeErrorText = (cls, resetsAt) => cls === 'empty' ? t('No routine found in this image.')
+  : cls === 'quota' ? quotaText(resetsAt)
   : cls === 'network' ? t('The server cannot be reached')
     : JOB_ERRORS[cls] || JOB_ERRORS.internal
 
@@ -224,7 +225,7 @@ function Intake() {
   const ready = useStore(s => s.ready)
 
   // Typed by hand from here on, with the image beside it and the reason it was not read.
-  const manual = (r, reason) => nav('/crossfit/new', { replace: true, state: { image: r.image.url, date: r.date, reason } })
+  const manual = (r, reason) => nav('/crossfit/new', { replace: true, state: { image: r.image.url, date: r.date, reason, resetsAt: r.result?.resetsAt } })
 
   useEffect(() => {
     // A reload: the image was only ever in memory.
@@ -255,7 +256,7 @@ function Intake() {
     <div className="card">
       <div className="row" style={{ gap: 10 }}>
         <Icon name={failed ? 'warning' : 'hourglass'} style={{ color: failed ? 'var(--orange)' : 'var(--label-3)' }} />
-        <div className="grow" role="status">{failed ? intakeErrorText(failed)
+        <div className="grow" role="status">{failed ? intakeErrorText(failed, run.result?.resetsAt)
           : run.phase === 'waiting' ? t('The Coach is busy. Reading the image as soon as it is done…')
             : t('Reading the image…')}</div>
       </div>
@@ -372,7 +373,7 @@ function Editor() {
     {loc.state?.reason && <div className="card">
       <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
         <Icon name="info" style={{ color: 'var(--label-3)', marginTop: 2 }} />
-        <div className="grow small">{intakeErrorText(loc.state.reason)}</div>
+        <div className="grow small">{intakeErrorText(loc.state.reason, loc.state.resetsAt)}</div>
       </div>
       {loc.state.reason === 'consent' && !hasConsent(S) && <><div style={{ height: 10 }} />
         <Button size="sm" onClick={() => nav('/coach/intake?consent=1')}>{t('Give the Coach the go-ahead')}</Button></>}

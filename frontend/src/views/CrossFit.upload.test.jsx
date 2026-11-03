@@ -262,3 +262,17 @@ describe('UploadImage reads only for a real day (T20)', () => {
     expect(seen).not.toContain('/crossfit/new?shared=1')
   })
 })
+
+describe('A spent usage limit on the review screen (T24)', () => {
+  it('says when to try again, in local time, and keeps the retry', async () => {
+    const at = new Date('2026-10-28T22:50:00')
+    await mount({ pathname: '/crossfit/new', state: { image: intake.image.url, date: '2026-10-29', reason: 'quota', resetsAt: at.toISOString() } })
+    const clock = at.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
+    expect(host.textContent).toContain(`The AI provider’s usage limit is reached. Try again after ${clock}.`)
+    expect(button('Read the image again')).toBeTruthy()
+  })
+  it('without a time it says later', async () => {
+    await mount({ pathname: '/crossfit/new', state: { image: intake.image.url, date: '2026-10-29', reason: 'quota' } })
+    expect(host.textContent).toContain('The AI provider’s usage limit is reached. Try again later.')
+  })
+})
