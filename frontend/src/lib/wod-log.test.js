@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor } from './wod-log.js'
+import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -502,5 +502,37 @@ describe('wodToSession: a movement with steps logs one set per step (T26)', () =
     const p = program([block('b0', 'strength', [mv('m0', DL, { reps: 5 }, { rx: lb(135), steps: [{ rx: lb(135) }, { rx: lb(155) }, { reps: 3, rx: lb(175) }] })])])
     expect(rows(wodToSession(p, all, {}, S0({ unit: 'lb' })).entries[0])).toEqual([[5, 135], [5, 155], [3, 175]])
     expect(rows(wodToSession(p, all, { moves: { 'full/b0/m0': { sets: [{ w: 140, r: 5 }] } } }, S0({ unit: 'lb' })).entries[0])).toEqual([[5, 140]])
+  })
+})
+
+describe('loggedIn: the log screen in kg or lb (T30)', () => {
+  const typed = { moves: { 'full/b0/m0': { sets: [{ w: 135, r: 5 }, { r: 3 }] }, 'full/b1/m0': { w: 135, r: 10 }, 'full/b1/m1': { cal: 12 } },
+    blocks: { 'full/b0': { score: { type: 'load', w: 135, unit: 'lb' }, rx: true }, 'full/b1': { score: { type: 'time', sec: 300 } } } }
+
+  it('moves every typed weight, and only those; there and back lands where it started', () => {
+    const kg = loggedIn(typed, 'lb', 'kg')
+    expect(kg.moves['full/b1/m0']).toEqual({ w: 61.25, r: 10 })
+    expect(kg.moves['full/b0/m0'].sets).toEqual([{ w: 61.25, r: 5 }, { r: 3 }])
+    expect(kg.moves['full/b1/m1']).toEqual({ cal: 12 })
+    expect(kg.blocks['full/b0']).toEqual({ score: { type: 'load', w: 61.25, unit: 'kg' }, rx: true })
+    expect(kg.blocks['full/b1']).toEqual({ score: { type: 'time', sec: 300 } })
+    expect(loggedIn(kg, 'kg', 'lb')).toEqual(typed)
+    expect(loggedIn(typed, 'lb', 'lb')).toBe(typed)
+  })
+
+  it('a log typed in lb on a kg profile stores kg, and re-opens in lb as typed', () => {
+    const p = program([block('b1', 'fortime', [mv('m0', CJ, { reps: 10 })], { rounds: 1 })])
+    const S = S0()
+    const logged = { ...loggedIn({ moves: { 'full/b1/m0': { w: 135 } } }, 'lb', 'kg'), unit: 'lb' }
+    const { active, w } = buildWodWorkout(S, '2026-10-13', p, all, logged, Date.parse('2026-10-20T12:00:00Z'))
+    fileBackfill(S, active, w)
+    expect(S.workouts[0].entries[0].sets[0].w).toBe(61.25)
+    expect(S.workouts[0].wod).toMatchObject({ unit: 'lb', moves: { 'full/b1/m0': { w: 61.25 } } })
+    const state = relogState(p, S.workouts[0], 'kg')
+    expect(state.unit).toBe('lb')
+    expect(state.logged.moves['full/b1/m0']).toEqual({ w: 135 })
+    // a log kept without a unit opens in the profile's
+    delete S.workouts[0].wod.unit
+    expect(relogState(p, S.workouts[0], 'kg')).toMatchObject({ unit: 'kg', logged: { moves: { 'full/b1/m0': { w: 61.25 } } } })
   })
 })
