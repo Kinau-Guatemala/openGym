@@ -7,8 +7,11 @@
 // as a ratio, since a ring row is not "40 % of a pull-up".
 //
 // The conversion is the one the log screen prefills with (lib/rx.js rxIn, on the plate grid), so
-// lifting the 60 kg it showed for a 135 lb Rx reads as Rx, not as 98 %.
+// lifting the 60 kg it showed for a 135 lb Rx reads as Rx, not as 98 %. The load typed as printed,
+// in the printed unit (the log screen's kg / lb switch), is stored converted exactly (lib/units.js)
+// and reads as Rx too: 65 lb is 29.5 kg against the 30 the grid makes of it.
 import { rxIn } from './rx.js'
+import { convertWeight } from './units.js'
 import { bestWeightForEntry } from './history.js'
 import { isoOf } from './format.js'
 
@@ -29,7 +32,8 @@ export function rxHistory(workouts, exId, unit = 'kg') {
         out.push({ d: w.d, used: bestWeightForEntry(e) || 0, rx: null, ratio: null, swapped: true, as: e.id })
       } else if (e?.id === exId && !e.swappedFrom && Number(e.rx?.w) > 0) {
         const rx = rxIn(e.rx, unit), used = bestWeightForEntry(e) || 0
-        out.push({ d: w.d, used, rx, ratio: used / rx, swapped: false })
+        const at = Math.min(rx, convertWeight(Number(e.rx.w), e.rx.unit === 'kg' ? 'kg' : 'lb', unit))
+        out.push({ d: w.d, used, rx, ratio: used >= at ? Math.max(1, used / rx) : used / rx, swapped: false })
       }
     }
   }

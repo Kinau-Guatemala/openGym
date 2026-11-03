@@ -21,6 +21,16 @@ describe('rxHistory', () => {
     expect(e.rx).toEqual({ w: 24, unit: 'kg' })
   })
 
+  it('reads the Rx typed as printed, in the printed unit, as Rx; a scaled load stays below (T30)', () => {
+    const rated = (rx, w, unit) => rxHistory([day('2026-10-01', [{ id: '1520', rx, sets: [row(w)] }])], '1520', unit)[0]
+    // 65 lb typed in lb on a kg profile is 29.5 kg; the grid makes the Rx 30
+    expect(rated({ w: 65, unit: 'lb' }, 29.5, 'kg')).toMatchObject({ rx: 30, ratio: 1 })
+    // 24 kg typed in kg on an lb profile is 53 lb; the grid makes the Rx 55
+    expect(rated({ w: 24, unit: 'kg' }, 53, 'lb')).toMatchObject({ rx: 55, ratio: 1 })
+    expect(rated({ w: 65, unit: 'lb' }, 27, 'kg').ratio).toBeCloseTo(27 / 30, 6)
+    expect(rated({ w: 135, unit: 'lb' }, 65, 'kg').ratio).toBeCloseTo(65 / 60, 6)
+  })
+
   it('counts a swap on its own, never as a ratio', () => {
     const h = rxHistory([
       day('2026-10-01', [{ id: '1520', rx: { w: 135, unit: 'lb' }, sets: [row(60)] }]),

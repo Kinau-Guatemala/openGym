@@ -109,8 +109,8 @@ describe('kg / lb while logging a WOD (T30)', () => {
     const w = logged()
     expect(w.entries.find(e => e.id === DL).sets[0].w).toBe(132.5)
     expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 220.5, unit: 'lb' })
-    // the C&J left at its Rx is logged as shown: 60 kg
-    expect(w.entries.find(e => e.id === CJ).sets[0].w).toBe(132.5)
+    // the C&J left at its Rx is logged as the profile's Rx, converted once
+    expect(w.entries.find(e => e.id === CJ).sets[0].w).toBe(135)
 
     // another day starts at the profile's unit again
     useStore.getState().setWod('2026-10-26', program)

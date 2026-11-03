@@ -10,6 +10,7 @@ import { entryExcluded } from './history.js'
 import { backfillStart } from './backfill.js'
 import { prepareDraft } from './wod-draft.js'
 import { validateWod } from '../../../api/coach/core/validate.js'
+import { convertStateUnit } from './units.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -517,7 +518,7 @@ describe('loggedIn: the log screen in kg or lb (T30)', () => {
     expect(kg.blocks['full/b0']).toEqual({ score: { type: 'load', w: 61.25, unit: 'kg' }, rx: true })
     expect(kg.blocks['full/b1']).toEqual({ score: { type: 'time', sec: 300 } })
     expect(loggedIn(kg, 'kg', 'lb')).toEqual(typed)
-    expect(loggedIn(typed, 'lb', 'lb')).toBe(typed)
+    expect(loggedIn(typed, 'lb', 'lb')).toEqual(typed)
   })
 
   it('a log typed in lb on a kg profile stores kg, and re-opens in lb as typed', () => {
@@ -534,5 +535,26 @@ describe('loggedIn: the log screen in kg or lb (T30)', () => {
     // a log kept without a unit opens in the profile's
     delete S.workouts[0].wod.unit
     expect(relogState(p, S.workouts[0], 'kg')).toMatchObject({ unit: 'kg', logged: { moves: { 'full/b1/m0': { w: 61.25 } } } })
+  })
+
+  it('a Settings switch after logging: the typed moves move with it, a load score keeps its own unit', () => {
+    const p = program([block('b0', 'strength', [mv('m0', DL, { reps: 5 })])])
+    const kg = S0()
+    const logged = { moves: { 'full/b0/m0': { sets: [{ w: 100, r: 5 }] } }, blocks: { 'full/b0': { score: { type: 'load', w: 100, unit: 'kg' } } }, unit: 'kg' }
+    const { active, w } = buildWodWorkout(kg, '2026-10-13', p, all, logged, Date.parse('2026-10-20T12:00:00Z'))
+    fileBackfill(kg, active, w)
+    const lb = convertStateUnit(kg, 'lb')
+    expect(lb.workouts[0].entries[0].sets[0].w).toBe(220.5)
+    expect(lb.workouts[0].wod.moves['full/b0/m0'].sets).toEqual([{ w: 220.5, r: 5 }])
+    expect(lb.workouts[0].wod.blocks[0].score).toEqual({ type: 'load', w: 100, unit: 'kg' })
+    // re-opened in the kg it was typed in: 100 and 100, not 45.25
+    const state = relogState(p, lb.workouts[0], 'lb')
+    expect(state.unit).toBe('kg')
+    expect(state.logged.moves['full/b0/m0'].sets).toEqual([{ w: 100, r: 5 }])
+    expect(state.logged.blocks['full/b0'].score).toEqual({ type: 'load', w: 100, unit: 'kg' })
+    // saved again untouched, into the lb profile
+    const back = loggedIn(state.logged, state.unit, 'lb')
+    expect(back.moves['full/b0/m0'].sets).toEqual([{ w: 220.5, r: 5 }])
+    expect(back.blocks['full/b0'].score).toEqual({ type: 'load', w: 220.5, unit: 'lb' })
   })
 })

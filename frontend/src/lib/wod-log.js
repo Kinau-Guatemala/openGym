@@ -22,7 +22,7 @@ import { isCardio } from './exercises.js'
 import { syncSideAggregate } from './workout-model.js'
 import { includeOf } from './wod-draft.js'
 import { doseFor, rxFor, rxPrinted, stepRxFor, stepsOf } from './rx.js'
-import { convertWeight } from './units.js'
+import { convertMoves, convertWeight } from './units.js'
 
 export const WOD_RIR = 5
 const METCON = new Set(['emom', 'amrap', 'fortime', 'interval'])
@@ -246,23 +246,18 @@ function movesOf(logged) {
 
 /**
  * The weights typed on the log screen (each movement's weight and rows, a load score) moved from
- * `from` to `to`, on the plate grid of convertWeight. The rest is kept as it is.
+ * `from` to `to`, on the plate grid of convertWeight. A load score carries its own unit, which a
+ * profile's unit change leaves as it is (crossfit-records.js), so it is moved from that one. The
+ * rest is kept as it is.
  */
 export function loggedIn(logged, from, to) {
-  if (!logged || from === to) return logged
-  const c = v => convertWeight(v, from, to)
-  const moves = {}, blocks = {}
-  for (const [k, lm] of Object.entries(logged.moves || {})) {
-    moves[k] = !lm || typeof lm !== 'object' ? lm : {
-      ...lm,
-      ...(lm.w != null ? { w: c(lm.w) } : {}),
-      ...(Array.isArray(lm.sets) ? { sets: lm.sets.map(s => (s?.w != null ? { ...s, w: c(s.w) } : s)) } : {}),
-    }
-  }
+  if (!logged) return logged
+  const blocks = {}
   for (const [k, lb] of Object.entries(logged.blocks || {})) {
-    blocks[k] = lb?.score?.w != null ? { ...lb, score: { ...lb.score, w: c(lb.score.w), unit: to } } : lb
+    const su = ['kg', 'lb'].includes(lb?.score?.unit) ? lb.score.unit : from
+    blocks[k] = lb?.score?.w != null ? { ...lb, score: { ...lb.score, w: convertWeight(lb.score.w, su, to), unit: to } } : lb
   }
-  return { ...logged, moves, blocks }
+  return { ...logged, moves: convertMoves(logged.moves, from, to), blocks }
 }
 
 /**

@@ -51,17 +51,18 @@ export default function CrossFitLog() {
   const setUnit = u => setState(st => ({ ...st, logged: loggedIn(st.logged, st.unit, u), unit: u }))
 
   const save = () => {
-    // A weight left as shown (the Rx, or the last one used) is logged as shown; one left empty on
-    // a movement with a load per step logs each step's. Then all of it goes into the profile's unit.
-    const moves = structuredClone(state.logged.moves)
+    // What was typed goes into the profile's unit. A weight left as shown (the Rx, or the last one
+    // used) is logged as the profile's, so a printed load is converted once, as the steps' are; one
+    // left empty on a movement with a load per step logs each step's.
+    const logged = loggedIn(state.logged, state.unit, base)
+    const moves = structuredClone(logged.moves)
     for (const tr of program.tracks) for (const b of list(tr.blocks)) for (const m of list(b.movements)) {
       const key = `${tr.id}/${b.id}/${m.id}`
       const lm = moves[key] ||= {}
-      if (lm.w == null && !stepLoads(m, lm.exId || m.exId)) { const w = defaultW(S, m, lm.exId || m.exId, state.unit); if (w != null) lm.w = w }
+      if (lm.w == null && !stepLoads(m, lm.exId || m.exId)) { const w = defaultW(S, m, lm.exId || m.exId); if (w != null) lm.w = w }
     }
-    const logged = loggedIn({ ...state.logged, moves }, state.unit, base)
     const choice = { tracks: state.tracks, include: state.include }
-    const out = useStore.getState().logWod(date, choice, { ...logged, start: atTime(date, state.time), unit: state.unit })
+    const out = useStore.getState().logWod(date, choice, { ...logged, moves, start: atTime(date, state.time), unit: state.unit })
     if (!out) { ui().toast(t('Nothing to log: pick a track and an exercise for each movement')); return }
     nav('/home', { replace: true })
     ui().openSheet(close => <FinishSummary w={out.w} prs={out.prs} close={close} />, { kind: 'center', locked: true })
