@@ -206,6 +206,22 @@ function UserDetail({ id, viewerOwner, onChanged, close }) {
   </>
 }
 
+// The CrossFit box feed (BOX_FEED_* on the api): when feed.json last went to GitHub, or why the
+// last push failed. Nothing at all on an instance that does not publish one.
+function BoxFeedCard({ tick }) {
+  const [f, setF] = useState(null)
+  useEffect(() => { api('/api/admin/box-feed').then(setF).catch(() => setF(null)) }, [tick])
+  if (!f?.on) return null
+  return <div className="card">
+    <h2 style={{ margin: 0 }}>Box feed</h2>
+    <div className="adm-status">
+      <span className={'adm-pill ' + (f.error ? 'bad' : f.pushedAt ? 'ok' : 'warn')}>{f.error ? 'failing' : f.pushedAt ? 'published' : 'waiting'}</span>
+      <span>{f.error ? 'Box feed: ' + f.error + ' (' + rel(f.errorAt) + ')' : f.pushedAt ? 'Box feed: published ' + rel(f.pushedAt) : 'Box feed: not published yet'}{f.pending ? ' · a push is queued' : ''}</span>
+    </div>
+    <div className="adm-lead" style={{ marginBottom: 0 }}>Every program its account saves goes to <code>{f.repo}</code>, a minute or so after the last save. Members read <a href={f.url} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all' }}>{f.url}</a>.</div>
+  </div>
+}
+
 function InvitesCard({ invites, reload, inviteOnly }) {
   const toast = useUI(s => s.toast)
   const gen = () => api('/api/admin/invites/new', { method: 'POST', body: '{}' })
@@ -388,6 +404,7 @@ export default function Admin() {
     {/* The Coach setup. Renders nothing at all unless the instance offers the Coach, so an admin
         page on a box that never enabled it is byte-for-byte the page it was before. */}
     <div ref={coachRef} className="adm-coach-anchor"><AdminCoach /></div>
+    <BoxFeedCard tick={tick} />
 
     <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
 

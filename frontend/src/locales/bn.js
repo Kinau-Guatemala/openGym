@@ -2290,6 +2290,8 @@ export default {
   'Edit movement': 'মুভমেন্ট সম্পাদনা',
   'Edit program': 'প্রোগ্রাম সম্পাদনা',
   'Exercise picks': 'বাছাই করা এক্সারসাইজ',
+  'Box feed': 'বক্স ফিড',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'আপনার বক্সের সদস্যরা এই কোড স্ক্যান করে বা লিংক খুলে আপনার সেভ করা প্রতিটি প্রোগ্রাম দেখতে পান।',
   'Extra': 'অতিরিক্ত',
   'For time': 'সময়ের জন্য',
   'Hard sets per muscle per week': 'প্রতি পেশিতে সাপ্তাহিক কঠিন সেট',

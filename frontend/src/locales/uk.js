@@ -2208,6 +2208,8 @@ export default {
   'Edit movement': 'Змінити рух',
   'Edit program': 'Змінити програму',
   'Exercise picks': 'Вибрані вправи',
+  'Box feed': 'Стрічка залу',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'Учасники вашого залу сканують цей код або відкривають посилання й бачать кожну програму, яку ви зберігаєте.',
   'Extra': 'Додатково',
   'For time': 'На час',
   'Hard sets per muscle per week': 'Важких підходів на м’яз на тиждень',

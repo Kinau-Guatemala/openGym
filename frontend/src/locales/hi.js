@@ -2211,6 +2211,8 @@ export default {
   'Edit movement': 'मूवमेंट संपादित करें',
   'Edit program': 'प्रोग्राम संपादित करें',
   'Exercise picks': 'चुनी गई एक्सरसाइज़',
+  'Box feed': 'बॉक्स फ़ीड',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'आपके बॉक्स के सदस्य यह कोड स्कैन करके या लिंक खोलकर आपका सेव किया हर प्रोग्राम देखते हैं।',
   'Extra': 'अतिरिक्त',
   'For time': 'समय के लिए',
   'Hard sets per muscle per week': 'हर मांसपेशी के लिए हफ़्ते के कठिन सेट',

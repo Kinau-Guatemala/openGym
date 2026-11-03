@@ -1408,6 +1408,8 @@ export const PT_BR_OVERRIDES = {
   'Edit movement': 'Editar movimento',
   'Edit program': 'Editar programa',
   'Exercise picks': 'Exercícios escolhidos',
+  'Box feed': 'Feed do box',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'Os membros do seu box leem este código, ou abrem o link, para ver cada programa que você salva.',
   'Extra': 'Extra',
   'For time': 'For time',
   'Hard sets per muscle per week': 'Séries pesadas por músculo por semana',

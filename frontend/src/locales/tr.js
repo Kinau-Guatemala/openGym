@@ -2211,6 +2211,8 @@ export default {
   'Edit movement': 'Hareketi düzenle',
   'Edit program': 'Programı düzenle',
   'Exercise picks': 'Seçilen egzersizler',
+  'Box feed': 'Salon akışı',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'Salonunun üyeleri bu kodu tarar ya da bağlantıyı açar ve kaydettiğin her programı görür.',
   'Extra': 'Ekstra',
   'For time': 'Süreye karşı',
   'Hard sets per muscle per week': 'Kas başına haftalık zor set',

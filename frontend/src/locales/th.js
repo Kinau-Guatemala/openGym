@@ -2222,6 +2222,8 @@ export default {
   'Edit movement': 'แก้ไขท่า',
   'Edit program': 'แก้ไขโปรแกรม',
   'Exercise picks': 'ท่าที่เลือกไว้',
+  'Box feed': 'ฟีดของยิม',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'สมาชิกยิมของคุณสแกนโค้ดนี้หรือเปิดลิงก์ เพื่อดูทุกโปรแกรมที่คุณบันทึก',
   'Extra': 'เสริม',
   'For time': 'จับเวลา',
   'Hard sets per muscle per week': 'เซ็ตหนักต่อกล้ามเนื้อต่อสัปดาห์',

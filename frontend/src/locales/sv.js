@@ -2670,6 +2670,8 @@ export default {
   'Edit movement': 'Redigera rörelse',
   'Edit program': 'Redigera program',
   'Exercise picks': 'Valda övningar',
+  'Box feed': 'Boxens flöde',
+  'Your box\'s members scan this code, or open the link, to see every program you save.': 'Medlemmarna i din box skannar koden, eller öppnar länken, och ser varje program du sparar.',
   'Extra': 'Extra',
   'For time': 'For time',
   'Hard sets per muscle per week': 'Tunga set per muskel och vecka',

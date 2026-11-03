@@ -282,6 +282,14 @@ paths:
                       community:
                         type: boolean
                         description: Whether "compare with others" is offered on this instance.
+                  boxFeed:
+                    type: object
+                    description: >-
+                      Present only for the account the box feed publishes (BOX_FEED_UID,
+                      with the other BOX_FEED_* settings set): where its programs' public
+                      feed.json is read from. Settings → CrossFit shows it with a QR code.
+                    properties:
+                      url: { type: string, format: uri }
                   password_login:
                     type: boolean
                     const: true
@@ -2339,6 +2347,34 @@ paths:
                   now:
                     type: number
                     description: Server time (ms), for rendering relative times.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/box-feed:
+    get:
+      tags: [admin]
+      operationId: adminBoxFeed
+      summary: 'Admin: the box feed''s last push'
+      description: >-
+        Whether this instance publishes a box feed (the BOX_FEED_* settings), and
+        when its feed.json last went to GitHub, or why the last push failed. The
+        token is never part of it. Admin only.
+      responses:
+        '200':
+          description: The publisher's status; only `on` when publishing is off.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [on]
+                properties:
+                  on: { type: boolean }
+                  repo: { type: string, description: 'owner/repo the feed is pushed to.' }
+                  url: { type: string, format: uri, description: Where members read feed.json. }
+                  pushedAt: { type: ['number', 'null'], description: Time (ms) of the last successful push. }
+                  error: { type: ['string', 'null'], description: Why the last push failed, until one succeeds. }
+                  errorAt: { type: ['number', 'null'] }
+                  pending: { type: boolean, description: A push is waiting out its debounce or retry, or running. }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 

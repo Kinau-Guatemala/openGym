@@ -37,6 +37,7 @@ import { JOB_ERRORS, ackParsed, parseStatus, parseWod, quotaText } from '../lib/
 import { INTAKE_ROUTE, beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fromDataUrl, isoForChoice, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
 import CrossFitRecords from './CrossFitRecords.jsx'
+import QrCanvas from '../components/QrCanvas.jsx'
 import { Button, NumberField, Row, Section, Segmented, SelectRow, Switch, TextField } from '../components/ui.jsx'
 
 const ui = () => useUI.getState()
@@ -704,7 +705,15 @@ const HYP_TARGETS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 24]
 
 export function CrossFitSettings({ S, update }) {
   const picks = Object.entries(aliasesOf(S)).sort(([a], [b]) => a.localeCompare(b))
+  // Only the account the server publishes (BOX_FEED_UID) gets the block (api box-feed-publish.js).
+  const feedUrl = useStore(s => s.config?.boxFeed?.url)
   return <>
+    {feedUrl && <Section title={t('Box feed')} footer={t("Your box's members scan this code, or open the link, to see every program you save.")}>
+      <div style={{ padding: 14, display: 'grid', gap: 10, justifyItems: 'center' }}>
+        <div className="ci-qr-plate"><QrCanvas value={feedUrl} size={200} /></div>
+        <a href={feedUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all', fontSize: '.8rem' }}>{feedUrl}</a>
+      </div>
+    </Section>}
     <Section title={t('Programs')}>
       <Row icon="flame" iconTint="var(--orange)" title={t('Count warm-ups')}
         subtitle={t('Warm-up blocks in a main track start included. Extra tracks always count theirs.')}>
