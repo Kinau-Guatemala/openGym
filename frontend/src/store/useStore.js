@@ -269,6 +269,9 @@ export const DEF = {
   // Whether a main track's warm-up block counts as work by default (the program editor's include
   // toggle starts from it, lib/wod-draft.js includeOf). Extra tracks' warm-ups always count.
   wodWarmup: false,
+  // The box feed subscribed to (lib/box-subscribe.js), an https URL, '' for none. What it holds is
+  // cached on the device, never here.
+  boxFeed: '',
 }
 const clone = o => JSON.parse(JSON.stringify(o))
 

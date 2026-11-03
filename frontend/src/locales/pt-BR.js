@@ -1840,6 +1840,25 @@ export const PT_BR_OVERRIDES = {
   'App icon': 'Ícone do app',
   'Just for this phone. Some home screens take a moment to catch up.': 'Só para este celular. Algumas telas iniciais demoram um pouco para perceber.',
   'Try the Halloween app icon': 'Experimente o ícone de Halloween do app',
+  // T32 · box feed, member side (Settings → CrossFit, the program list)
+  'Box feed': 'Feed do box',
+  'Box version available': 'Versão do box disponível',
+  'From {0}': 'Do {0}',
+  'Earlier from {0}': 'Antes, do {0}',
+  '{0} already has your own program. The box version replaces it.': '{0} já tem seu próprio programa. A versão do box substitui.',
+  'You have your own program for this day. Logging or editing the box version replaces it.': 'Você tem seu próprio programa para este dia. Registrar ou editar a versão do box substitui.',
+  'Only https addresses can be used.': 'Só dá para usar endereços https.',
+  'The feed could not be reached. Check the address and your connection.': 'Não foi possível abrir o feed. Confira o endereço e sua conexão.',
+  'This address is not a box feed.': 'Este endereço não é um feed de box.',
+  'The camera could not scan. Paste the address instead.': 'A câmera não conseguiu ler. Cole o endereço.',
+  'Subscribed to {0}': 'Você assinou {0}',
+  'Your box’s programs show in your CrossFit list. Logging one makes it yours.': 'Os programas do seu box aparecem na sua lista de CrossFit. Ao registrar um, ele passa a ser seu.',
+  'Paste the address your box shares, or scan its QR code. Its programs then show in your CrossFit list.': 'Cole o endereço que seu box compartilha ou leia o QR code dele. Os programas aparecem na sua lista de CrossFit.',
+  'Updated {0}': 'Atualizado: {0}',
+  'Unsubscribe': 'Cancelar assinatura',
+  'Feed address': 'Endereço do feed',
+  'Subscribe': 'Assinar',
+  'Scan QR code': 'Ler QR code',
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

@@ -13,7 +13,8 @@ import { useUI } from '../store/useUI.js'
 import { _setLangState } from '../lib/i18n-core.js'
 import es from '../locales/es.js'
 import esNames from '../exercise-names/es.js'
-import CrossFit, { CrossFitEdit, CrossFitSettings, whichDaySheet } from './CrossFit.jsx'
+import CrossFit, { CrossFitBox, CrossFitEdit, CrossFitSettings, whichDaySheet } from './CrossFit.jsx'
+import { _reset as resetBoxFeed, keepFeed, parseFeed } from '../lib/box-subscribe.js'
 import CrossFitLog from './CrossFitLog.jsx'
 import { beginIntake, currentIntake, setIntakeImage } from '../lib/wod-intake.js'
 import Home from './Home.jsx'
@@ -65,9 +66,12 @@ const PROGRAM = {
     { id: 't1', label: '', kind: 'extra', blocks: [] },
   ],
 }
+// T32: the box feed, publishing PROGRAM (and an older day) under the box's own name.
+const BOX = 'Holy Program'
+const FEED_URL = 'https://raw.githubusercontent.com/box/wods/main/feed.json'
 // The box's own wording, shown as printed.
 const PRINTED = (() => {
-  const out = new Set([PROGRAM.title])
+  const out = new Set([PROGRAM.title, BOX])
   for (const tr of PROGRAM.tracks) for (const b of tr.blocks) {
     if (b.label) out.add(b.label)
     if (b.benchmark) out.add(b.benchmark)
@@ -101,6 +105,7 @@ async function mount(entry, el) {
       <Route path="/crossfit/new" element={<CrossFitEdit />} />
       <Route path="/crossfit/edit/:date" element={<CrossFitEdit />} />
       <Route path="/crossfit/log/:date" element={<CrossFitLog />} />
+      <Route path="/crossfit/box/:date" element={<CrossFitBox />} />
       <Route path="/settings" element={el} />
       <Route path="/home" element={<Home />} />
       <Route path="*" element={null} />
@@ -119,6 +124,10 @@ const click = async el => { if (!el) throw new Error('nothing to click'); await 
 const byText = (el, text) => [...el.querySelectorAll('button')].find(b => b.textContent.trim() === text)
 // The screen shows the Spanish for this English key: the state under test is really there.
 const shows = (el, key) => expect(el.textContent).toContain(es[key])
+const type = async (el, value) => {
+  const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+  await act(async () => { set.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })) })
+}
 const helpSheet = async () => { await click(host.querySelector(`[aria-label="${es['What the switches do']}"]`)); return sheet() }
 
 function collect(el) {
@@ -167,6 +176,21 @@ const readTo = async (ending, ready = false) => {
 }
 const failWith = code => ({ parse: async () => { throw Object.assign(new Error(code), { data: { code } }) }, status: async () => ({}) })
 const lastFailed = (cls, extra = {}) => ({ parse: async () => ({ job: { id: 'j1' } }), status: async () => ({ last: { id: 'j1', errorClass: cls, ...extra } }) })
+
+// Subscribed to a feed with today's program, PAST's (the member has their own) and an older day.
+const subscribed = () => {
+  const programs = [TODAY, PAST, '2026-10-25'].map(date => ({ date, ...clone(PROGRAM) }))
+  keepFeed(FEED_URL, parseFeed({ v: 1, box: BOX, updatedAt: TODAY + 'T06:00:00Z', programs }))
+  useStore.setState({ S: { ...useStore.getState().S, boxFeed: FEED_URL } })
+}
+const settings = () => <CrossFitSettings S={useStore.getState().S} update={fn => useStore.getState().update(fn)} />
+const subscribeWith = async (url, answer) => {
+  if (answer) fetch.mockImplementation(async () => ({ ok: true, status: 200, url, headers: { get: () => null }, text: async () => JSON.stringify(answer) }))
+  await mount('/settings', settings())
+  await type(host.querySelector('input'), url)
+  await click(byText(host, es.Subscribe))
+  for (let i = 0; i < 10; i++) await act(async () => { await Promise.resolve() })
+}
 
 const SCREENS = {
   'program list, empty': async () => { useStore.setState({ S: { ...clone(DEF) } }); await mount('/crossfit') },
@@ -334,6 +358,42 @@ const SCREENS = {
     return line
   },
   'settings, no picks': async () => { await mount('/settings', <CrossFitSettings S={useStore.getState().S} update={() => {}} />) },
+  'program list, with the box feed': async () => {
+    subscribed()
+    await mount('/crossfit')
+    shows(host, 'Box version available')
+    expect(host.textContent).toContain(es['From {0}'].replace('{0}', BOX))
+    expect(host.querySelector('details')).toBeTruthy()
+  },
+  'box program, read-only': async () => { subscribed(); await mount('/crossfit/box/' + TODAY) },
+  'box program, the member has their own that day': async () => {
+    subscribed()
+    await mount('/crossfit/box/' + PAST)
+    shows(host, 'You have your own program for this day. Logging or editing the box version replaces it.')
+  },
+  'box program, replace your own': async () => {
+    subscribed()
+    await mount('/crossfit/box/' + PAST)
+    await click(byText(host, es.Log))
+    return sheet()
+  },
+  'settings, box feed: an http address': async () => {
+    await subscribeWith('http://example.com/feed.json')
+    shows(host, 'Only https addresses can be used.')
+  },
+  'settings, box feed: unreachable': async () => {
+    await subscribeWith(FEED_URL)
+    shows(host, 'The feed could not be reached. Check the address and your connection.')
+  },
+  'settings, box feed: not a box feed': async () => {
+    await subscribeWith(FEED_URL, { hello: 1 })
+    shows(host, 'This address is not a box feed.')
+  },
+  'settings, box feed: subscribing': async () => {
+    await subscribeWith(FEED_URL, { v: 1, box: BOX, programs: [] })
+    expect(useStore.getState().S.boxFeed).toBe(FEED_URL)
+  },
+  'settings, box feed: subscribed': async () => { subscribed(); await mount('/settings', settings()); shows(host, 'Unsubscribe') },
   'settings, with picks': async () => {
     useStore.getState().setAlias('ring rows', '0043')
     await mount('/settings', <CrossFitSettings S={useStore.getState().S} update={() => {}} />)
@@ -349,6 +409,8 @@ beforeEach(() => {
   toasts = []
   unsub = useUI.subscribe(s => { if (s.toastMsg) toasts.push(s.toastMsg) })
   useUI.setState({ sheets: [], toastMsg: '' })
+  localStorage.clear(); resetBoxFeed()
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('no network in tests') }))
   useStore.setState({ S: { ...clone(DEF), wods: { [PAST]: { ...clone(PROGRAM), _ts: 1 }, [NEXT]: { ...clone(PROGRAM), _ts: 1 } } }, user: null, ready: true })
 })
 afterEach(() => {
@@ -356,6 +418,7 @@ afterEach(() => {
   if (root) act(() => root.unmount())
   host?.remove()
   if (sheetHost) { act(() => sheetRoot.unmount()); sheetHost.remove(); sheetHost = null }
+  vi.unstubAllGlobals()
   vi.useRealTimers()
 })
 
