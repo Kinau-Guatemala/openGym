@@ -4237,6 +4237,29 @@ components:
                                       male: { oneOf: [{ $ref: '#/components/schemas/CoachWodLoad' }, { type: 'null' }] }
                                       female: { oneOf: [{ $ref: '#/components/schemas/CoachWodLoad' }, { type: 'null' }] }
                                   - type: 'null'
+                              steps:
+                                description: |
+                                  Present only when the movement is done once per set with its own reps or load:
+                                  `10-8-6-4-2` with `Jerks 135/95` … `Jerks 225/155`, or an EMOM's `M2 12 Lunges
+                                  95/65` … `M10 4 Lunges 175/115`. One entry per set, in order; its fields replace
+                                  the movement's `dose` / `rx` for that set.
+                                type: array
+                                minItems: 2
+                                maxItems: 30
+                                items:
+                                  type: object
+                                  properties:
+                                    reps: { type: number }
+                                    cal: { type: number }
+                                    m: { type: number }
+                                    sec: { type: number }
+                                    rx:
+                                      oneOf:
+                                        - type: object
+                                          properties:
+                                            male: { oneOf: [{ $ref: '#/components/schemas/CoachWodLoad' }, { type: 'null' }] }
+                                            female: { oneOf: [{ $ref: '#/components/schemas/CoachWodLoad' }, { type: 'null' }] }
+                                        - type: 'null'
                               alts:
                                 type: array
                                 items:

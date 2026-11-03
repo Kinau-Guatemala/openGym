@@ -738,14 +738,41 @@ function wodLoad(v, where, errors) {
   return { w: v.w, unit: v.unit };
 }
 
+function wodRx(v, at, errors) {
+  if (v == null) return null;
+  if (typeof v !== 'object') { errors.push(`${at}.rx must be an object with "male" and "female", or null`); return null; }
+  const rx = { male: wodLoad(v.male, `${at}.rx.male`, errors), female: wodLoad(v.female, `${at}.rx.female`, errors) };
+  return rx.male || rx.female ? rx : null;
+}
+
+// `10-8-6-4-2` / `Jerks 135/95` … `Jerks 225/155`, an EMOM's `M2 12 Lunges 95/65` … `M10 4 Lunges
+// 175/115`: one entry per set, its reps / cal / m / sec and its Rx over the movement's for that set.
+const WOD_STEP_KEYS = ['reps', 'cal', 'm', 'sec'];
+function wodSteps(v, at, errors) {
+  if (v == null) return null;
+  if (!Array.isArray(v) || v.length < 2 || v.length > 30) { errors.push(`${at}.steps must be an array of 2 to 30 sets, or null`); return null; }
+  return v.map((s, j) => {
+    const where = `${at}.steps[${j}]`;
+    if (!s || typeof s !== 'object' || Array.isArray(s)) { errors.push(`${where} must be an object like {"reps": 10}`); return {}; }
+    const out = {};
+    for (const k of WOD_STEP_KEYS) {
+      if (s[k] == null) continue;
+      if (!isNum(s[k]) || s[k] < 0 || s[k] > MAX_WOD_DOSE) errors.push(`${where}.${k} must be a number from 0 to ${MAX_WOD_DOSE}`);
+      else out[k] = s[k];
+    }
+    const rx = wodRx(s.rx, where, errors);
+    if (rx) out.rx = rx;
+    return out;
+  });
+}
+
 function wodMovement(m, i, where, errors) {
   const at = `${where}.movements[${i}]`;
   if (!m || typeof m !== 'object') { errors.push(`${at} must be an object`); return null; }
   if (!isStr(m.rawName)) errors.push(`${at}.rawName is required — the movement without its dose or load, e.g. "hang cleans"`);
   if (m.alts != null && !Array.isArray(m.alts)) errors.push(`${at}.alts must be an array`);
-  const rx = m.rx == null ? null : (typeof m.rx === 'object'
-    ? { male: wodLoad(m.rx.male, `${at}.rx.male`, errors), female: wodLoad(m.rx.female, `${at}.rx.female`, errors) }
-    : (errors.push(`${at}.rx must be an object with "male" and "female", or null`), null));
+  const rx = wodRx(m.rx, at, errors);
+  const steps = wodSteps(m.steps, at, errors);
   return {
     id: 'm' + i,
     raw: clampStr(isStr(m.raw) ? m.raw.trim() : m.rawName, 200),
@@ -756,7 +783,8 @@ function wodMovement(m, i, where, errors) {
     dose: wodDose(m.dose, at, errors),
     ...wodDoseFemale(m.doseFemale, at, errors),
     perSide: m.perSide === true,
-    rx: rx && (rx.male || rx.female) ? rx : null,
+    rx,
+    ...(steps ? { steps } : {}),
     alts: (Array.isArray(m.alts) ? m.alts : []).filter(a => a && isStr(a.rawName)).slice(0, 5)
       .map(a => ({ exId: null, rawName: clampStr(a.rawName.trim(), 80), dose: wodDose(a.dose, `${at}.alts`, errors), ...wodDoseFemale(a.doseFemale, `${at}.alts`, errors) }))
   };
@@ -785,6 +813,42 @@ function withoutRests(moves) {
     if (to && to.dose.restSec == null) to.dose.restSec = rests[i];
   });
   return work;
+}
+
+// The model can still print a rising load as one movement per line: the same movement on
+// consecutive lines that differs only in its reps / cal / m / sec and Rx (in an EMOM, in its own
+// minute: `M2` / `M4` …) is one movement with a step per line, on the first one's slot. An R and an
+// L line (perSide), and lines that differ in anything else (alternatives, sets, rest, a women's
+// dose), stay as they are.
+// ponytail: only adjacent lines; an EMOM printed interleaved (M1 wall balls, M2 lunges 95, M3 wall
+// balls, M4 lunges 115) stays per line. Look past other slots if a box prints it that way.
+const nameKey = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const stepOf = m => ({ ...Object.fromEntries(WOD_STEP_KEYS.filter(k => m.dose[k] != null).map(k => [k, m.dose[k]])), ...(m.rx ? { rx: m.rx } : {}) });
+const restKey = m => JSON.stringify([nameKey(m.rawName), Object.entries(m.dose).filter(([k]) => !WOD_STEP_KEYS.includes(k)).sort(),
+  m.doseFemale ?? null, m.alts.map(a => [nameKey(a.rawName), a.dose, a.doseFemale ?? null])]);
+function withSteps(moves, emom, capMin, rounds) {
+  const runs = [];
+  for (let i = 0; i < moves.length;) {
+    const m = moves[i];
+    let j = i + 1;
+    const same = n => !n.steps && !n.perSide && restKey(n) === restKey(m) && (emom || n.slot === m.slot);
+    if (!m.steps && !m.perSide && nameKey(m.rawName)) while (j < moves.length && j - i < 30 && same(moves[j])) j++;
+    const run = moves.slice(i, j);
+    if (new Set(run.map(n => JSON.stringify(stepOf(n)))).size > 1) { runs.push(run); i = j; } else { runs.push([m]); i++; }
+  }
+  // In an EMOM each merged line must be its own minute (M2, M4 … M10): a run stands only when it
+  // holds every minute its slot gets, counted the way the log counts them (k slots share the
+  // minutes). A rotation whose slots repeat (`EMOM 12` / M1 / M2 3 HC 135 / M3 3 HC 155) keeps
+  // one movement per slot.
+  for (;;) {
+    const out = runs.map(r => (r.length > 1 ? { ...r[0], steps: r.map(stepOf) } : r[0]));
+    if (!emom) return out;
+    const k = new Set(out.map(m => m.slot).filter(Boolean)).size || 1;
+    const n = Math.floor(((capMin > 0 && capMin) || (rounds > 0 && rounds * k) || k) / k);
+    const bad = runs.findIndex(r => r.length > 1 && r.length !== n);
+    if (bad < 0) return out;
+    runs.splice(bad, 1, ...runs[bad].map(m => [m]));
+  }
 }
 
 // `EVERY 3x4`, `EVERY4x3`, `EVERY 1:30 x 8`, `EVERY 2 + :30 x 4`: the period in seconds (a bare
@@ -856,7 +920,7 @@ function wodBlock(b, i, where, errors) {
     scheme: strOrNull(b.scheme, 60),
     benchmark: strOrNull(b.benchmark, 40),
     raw,
-    movements: withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean))
+    movements: withSteps(withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean)), format === 'emom', capMin, rounds)
   };
 }
 const restWindowBlock = b => !b.warmup && !b.movements.length && (isRestWindow(b.raw) || isRestWindow(b.label));

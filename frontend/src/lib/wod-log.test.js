@@ -442,3 +442,65 @@ describe('wodToSession: repeats and sets (T17)', () => {
     expect(bur2.sets.map(x => x.r)).toEqual([5, 5])
   })
 })
+
+describe('wodToSession: a movement with steps logs one set per step (T26)', () => {
+  // The fixture's three cases (2 Nov Full and Evo, 3 Nov Full), checked by validateWod, with the exercises picked.
+  const JERK = '5122', WB = '2458', LUNGE = '0032', CHIN = '0662', SWING = '1160'
+  const evo = () => {
+    const p = validateWod(JSON.parse(readFileSync(resolve(__dirname, '../../../api/coach/fixture-wod.json'), 'utf8'))).proposal.program
+    const tr = p.tracks.find(t => t.id === 'evo')
+    tr.blocks = tr.blocks.slice(5)
+    tr.blocks.forEach((b, i) => b.movements.forEach((m, j) => { m.exId = [[JERK], [WB, LUNGE], [CHIN, SWING]][i][j] }))
+    return { title: 'T', tracks: [tr] }
+  }
+  const only = (ref, logged = {}, S = S0({ unit: 'lb' })) => entryOf(wodToSession(evo(), { tracks: ['evo'] }, logged, S), 'evo/' + ref)
+  const rows = e => e.sets.map(s => [s.r, s.w])
+
+  it('2 Nov Full: the five jerk lines are 5 sets, the rung as reps and each its own load, by sex and unit', () => {
+    const [jerks] = only('b5')
+    expect(rows(jerks)).toEqual([[10, 135], [8, 155], [6, 185], [4, 205], [2, 225]])
+    expect(jerks.rx).toEqual({ w: 225, unit: 'lb' }, 'the heaviest step\'s, which Rx vs lifted compares the top set with')
+    expect(only('b5', {}, S0({ unit: 'lb', body: 'female' }))[0].rx).toEqual({ w: 155, unit: 'lb' })
+    expect(rows(only('b5', {}, S0({ unit: 'lb', body: 'female' }))[0])).toEqual([[10, 95], [8, 105], [6, 135], [4, 145], [2, 155]])
+    expect(only('b5', {}, S0())[0].sets.map(s => s.w)).toEqual([60, 70, 85, 92.5, 102.5])
+    expect(jerks.sets.every(s => s.wodRir === 5)).toBe(true)
+  })
+
+  it('3 Nov Full: EMOM 10 with M1 and M2 is 5 wall ball sets and the 5 lunge steps', () => {
+    const [wb, lunges] = only('b6')
+    expect(rows(wb)).toEqual(Array(5).fill([15, 0]))
+    expect(rows(lunges)).toEqual([[12, 95], [10, 115], [8, 135], [6, 155], [4, 175]])
+  })
+
+  it('2 Nov Evo: chin ups and swings in one block, 5 sets each down their own ladders', () => {
+    const [chin, swing] = only('b7')
+    expect(rows(chin)).toEqual([[10, 0], [8, 0], [6, 0], [4, 0], [2, 0]])
+    expect(rows(swing)).toEqual([[20, 55], [18, 55], [16, 55], [14, 55], [12, 55]])
+  })
+
+  it('what was typed wins: a weight is every step\'s, a rep count turns the steps off; a substitute keeps the counts, not the loads', () => {
+    expect(rows(only('b5', { moves: { 'evo/b5/m0': { w: 100 } } })[0])).toEqual([[10, 100], [8, 100], [6, 100], [4, 100], [2, 100]])
+    expect(rows(only('b6', { moves: { 'evo/b6/m1': { r: 9 } } })[1])).toEqual(Array(5).fill([9, 95]))
+    expect(rows(only('b5', { moves: { 'evo/b5/m0': { exId: SNATCH } } })[0])).toEqual([[10, 0], [8, 0], [6, 0], [4, 0], [2, 0]])
+  })
+
+  it('an EMOM rotation whose slots repeat logs each slot\'s minutes, not steps', () => {
+    const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+    const line = (slot, rawName, reps, rx) => ({ raw: rawName, rawName, slot, dose: { reps }, rx })
+    const emom12 = ms => {
+      const p = validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 12', format: 'emom', capMin: 12, movements: ms }] }] }).proposal.program
+      p.tracks[0].blocks[0].movements.forEach(m => { m.exId = PUSHUP })
+      return wodToSession(p, { tracks: ['full'] }, {}, S0({ unit: 'lb' })).entries.map(rows)
+    }
+    const hc = [line('M2', 'hang cleans', 3, lb(135, 95)), line('M3', 'hang cleans', 3, lb(155, 105))]
+    expect(emom12([line('M1', 'burpees', 10, null), ...hc])).toEqual([Array(4).fill([10, 0]), Array(4).fill([3, 135]), Array(4).fill([3, 155])])
+    expect(emom12(hc)).toEqual([Array(6).fill([3, 135]), Array(6).fill([3, 155])])
+  })
+
+  it('a strength block: a set per step with its load, until sets are typed', () => {
+    const lb = w => ({ male: { w, unit: 'lb' }, female: null })
+    const p = program([block('b0', 'strength', [mv('m0', DL, { reps: 5 }, { rx: lb(135), steps: [{ rx: lb(135) }, { rx: lb(155) }, { reps: 3, rx: lb(175) }] })])])
+    expect(rows(wodToSession(p, all, {}, S0({ unit: 'lb' })).entries[0])).toEqual([[5, 135], [5, 155], [3, 175]])
+    expect(rows(wodToSession(p, all, { moves: { 'full/b0/m0': { sets: [{ w: 140, r: 5 }] } } }, S0({ unit: 'lb' })).entries[0])).toEqual([[5, 140]])
+  })
+})
