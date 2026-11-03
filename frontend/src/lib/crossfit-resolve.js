@@ -89,6 +89,9 @@ export function resolveMovement({ rawName, name } = {}, userAliases = {}) {
 // tempo or pause ("2 seg f.r tempo") is dropped, and a part's own count is its reps
 // ("clean + 2 seg f.r tempo 3 jerk" → clean, and jerk ×3). "C&J" resolves whole, so it stays one.
 // A timed dose stays one movement: split, "40 seg DB´s Lateral + Front Fly" would log the time twice.
+// The first part's DB/KB/BB may or may not be the second's ("db hang clean + push press": a DB push
+// press? "db´s thruster + burpee": surely not a DB burpee), so when the part resolves both with and
+// without it to different exercises, the line stays whole for a pick; when only one does, that one.
 const JOIN = /\s*[+&]\s*/
 const PAUSE = /^.*\b(?:tempo|pausa|pause)\b\s*/
 const COUNT = /^(\d+)\s+(?!(?:mts?|m|cal|seg|sec|k|km)\b)(?=[a-z])/
@@ -101,16 +104,23 @@ const timedOnly = d => d?.sec != null && d.reps == null && d.m == null && d.cal 
  */
 export function splitMovement(m, userAliases = {}) {
   const parts = String(m?.rawName || '').split(JOIN)
-  // ponytail: a movement with alternatives stays whole; split its alts too if a program prints one
-  if (parts.length < 2 || parts.some(p => !p) || timedOnly(m.dose) || m.alts?.length) return null
+  // ponytail: a movement with alternatives or steps stays whole; split those too (a part's own count
+  // over each step's reps) if a program prints one
+  if (parts.length < 2 || parts.some(p => !p) || timedOnly(m.dose) || m.alts?.length || m.steps?.length) return null
   if ((m.exId && m.via !== 'guess') || sure(resolveMovement(m, userAliases))) return null
   const head = parts[0].split(' ').slice(0, -1).join(' ')
+  const equip = PRINTED_EQUIP[norm(parts[0]).split(' ')[0]] && parts[0].split(' ')[0]
   const out = []
   for (const part of parts) {
     let s = part.replace(PAUSE, '')
     const count = COUNT.exec(s)
     s = rawNameOf(count ? s.slice(count[0].length) : s)
     let r = resolveMovement({ rawName: s }, userAliases)
+    if (out.length && equip && !PRINTED_EQUIP[norm(s).split(' ')[0]]) {
+      const r2 = resolveMovement({ rawName: `${equip} ${s}` }, userAliases)
+      if (sure(r) && sure(r2) && r.exId !== r2.exId) return null
+      if (!sure(r) && sure(r2)) { s = `${equip} ${s}`; r = r2 }
+    }
     if (!sure(r) && out.length && head) {
       const r2 = resolveMovement({ rawName: `${head} ${s}` }, userAliases)
       if (sure(r2)) { s = `${head} ${s}`; r = r2 }

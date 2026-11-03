@@ -711,5 +711,16 @@ describe('crossfit resolve: two movements on one line (T27)', () => {
     expect(splitMovement(mv('x', 'muscle clean + push pres', { reps: 5 })), 'a guess is not certain').toBeNull()
     expect(splitMovement(mv('x', 'muscle clean', { reps: 5 }))).toBeNull()
     expect(splitMovement(mv('x', 'muscle clean + push press', { reps: 5 }, { alts: [{ rawName: 'row' }] }))).toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean + push press', { reps: 5 }, { steps: [{ reps: 5 }, { reps: 3 }] })), 'steps would give both parts the same reps').toBeNull()
+  })
+
+  it('the first part\'s DB/KB: a second part that resolves both with and without it stays whole, else takes the one that resolves', () => {
+    // a DB push press, or the barbell one? A DB burpee? A pick, not a sure barbell push press or DB burpee.
+    expect(splitMovement(mv('x', 'db hang clean + push press', { reps: 6 }))).toBeNull()
+    expect(splitMovement(mv('x', 'db´s thruster + burpee', { reps: 6 }))).toBeNull()
+    // "goblet squat" alone resolves to nothing for certain, "kb goblet squat" does
+    expect(parts(mv('x', 'kb swing + goblet squat', { reps: 10 })).map(p => [p[1], p[2]])).toEqual([['kb swing', resolveMovement({ rawName: 'kb swing' }).exId], ['kb goblet squat', '0534']])
+    // a part that prints its own equipment is taken as printed
+    expect(parts(mv('x', 'db hang clean + db push press', { reps: 6 })).map(p => [p[1], p[2]])).toEqual([['db hang clean', '4449'], ['db push press', '1700']])
   })
 })
