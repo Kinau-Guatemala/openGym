@@ -58,10 +58,10 @@ export const trackNames = w => (w?.tracks || []).map(tr => tr.label).filter(Bool
 // T29: what each switch does, one sentence each: under the switch (the first block's, where blocks
 // repeat), and all of them in the screen's ? sheet. The log screen reads the same ones.
 export const HELP = {
-  include: () => t('Whether this block counts when you log the program. You can still change it there.'),
+  include: () => t('Whether this block counts when you log the program. You can change it again on the log screen.'),
   includeLog: () => t('Off leaves this block out: nothing from it is saved with the workout.'),
-  warmup: () => t('Left out of the log in a main track unless you include it.'),
-  perSide: () => t('The dose is for each side (12/12): it logs a left and a right set, and both count.'),
+  warmup: () => t('Left out of the log in a main track, unless you include it or turn on Count warm-ups in Settings.'),
+  perSide: () => t('The reps are for each side (12/12): each set logs your left and your right, and both count.'),
   rx: () => t('Done as prescribed, no scaling. Benchmarks keep your Rx and scaled bests apart.'),
   score: () => t('Your result: a time, rounds plus extra reps, or a load. Rounds also set how many sets are logged, and a benchmark keeps your best.'),
 }
