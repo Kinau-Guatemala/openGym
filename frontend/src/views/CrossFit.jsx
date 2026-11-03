@@ -22,7 +22,8 @@ import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
-import { rxFor, doseFor, fmtDose, fmtRounds } from '../lib/rx.js'
+import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps } from '../lib/rx.js'
+import { ladderOf } from '../lib/wod-log.js'
 import { fmtRest } from '../lib/duration.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
@@ -461,7 +462,7 @@ function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMoveme
         <Switch aria-label={t('Include')} checked={on} onChange={onInclude} />
       </label>
     </div>
-    {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} onEdit={() => onMovement(mi)}
+    {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} rungs={ladderOf(block.scheme)} onEdit={() => onMovement(mi)}
       onPick={(ai, item) => onPick(mi, ai, item)} onChoose={(ai, item, exId) => onChoose(mi, ai, item, exId)} />)}
     <div style={{ marginTop: 6 }}>
       <Button size="sm" variant="ghost" icon="plus" onClick={onAddMovement}>{t('Add movement')}</Button>
@@ -503,12 +504,13 @@ function ExChoice({ item, onPick, onChoose }) {
   return <ExChip item={item} onClick={onPick} />
 }
 
-function MovementRow({ S, m, onEdit, onPick, onChoose }) {
+function MovementRow({ S, m, rungs, onEdit, onPick, onChoose }) {
   const rx = rxFor(m, S)
   const d = doseFor(m, S)
   const dose = fmtDose(d)
-  const line = [dose + (dose && m.perSide ? ' ' + t('each side') : ''), d.restSec > 0 ? t('{0} rest', fmtRest(d.restSec)) : null,
-    rx ? `${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
+  const steps = fmtSteps(m, S, rungs)
+  const line = (steps ? [steps] : [dose + (dose && m.perSide ? ' ' + t('each side') : ''), d.restSec > 0 ? t('{0} rest', fmtRest(d.restSec)) : null,
+    rx ? `${fmtNum(rx.w)} ${rx.unit}` : null]).filter(Boolean).join(' · ')
   return <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 10, paddingTop: 10 }}>
     <div {...tappable(onEdit)} style={{ cursor: 'pointer' }}>
       <div className="row" style={{ gap: 6 }}>
@@ -591,6 +593,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
   const [rxF, setRxF] = useState(Number(m0.rx?.female?.w) || null)
   const [rxUnit, setRxUnit] = useState(String(m0.rx?.male?.unit || m0.rx?.female?.unit || 'lb').toLowerCase() === 'kg' ? 'kg' : 'lb')
   const [alts, setAlts] = useState(() => (m0.alts || []).map(a => ({ ...a })))
+  const [steps, setSteps] = useState(m0.steps || null)
   const [altText, setAltText] = useState('')
   const rawRef = useRef(null)
   const onRawFocus = useSheetKeyboard(rawRef)
@@ -610,6 +613,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
       rx: rxM || rxF ? { male: rxM ? { w: rxM, unit: rxUnit } : null, female: rxF ? { w: rxF, unit: rxUnit } : null } : null,
       alts }
     if (doseF && dose) out.doseFemale = { [kind]: doseF }; else delete out.doseFemale
+    if (steps) out.steps = steps; else delete out.steps
     if (out.name === undefined) delete out.name
     onSave(out)
     close()
@@ -642,6 +646,12 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
       <span className="lrow-m"><span className="lrow-t">{t('Each side')}</span></span>
       <Switch aria-label={t('Each side')} checked={perSide} onChange={setPerSide} />
     </div>
+
+    {steps && <div className="lrow" style={{ padding: '0 0 12px' }}>
+      <span className="lrow-m"><span className="lrow-t">{t('Per set')}</span>
+        <span className="lrow-s">{fmtSteps({ ...m0, steps }, S) || t('{0} sets', steps.length)}</span></span>
+      <Button size="sm" variant="ghost" icon="xmark" onClick={() => setSteps(null)} style={{ flex: '0 0 auto', width: 'auto' }}>{t('Clear')}</Button>
+    </div>}
 
     <div className="row between" style={{ margin: '4px 2px 6px' }}>
       <span className="small muted">{t('Rx load')}</span>

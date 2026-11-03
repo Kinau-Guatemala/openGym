@@ -68,3 +68,27 @@ export function fmtRounds(block) {
   if (block.roundsMax > block.rounds) return t('{0}–{1} rounds', block.rounds, block.roundsMax)
   return t('{0} rounds', block.rounds)
 }
+
+/** A movement done once per set with its own reps or load (`10-8-6-4-2` jerks at 135 → 225, an
+ *  EMOM's M2 / M4 … lunges): its steps, one set each, or null. */
+export const stepsOf = movement => (Array.isArray(movement?.steps) && movement.steps.length ? movement.steps : null)
+
+/** A step's Rx load for S.body in S.unit, else the movement's: `{ w, unit }`, or null. */
+export const stepRxFor = (step, movement, S) => rxFor(step, S) || rxFor(movement, S)
+
+const STEP_KINDS = [['reps', ''], ['cal', ' cal'], ['m', ' m'], ['sec', ' s']]
+
+/** A movement's steps as one short line: "10-8-6-4-2 @ 135→225 lb", "12-10-8-6-4", "95→175 lb";
+ *  '' for none. A step without its own count takes the movement's, else the ladder rung `rungs[i]`. */
+export function fmtSteps(movement, S, rungs) {
+  const steps = stepsOf(movement)
+  if (!steps) return ''
+  const dose = doseFor(movement, S)
+  const kind = STEP_KINDS.find(([k]) => steps.some(s => Number(s?.[k]) > 0) || Number(dose[k]) > 0)
+  const counts = steps.map((s, i) => (kind && (Number(s?.[kind[0]]) || Number(dose[kind[0]]))) || rungs?.[i] || 0)
+  const reps = counts.every(n => n > 0) && new Set(counts).size > 1 ? counts.join('-') + (kind?.[1] || '') : ''
+  const loads = steps.map(s => stepRxFor(s, movement, S)).filter(Boolean)
+  const first = loads[0], last = loads.at(-1)
+  const load = !first ? '' : loads.every(l => l.w === first.w) ? `${first.w} ${first.unit}` : `${first.w}→${last.w} ${first.unit}`
+  return [reps, load].filter(Boolean).join(' @ ')
+}

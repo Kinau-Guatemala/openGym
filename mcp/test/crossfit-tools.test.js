@@ -103,6 +103,20 @@ describe('get_wods', () => {
     expect(pump.blocks[0]).toMatchObject({ rounds: 3, rounds_max: 4, every_sec: null })
   })
 
+  test('a movement done once per set carries its steps, each with its dose and Rx; none is null (T26)', async () => {
+    const p = structuredClone(program)
+    const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+    Object.assign(p.tracks[0].blocks[1].movements[0], { rx: lb(95, 65), steps: [{ reps: 12, rx: lb(95, 65) }, { reps: 10, rx: lb(115, 75) }, { reps: 8 }] })
+    S.wods[TODAY] = p
+    const [lunges, other] = (await call('get_wods')).programs[0].tracks[0].blocks[1].movements
+    expect(lunges.steps).toEqual([
+      { dose: '12', rx_printed: { w: 95, unit: 'lb' }, rx: { w: 42.5, unit: 'kg' } },
+      { dose: '10', rx_printed: { w: 115, unit: 'lb' }, rx: { w: 52.5, unit: 'kg' } },
+      { dose: '8', rx_printed: { w: 95, unit: 'lb' }, rx: { w: 42.5, unit: 'kg' } }
+    ])
+    expect(other.steps).toBe(null)
+  })
+
   test('a best guess for a misspelled name is flagged with its candidates, never passed as the exercise', async () => {
     const p = structuredClone(program)
     const emom = p.tracks[0].blocks[1]

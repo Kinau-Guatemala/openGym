@@ -401,7 +401,10 @@ test('validateWod: EVERY intervals, round groups and ranges, rest windows, NxD A
     ['b1', 'TC 12 · 2 RONDAS', 'fortime', 12, 2, null, null, 2],
     ['b2', 'TC 12 · 2 RONDAS', 'fortime', null, 2, null, null, 2],
     ['b3', 'TC 10 COLECTIVO', 'fortime', 10, 3, null, 4, 2],
-    ['b4', 'MIN 8-15 TC 7', 'amrap', 7, 3, null, null, 2]
+    ['b4', 'MIN 8-15 TC 7', 'amrap', 7, 3, null, null, 2],
+    ['b5', '10-8-6-4-2', 'fortime', null, null, null, null, 1],
+    ['b6', 'EMOM 10', 'emom', 10, null, null, null, 2],
+    ['b7', 'TC 10', 'fortime', 10, null, null, null, 2]
   ], 'the MIN 7-8 REST window is gone, and the ids after it close up');
   assert.ok(track('evo').blocks.slice(1, 3).every(b => b.raw.startsWith('TC 12\n2 RONDAS\n')), 'each group keeps the shared cap in raw');
   assert.deepEqual(track('conditioning').blocks[1].movements.map(m => [m.rawName, m.dose]),
@@ -411,6 +414,71 @@ test('validateWod: EVERY intervals, round groups and ranges, rest windows, NxD A
   // Every other track and block of the fixture reads back as before.
   assert.equal(track('full').blocks.length, 5);
   assert.deepEqual(track('full').blocks.map(b => [b.everySec, b.roundsMax]), Array(5).fill([null, null]));
+});
+
+test('validateWod: a movement done once per set with its own reps or load carries steps (T26 fixture)', () => {
+  const evo = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'evo');
+  const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } });
+  // 2 Nov Full, printed by the model as one jerk per load: the safety net makes it one movement.
+  const [jerks] = evo.blocks[5].movements;
+  assert.deepEqual([jerks.id, jerks.rawName, jerks.raw, jerks.dose, jerks.rx], ['m0', 'jerks', 'Jerks 135/95', {}, lb(135, 95)]);
+  assert.deepEqual(jerks.steps, [lb(135, 95), lb(155, 105), lb(185, 135), lb(205, 145), lb(225, 155)].map(rx => ({ rx })));
+  // 3 Nov Full, as the prompt asks: wall balls in M1, lunges in M2 with a step per even minute.
+  const [wb, lunges] = evo.blocks[6].movements;
+  assert.deepEqual([wb.slot, wb.steps, lunges.slot], ['M1', undefined, 'M2']);
+  assert.deepEqual(lunges.steps.map(s => [s.reps, s.rx.male.w, s.rx.female.w]), [[12, 95, 65], [10, 115, 75], [8, 135, 95], [6, 155, 105], [4, 175, 115]]);
+  // 2 Nov Evo: two ladders done alternately, one block, reps-only steps.
+  assert.deepEqual(evo.blocks[7].movements.map(m => [m.rawName, m.steps.map(s => s.reps)]),
+    [['chin ups estrictos', [10, 8, 6, 4, 2]], ['swings', [20, 18, 16, 14, 12]]]);
+  assert.ok(evo.blocks[7].movements[1].steps.every(s => !('rx' in s)), 'a step without its own load takes the movement\'s');
+});
+
+test('validateWod: steps are 2 to 30 sets with bounded doses and an rx like the movement\'s; none is no steps (T26)', () => {
+  const move = steps => ({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format: 'fortime', movements: [{ raw: 'x', rawName: 'jerks', dose: {}, steps }] }] }] });
+  const only = v => validateWod(move(v)).proposal.program.tracks[0].blocks[0].movements[0];
+  const errs = v => (validateWod(move(v)).errors || []).join();
+  assert.ok(!('steps' in only(null)) && !('steps' in only(undefined)), 'null or absent is none');
+  assert.deepEqual(only([{ reps: 10, rx: { male: { w: 135, unit: 'lb' }, female: null } }, { cal: 12, junk: 1 }, {}]).steps,
+    [{ reps: 10, rx: { male: { w: 135, unit: 'lb' }, female: null } }, { cal: 12 }, {}]);
+  for (const v of [[], [{ reps: 1 }], Array(31).fill({ reps: 1 }), { reps: 1 }, 'x']) assert.match(errs(v), /steps must be an array of 2 to 30 sets, or null/, JSON.stringify(v));
+  assert.match(errs([{ reps: -1 }, { reps: 2 }]), /steps\[0\]\.reps must be a number/);
+  assert.match(errs([7, { reps: 2 }]), /steps\[0\] must be an object/);
+  assert.match(errs([{ rx: { male: { w: 135 } } }, {}]), /steps\[0\]\.rx\.male/);
+  assert.match(errs([{ rx: 135 }, {}]), /steps\[0\]\.rx must be an object/);
+});
+
+test('validateWod: the same movement on consecutive lines, differing only in load or reps, becomes one with steps (T26)', () => {
+  const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: female ? { w: female, unit: 'lb' } : null });
+  const line = (rawName, dose, rx = null, more = {}) => ({ raw: rawName, rawName, dose, rx, ...more });
+  const block = (movements, format = 'fortime') => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format, movements }] }] })
+    .proposal.program.tracks[0].blocks[0].movements;
+  const shape = ms => ms.map(m => [m.id, m.rawName, m.slot, m.steps ? m.steps.map(s => [s.reps ?? null, s.rx?.male.w ?? null]) : null]);
+  // An EMOM's even minutes: merged on the first slot, the movement before it untouched.
+  assert.deepEqual(shape(block([line('wall balls', { reps: 15 }, null, { slot: 'M1' }), line('Lunges', { reps: 12 }, lb(95, 65), { slot: 'M2' }),
+    line('lunges', { reps: 10 }, lb(115, 75), { slot: 'M4' }), line('lunges', { reps: 8 }, lb(135, 95), { slot: 'M6' })], 'emom')),
+  [['m0', 'wall balls', 'M1', null], ['m1', 'Lunges', 'M2', [[12, 95], [10, 115], [8, 135]]]]);
+  // Reps only, rising, outside an EMOM; the run stops at a different movement and starts again after it.
+  assert.deepEqual(shape(block([line('burpees', { reps: 10 }), line('burpees', { reps: 12 }), line('row', { cal: 10 }), line('burpees', { reps: 14 }), line('burpees', { reps: 16 })])),
+    [['m0', 'burpees', null, [[10, null], [12, null]]], ['m2', 'row', null, null], ['m3', 'burpees', null, [[14, null], [16, null]]]]);
+  // Never merged: identical lines, R / L lines, other alternatives, other sets or rest, other slots outside an EMOM.
+  const kept = ms => assert.equal(block(ms).length, ms.length, JSON.stringify(ms));
+  kept([line('run', { m: 400 }), line('run', { m: 400 })]);
+  kept([line('db lunges', { reps: 10 }, lb(50), { perSide: true }), line('db lunges', { reps: 10 }, lb(60), { perSide: true })]);
+  kept([line('row', { cal: 15 }, null, { alts: [{ rawName: 'ski' }] }), line('row', { cal: 12 })]);
+  kept([line('run', { m: 500, sets: 5, restSec: 120 }), line('run', { m: 400, sets: 3, restSec: 120 })]);
+  kept([line('thrusters', { reps: 5 }, lb(95), { slot: 'A1' }), line('thrusters', { reps: 5 }, lb(115), { slot: 'A2' })]);
+  // What the model gave as steps is kept as it is.
+  assert.deepEqual(shape(block([line('jerks', {}, lb(135), { steps: [{ reps: 3 }, { reps: 2 }] }), line('jerks', {}, lb(155))])),
+    [['m0', 'jerks', null, [[3, null], [2, null]]], ['m1', 'jerks', null, null]]);
+});
+
+test('the parse prompt reads a rising load or reps as steps, and side-by-side ladders as one block (T26)', () => {
+  const p = PROMPTS['parse-wod'];
+  assert.match(p, /\| The same movement on consecutive lines, or in an EMOM's minutes, that differs only in its load and\/or reps \| \*\*one\*\* movement with `steps`/);
+  assert.match(p, /`10-8-6-4-2` \/ `Jerks 135\/95` \/ `Jerks 155\/105` \/ … \/ `Jerks 225\/155` → one block with `scheme: "10-8-6-4-2"` and one movement, `rawName: "jerks"`, `steps: \[\{ "reps": 10, "rx": <135\/95> \}/);
+  assert.match(p, /lunges `slot: "M2"` with `steps: \[\{ "reps": 12, "rx": <95\/65> \}/);
+  assert.match(p, /\| Ladders side by side for movements done alternately .*\| \*\*one\*\* block, `scheme` the first ladder/);
+  assert.match(p, /- `steps`: \*\*only\*\* for the same movement printed once per set with its own load or reps/);
 });
 
 test('everyOf: the period and repeats of an EVERY heading', () => {

@@ -106,6 +106,45 @@
               "rx": { "male": { "w": 200, "unit": "kg" }, "female": { "w": 150, "unit": "kg" } }, "alts": [] },
             { "raw": "8 DB Devil Press", "rawName": "db devil press", "name": "dumbbell devils press", "slot": null, "dose": { "reps": 8 }, "perSide": false, "rx": null, "alts": [] }
           ]
+        },
+        {
+          "label": "10-8-6-4-2", "warmup": false, "format": "fortime", "capMin": null, "rounds": null, "everySec": null, "roundsMax": null, "scheme": "10-8-6-4-2", "benchmark": null,
+          "raw": "TC 10\n10-8-6-4-2\nJerks 135/95\nJerks 155/105\nJerks 185/135\nJerks 205/145\nJerks 225/155",
+          "movements": [
+            { "raw": "Jerks 135/95", "rawName": "jerks", "name": "barbell jerk", "slot": null, "dose": {}, "perSide": false, "rx": { "male": { "w": 135, "unit": "lb" }, "female": { "w": 95, "unit": "lb" } }, "alts": [] },
+            { "raw": "Jerks 155/105", "rawName": "jerks", "name": "barbell jerk", "slot": null, "dose": {}, "perSide": false, "rx": { "male": { "w": 155, "unit": "lb" }, "female": { "w": 105, "unit": "lb" } }, "alts": [] },
+            { "raw": "Jerks 185/135", "rawName": "jerks", "name": "barbell jerk", "slot": null, "dose": {}, "perSide": false, "rx": { "male": { "w": 185, "unit": "lb" }, "female": { "w": 135, "unit": "lb" } }, "alts": [] },
+            { "raw": "Jerks 205/145", "rawName": "jerks", "name": "barbell jerk", "slot": null, "dose": {}, "perSide": false, "rx": { "male": { "w": 205, "unit": "lb" }, "female": { "w": 145, "unit": "lb" } }, "alts": [] },
+            { "raw": "Jerks 225/155", "rawName": "jerks", "name": "barbell jerk", "slot": null, "dose": {}, "perSide": false, "rx": { "male": { "w": 225, "unit": "lb" }, "female": { "w": 155, "unit": "lb" } }, "alts": [] }
+          ]
+        },
+        {
+          "label": "EMOM 10", "warmup": false, "format": "emom", "capMin": 10, "rounds": null, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "EMOM 10\nM1 15 Wall Balls\nM2 12 Lunges 95/65\nM4 10 Lunges 115/75\nM6 8 Lunges 135/95\nM8 6 Lunges 155/105\nM10 4 Lunges 175/115",
+          "movements": [
+            { "raw": "M1 15 Wall Balls", "rawName": "wall balls", "name": "wall ball", "slot": "M1", "dose": { "reps": 15 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M2 12 Lunges 95/65", "rawName": "lunges", "name": "barbell lunge", "slot": "M2", "dose": { "reps": 12 }, "perSide": false,
+              "rx": { "male": { "w": 95, "unit": "lb" }, "female": { "w": 65, "unit": "lb" } },
+              "steps": [
+                { "reps": 12, "rx": { "male": { "w": 95, "unit": "lb" }, "female": { "w": 65, "unit": "lb" } } },
+                { "reps": 10, "rx": { "male": { "w": 115, "unit": "lb" }, "female": { "w": 75, "unit": "lb" } } },
+                { "reps": 8, "rx": { "male": { "w": 135, "unit": "lb" }, "female": { "w": 95, "unit": "lb" } } },
+                { "reps": 6, "rx": { "male": { "w": 155, "unit": "lb" }, "female": { "w": 105, "unit": "lb" } } },
+                { "reps": 4, "rx": { "male": { "w": 175, "unit": "lb" }, "female": { "w": 115, "unit": "lb" } } }
+              ],
+              "alts": [] }
+          ]
+        },
+        {
+          "label": "TC 10", "warmup": false, "format": "fortime", "capMin": 10, "rounds": null, "everySec": null, "roundsMax": null, "scheme": "10-8-6-4-2", "benchmark": null,
+          "raw": "TC 10\n10-8-6-4-2\nChin ups Estrictos\n20-18-16-14-12\nSwings 24Kg/16Kg",
+          "movements": [
+            { "raw": "Chin ups Estrictos", "rawName": "chin ups estrictos", "name": "strict chin-up", "slot": null, "dose": { "reps": 10 }, "perSide": false, "rx": null,
+              "steps": [{ "reps": 10 }, { "reps": 8 }, { "reps": 6 }, { "reps": 4 }, { "reps": 2 }], "alts": [] },
+            { "raw": "Swings 24Kg/16Kg", "rawName": "swings", "name": "kettlebell swing", "slot": null, "dose": { "reps": 20 }, "perSide": false,
+              "rx": { "male": { "w": 24, "unit": "kg" }, "female": { "w": 16, "unit": "kg" } },
+              "steps": [{ "reps": 20 }, { "reps": 18 }, { "reps": 16 }, { "reps": 14 }, { "reps": 12 }], "alts": [] }
+          ]
         }
       ]
     },

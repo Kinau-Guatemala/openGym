@@ -18,7 +18,7 @@ import { backfillEnd, backfillStart } from './backfill.js'
 import { isCardio } from './exercises.js'
 import { syncSideAggregate } from './workout-model.js'
 import { includeOf } from './wod-draft.js'
-import { doseFor, rxFor, rxPrinted } from './rx.js'
+import { doseFor, rxFor, rxPrinted, stepRxFor, stepsOf } from './rx.js'
 
 export const WOD_RIR = 5
 const METCON = new Set(['emom', 'amrap', 'fortime', 'interval'])
@@ -87,9 +87,16 @@ const unitsOf = dose => pos(dose.reps) || pos(dose.cal) || 0
 
 // Per movement, the amount of each set: null for the full dose, a number for a ladder's rung or
 // the reps a partial round reached. A line done `sets` times (`2 Set de 10`) is that many sets
-// per round, here and nowhere else.
-function setsPlan(block, doses, score) {
+// per round, here and nowhere else. A movement with steps is one set per step instead, its amount
+// the step's own, else the full dose, else the rung at that index; the others plan as before.
+function setsPlan(block, doses, score, steps) {
   const rungs = ladderOf(block.scheme)
+  return roundsPlan(block, doses, score, rungs).map((p, i) => (steps[i]
+    ? steps[i].map((s, j) => pos(s.reps) || pos(s.cal) || pos(s.m) || pos(s.sec) || (unitsOf(doses[i]) || pos(doses[i].m) || pos(doses[i].sec) ? null : rungs?.[j] ?? null))
+    : p))
+}
+
+function roundsPlan(block, doses, score, rungs) {
   if (rungs) return doses.map(d => rungs.flatMap(r => Array(setsOf(d)).fill(unitsOf(d) ? null : r)))
   const full = n => doses.map(d => Array(Math.max(1, n) * setsOf(d)).fill(null))
   const rounds = score?.type === 'rounds' && Number(score.rounds) >= 0 ? Math.floor(Number(score.rounds)) : null
@@ -135,7 +142,12 @@ export function wodToSession(program, choice, logged, S) {
         for (const k of ['r', 'cal', 'm', 'sec']) if (lm[k] != null) d[k === 'r' ? 'reps' : k] = Number(lm[k]) || 0
         return d
       })
-      const plan = setsPlan(block, doses, score)
+      // What was typed for the movement wins over its steps: the typed count or weight is every set's.
+      const steps = moves.map(m => {
+        const lm = logged?.moves?.[`${ref}/${m.id}`] || {}
+        return ['r', 'cal', 'm', 'sec'].some(k => lm[k] != null) ? null : stepsOf(m)
+      })
+      const plan = setsPlan(block, doses, score, steps)
       moves.forEach((m, i) => {
         const lm = logged?.moves?.[`${ref}/${m.id}`] || {}
         const exId = lm.exId || m.exId
@@ -148,7 +160,8 @@ export function wodToSession(program, choice, logged, S) {
         const asPrinted = exId === m.exId
         const rx = asPrinted ? rxPrinted(m, S) : null
         if (rx) entry.rx = rx
-        const w = lm.w != null ? pos(lm.w) : (asPrinted ? rxFor(m, S)?.w || 0 : 0)
+        const w0 = lm.w != null ? pos(lm.w) : (asPrinted ? rxFor(m, S)?.w || 0 : 0)
+        const stepW = steps[i] && lm.w == null && asPrinted ? steps[i].map(s => stepRxFor(s, m, S)?.w || 0) : null
         const amounts = plan[i]
         if (!amounts.length) return
         const machine = ladderMachine(m, exId, dose, block)
@@ -164,14 +177,15 @@ export function wodToSession(program, choice, logged, S) {
         } else if (!metcon && list(lm.sets).length) {
           entry.sets = lm.sets.map(s => ({ w: pos(s.w), r: pos(s.r), done: true }))
         } else {
-          for (const a of amounts) {
+          amounts.forEach((a, j) => {
             const n = a ?? (pos(dose.reps) || pos(dose.sec))
+            const w = stepW?.[j] ?? w0
             let row = pos(dose.sec) && !pos(dose.reps) ? { mode: 'time', sec: n, w, done: true }
               : m.perSide ? syncSideAggregate({ sides: { L: { w, r: n, done: true }, R: { w, r: n, done: true } } })
                 : { w, r: n, done: true }
             if (metcon) row = { ...row, wodRir: WOD_RIR }
             entry.sets.push(row)
-          }
+          })
         }
         if (entry.sets.length) entries.push(entry)
       })

@@ -11,7 +11,7 @@ import { bestWeightForEntry } from '../lib/history.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
-import { rxFor, doseFor, fmtDose, fmtRounds } from '../lib/rx.js'
+import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf } from '../lib/wod-draft.js'
 import { SCORE_OF, isCardioRow, isMetcon, ladderOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
@@ -45,12 +45,13 @@ export default function CrossFitLog() {
   const toggleTrack = id => edit(n => { n.tracks = n.tracks.includes(id) ? n.tracks.filter(x => x !== id) : [...n.tracks, id] })
 
   const save = () => {
-    // A weight left as shown (the Rx, or the last one used) is logged as shown.
+    // A weight left as shown (the Rx, or the last one used) is logged as shown; one left empty on
+    // a movement with a load per step logs each step's.
     const moves = structuredClone(state.logged.moves)
     for (const tr of program.tracks) for (const b of list(tr.blocks)) for (const m of list(b.movements)) {
       const key = `${tr.id}/${b.id}/${m.id}`
       const lm = moves[key] ||= {}
-      if (lm.w == null) { const w = defaultW(S, m, lm.exId || m.exId); if (w != null) lm.w = w }
+      if (lm.w == null && !stepLoads(m, lm.exId || m.exId)) { const w = defaultW(S, m, lm.exId || m.exId); if (w != null) lm.w = w }
     }
     const choice = { tracks: state.tracks, include: state.include }
     const out = useStore.getState().logWod(date, choice, { ...state.logged, moves, start: atTime(date, state.time) })
@@ -95,6 +96,9 @@ export default function CrossFitLog() {
     <div style={{ height: 24 }} />
   </div>
 }
+
+// Steps with their own load, done as printed: the weight is each step's until one is typed.
+const stepLoads = (m, exId) => exId === m.exId && !!stepsOf(m)?.some(s => s?.rx)
 
 // The weight a movement starts at: its Rx when done as printed, else the top set of the last
 // time it was logged (a WOD never moves exWeights, as no backfill does), else the kept one.
@@ -161,16 +165,19 @@ function LogMovement({ S, block, m, lm, onChange }) {
   const printed = [m.exId, ...list(m.alts).map(a => a.exId)].filter(Boolean)
   const swapped = lm.exId && !printed.includes(lm.exId)
   const rx = exId === m.exId ? rxFor(m, S) : null
-  const w = lm.w ?? defaultW(S, m, exId)
+  const steps = stepsOf(m)
+  const w = lm.w ?? (stepLoads(m, exId) ? null : defaultW(S, m, exId))
   const cardio = exId && isCardioRow(m, exId, dose, block)
   const strength = block.format === 'strength' && !isMetcon(block)
   const set = (k, v) => onChange(x => { if (v == null) delete x[k]; else x[k] = v })
   const pick = () => {
     const picker = exercisePicker(ex => { picker.close(); onChange(x => { x.exId = ex.id; delete x.w }) }, { title: t('Substitute'), like: exId || undefined })
   }
-  const line = [fmtDose(dose) + (fmtDose(dose) && m.perSide ? ' ' + t('each side') : ''), dose.restSec > 0 ? t('{0} rest', fmtRest(dose.restSec)) : null,
-    rx ? `Rx ${fmtNum(rx.w)} ${rx.unit}` : null].filter(Boolean).join(' · ')
-  const rows = list(lm.sets).length ? lm.sets : Array.from({ length: setsOf(dose) }, () => ({ w, r: dose.reps || null }))
+  const line = (steps ? [fmtSteps(m, S, ladder)] : [fmtDose(dose) + (fmtDose(dose) && m.perSide ? ' ' + t('each side') : ''), dose.restSec > 0 ? t('{0} rest', fmtRest(dose.restSec)) : null,
+    rx ? `Rx ${fmtNum(rx.w)} ${rx.unit}` : null]).filter(Boolean).join(' · ')
+  const rows = list(lm.sets).length ? lm.sets
+    : steps ? steps.map(s => ({ w: w ?? (exId === m.exId ? stepRxFor(s, m, S)?.w : null) ?? null, r: s.reps || dose.reps || null }))
+      : Array.from({ length: setsOf(dose) }, () => ({ w, r: dose.reps || null }))
   return <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 10, paddingTop: 10 }}>
     <div className="small" style={{ marginBottom: 6 }}>{m.raw || m.rawName}{line && <span className="muted"> · {line}</span>}</div>
     <div className="chips" style={{ margin: '0 0 8px', flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', alignItems: 'center' }}>
@@ -195,7 +202,7 @@ function LogMovement({ S, block, m, lm, onChange }) {
         {num(t('Weight'), w, v => set('w', v), S.unit)}
         {ladder && !pos(dose.reps) ? <div className="measure-field"><span>{t('Reps')}</span><div className="small muted" style={{ padding: '14px 2px' }}>{ladder.join('-')}</div></div>
           : pos(dose.sec) && !pos(dose.reps) ? num(t('Seconds'), lm.sec ?? dose.sec, v => set('sec', v), null, false)
-            : num(m.perSide ? t('Reps each side') : t('Reps'), lm.r ?? (dose.reps || null), v => set('r', v), null, false)}
+            : num(m.perSide ? t('Reps each side') : t('Reps'), lm.r ?? (steps ? null : dose.reps || null), v => set('r', v), null, false)}
       </>}
     </div>)}
   </div>

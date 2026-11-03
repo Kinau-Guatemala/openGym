@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rxFor, doseFor, fmtDose, fmtRounds } from './rx.js'
+import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from './rx.js'
 
 const hang = { rx: { male: { w: 185, unit: 'lb' }, female: { w: 135, unit: 'lb' } } }
 
@@ -68,5 +68,33 @@ describe('fmtRounds (T23)', () => {
     expect(fmtRounds({ rounds: 5, everySec: null, roundsMax: null })).toBe('5 rounds')
     expect(fmtRounds({ rounds: null, everySec: 90 })).toBe('Every 1:30')
     expect(fmtRounds({})).toBe('')
+  })
+})
+
+describe('steps (T26)', () => {
+  const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+  const jerks = { dose: {}, rx: lb(135, 95), steps: [135, 155, 185, 205, 225].map((w, i) => ({ rx: lb(w, [95, 105, 135, 145, 155][i]) })) }
+  const lunges = { dose: { reps: 12 }, rx: lb(95, 65), steps: [[12, 95], [10, 115], [8, 135], [6, 155], [4, 175]].map(([reps, w]) => ({ reps, rx: lb(w, w - 30) })) }
+  const male = { body: 'male', unit: 'lb' }
+
+  it('stepsOf: the steps, or null for none', () => {
+    expect(stepsOf(jerks)).toHaveLength(5)
+    for (const m of [{}, { steps: null }, { steps: [] }, null]) expect(stepsOf(m)).toBe(null)
+  })
+
+  it('stepRxFor: the step\'s load by S.body and S.unit, else the movement\'s', () => {
+    expect(stepRxFor(jerks.steps[4], jerks, male)).toEqual({ w: 225, unit: 'lb' })
+    expect(stepRxFor(jerks.steps[4], jerks, { body: 'female', unit: 'kg' })).toEqual({ w: 70, unit: 'kg' })
+    expect(stepRxFor({ reps: 3 }, jerks, male)).toEqual({ w: 135, unit: 'lb' })
+    expect(stepRxFor({ reps: 3 }, { dose: {} }, male)).toBe(null)
+  })
+
+  it('fmtSteps: the counts and the load range on one line', () => {
+    expect(fmtSteps(jerks, male, [10, 8, 6, 4, 2])).toBe('10-8-6-4-2 @ 135→225 lb')
+    expect(fmtSteps(jerks, male)).toBe('135→225 lb')
+    expect(fmtSteps(lunges, { body: 'female', unit: 'lb' })).toBe('12-10-8-6-4 @ 65→145 lb')
+    expect(fmtSteps({ dose: { reps: 20 }, rx: { male: { w: 24, unit: 'kg' }, female: null }, steps: [20, 18, 16].map(reps => ({ reps })) }, { body: 'male', unit: 'kg' })).toBe('20-18-16 @ 24 kg')
+    expect(fmtSteps({ dose: { cal: 10 }, steps: [{ cal: 10 }, { cal: 12 }] }, male)).toBe('10-12 cal')
+    expect(fmtSteps({ dose: {} }, male)).toBe('')
   })
 })
