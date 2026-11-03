@@ -55,6 +55,27 @@ const CHIP_ICON = { fontSize: 12, display: 'inline-block', marginInlineEnd: 4, v
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 export const trackNames = w => (w?.tracks || []).map(tr => tr.label).filter(Boolean).join(' · ')
 
+// T29: what each switch does, one sentence each: under the switch (the first block's, where blocks
+// repeat), and all of them in the screen's ? sheet. The log screen reads the same ones.
+export const HELP = {
+  include: () => t('Whether this block counts when you log the program. You can change it again on the log screen.'),
+  includeLog: () => t('Off leaves this block out: nothing from it is saved with the workout.'),
+  warmup: () => t('Left out of the log in a main track, unless you include it or turn on Count warm-ups in Settings.'),
+  perSide: () => t('The reps are for each side (12/12): each set logs your left and your right, and both count.'),
+  rx: () => t('Done as prescribed, no scaling. Benchmarks keep your Rx and scaled bests apart.'),
+  score: () => t('Your result: a time, rounds plus extra reps, or a load. Rounds also set how many sets are logged, and a benchmark keeps your best.'),
+}
+export const helpLine = text => <div className="small dim" style={{ marginTop: 6 }}>{text}</div>
+// The header's ? button: `rows` is [[title, sentence]], listed in a sheet.
+export const HelpButton = ({ rows }) => <button className="iconbtn" style={{ fontWeight: 600 }} aria-label={t('What the switches do')}
+  onClick={() => ui().openSheet(() => <>
+    <h3>{t('What the switches do')}</h3>
+    {rows.map(([title, text]) => <div key={title} className="lrow" style={{ padding: '10px 0' }}>
+      <span className="lrow-m"><span className="lrow-t">{title}</span><span className="lrow-s">{text}</span></span>
+    </div>)}
+    <div style={{ height: 8 }} />
+  </>)}>?</button>
+
 // Back the way you came when there is a way, else to the list.
 const goBack = nav => ((window.history.state?.idx || 0) > 0 ? nav(-1) : nav('/crossfit', { replace: true }))
 
@@ -365,6 +386,7 @@ function Editor() {
         <h1>{editDate ? t('Edit program') : t('New program')}</h1>
         <div className="sub">{ISO.test(date) ? fmtDate(date, true) : ''}</div>
       </div>
+      <HelpButton rows={[[t('Include'), HELP.include()], [t('Warm-up'), HELP.warmup()], [t('Each side'), HELP.perSide()]]} />
     </div>
 
     {canUpload && <div style={{ marginBottom: 14 }}>
@@ -413,7 +435,7 @@ function Editor() {
           options={[{ value: 'main', label: t('Main workout') }, { value: 'extra', label: t('Extra') }]} />
       </div>
 
-      {track.blocks.map((b, bi) => <BlockCard key={b.id} S={S} track={track} block={b}
+      {track.blocks.map((b, bi) => <BlockCard key={b.id} S={S} track={track} block={b} explain={bi === 0}
         onEdit={() => blockSheet(b, saved => edit(d => { d.tracks[ti].blocks[bi] = saved }), () => edit(d => { d.tracks[ti].blocks.splice(bi, 1) }))}
         onInclude={v => edit(d => { d.tracks[ti].blocks[bi].include = v })}
         onMovement={mi => movementSheet(b.movements[mi], saved => edit(d => { d.tracks[ti].blocks[bi].movements[mi] = saved }), () => edit(d => { d.tracks[ti].blocks[bi].movements.splice(mi, 1) }))}
@@ -439,7 +461,7 @@ const at = (d, { ti, bi, mi, ai }) => {
   return ai == null ? m : m.alts[ai]
 }
 
-function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMovement, onPick, onChoose }) {
+function BlockCard({ S, track, block, explain, onEdit, onInclude, onMovement, onAddMovement, onPick, onChoose }) {
   const on = includeOf(track, block, S)
   const meta = [
     formatLabel(block.format),
@@ -463,6 +485,7 @@ function BlockCard({ S, track, block, onEdit, onInclude, onMovement, onAddMoveme
         <Switch aria-label={t('Include')} checked={on} onChange={onInclude} />
       </label>
     </div>
+    {explain && helpLine(HELP.include())}
     {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} rungs={ladderOf(block.scheme)} onEdit={() => onMovement(mi)}
       onPick={(ai, item) => onPick(mi, ai, item)} onChoose={(ai, item, exId) => onChoose(mi, ai, item, exId)} />)}
     <div style={{ marginTop: 6 }}>
@@ -567,7 +590,7 @@ function BlockSheet({ block, onSave, onDelete, close }) {
     </div>
     <div className="lrow" style={{ padding: '12px 0' }}>
       <span className="lrow-m"><span className="lrow-t">{t('Warm-up')}</span>
-        <span className="lrow-s">{t('Left out of the log in a main track unless you include it.')}</span></span>
+        <span className="lrow-s">{HELP.warmup()}</span></span>
       <Switch aria-label={t('Warm-up')} checked={!!b.warmup} onChange={v => set('warmup', v)} />
     </div>
     <Button variant="primary" onClick={done}>{t('Done')}</Button>
@@ -644,7 +667,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
       {field(t('Sets'), sets, setSets, null, false)}
     </div>
     <div className="lrow" style={{ padding: '12px 0' }}>
-      <span className="lrow-m"><span className="lrow-t">{t('Each side')}</span></span>
+      <span className="lrow-m"><span className="lrow-t">{t('Each side')}</span><span className="lrow-s">{HELP.perSide()}</span></span>
       <Switch aria-label={t('Each side')} checked={perSide} onChange={setPerSide} />
     </div>
 

@@ -19,6 +19,7 @@ import { includeOf } from '../lib/wod-draft.js'
 import { SCORE_OF, isCardioRow, isMetcon, ladderOf, loggedIn, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
+import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, NumberField, Segmented, Switch } from '../components/ui.jsx'
 
@@ -46,6 +47,12 @@ export default function CrossFitLog() {
 
   const edit = fn => setState(st => { const n = structuredClone(st); fn(n); return n })
   const move = (n, key) => (n.logged.moves[key] ||= {})
+  // The blocks shown, in order: the first one explains Include, the first included one Rx.
+  const shown = program.tracks.filter(tr => state.tracks.includes(tr.id)).flatMap(tr => list(tr.blocks).map(b => {
+    const ref = `${tr.id}/${b.id}`
+    return { tr, b, ref, on: typeof state.include[ref] === 'boolean' ? state.include[ref] : includeOf(tr, b, S) }
+  }))
+  const firstOn = shown.findIndex(x => x.on)
   const toggleTrack = id => edit(n => { n.tracks = n.tracks.includes(id) ? n.tracks.filter(x => x !== id) : [...n.tracks, id] })
 
   const setUnit = u => setState(st => ({ ...st, logged: loggedIn(st.logged, st.unit, u), unit: u }))
@@ -75,6 +82,7 @@ export default function CrossFitLog() {
         <h1>{t('Log WOD')}</h1>
         <div className="sub">{[fmtDate(date, true), program.title].filter(Boolean).join(' · ')}</div>
       </div>
+      <HelpButton rows={[[t('Include'), HELP.includeLog()], ['Rx', HELP.rx()], [t('Score'), HELP.score()]]} />
     </div>
     {before && <div className="small muted" style={{ margin: '0 2px 10px' }}>{t('Already logged. Saving replaces it.')}</div>}
 
@@ -92,14 +100,11 @@ export default function CrossFitLog() {
         {state.tracks.includes(tr.id) && <Icon name="check" style={CHIP_ICON} />}{tr.label || t('Track {0}', i + 1)}</button>)}
     </div>
 
-    {program.tracks.filter(tr => state.tracks.includes(tr.id)).map(tr => list(tr.blocks).map(b => {
-      const ref = `${tr.id}/${b.id}`
-      const on = typeof state.include[ref] === 'boolean' ? state.include[ref] : includeOf(tr, b, S)
-      return <LogBlock key={ref} S={S} unit={state.unit} track={tr} block={b} on={on} logged={state.logged}
-        onInclude={v => edit(n => { n.include[ref] = v })}
-        onBlock={fn => edit(n => { fn(n.logged.blocks[ref] ||= {}) })}
-        onMove={(m, fn) => edit(n => { fn(move(n, `${ref}/${m.id}`)) })} />
-    }))}
+    {shown.map(({ tr, b, ref, on }, i) => <LogBlock key={ref} S={S} unit={state.unit} track={tr} block={b} on={on} logged={state.logged}
+      explainInclude={i === 0} explainRx={i === firstOn}
+      onInclude={v => edit(n => { n.include[ref] = v })}
+      onBlock={fn => edit(n => { fn(n.logged.blocks[ref] ||= {}) })}
+      onMove={(m, fn) => edit(n => { fn(move(n, `${ref}/${m.id}`)) })} />)}
 
     <div style={{ height: 18 }} />
     <Button variant="primary" icon="check" onClick={save} disabled={!state.tracks.length}>{before ? t('Save log') : t('Log workout')}</Button>
@@ -124,7 +129,7 @@ function defaultW(S, m, exId, unit = unitOf(S)) {
   return convertWeight(w, unitOf(S), unit)
 }
 
-function LogBlock({ S, unit, track, block, on, logged, onInclude, onBlock, onMove }) {
+function LogBlock({ S, unit, track, block, on, logged, explainInclude, explainRx, onInclude, onBlock, onMove }) {
   const ref = `${track.id}/${block.id}`
   const lb = logged.blocks[ref] || {}
   const score = lb.score || { type: SCORE_OF[block.format] || 'none' }
@@ -140,6 +145,7 @@ function LogBlock({ S, unit, track, block, on, logged, onInclude, onBlock, onMov
         {t('Include')}<Switch aria-label={t('Include')} checked={on} onChange={onInclude} />
       </label>
     </div>
+    {explainInclude && helpLine(HELP.includeLog())}
     {on && <>
       {list(block.movements).map(m => <LogMovement key={m.id} S={S} unit={unit} block={block} m={m} lm={logged.moves[`${ref}/${m.id}`] || {}} onChange={fn => onMove(m, fn)} />)}
       <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 12, paddingTop: 12 }}>
@@ -160,7 +166,7 @@ function LogBlock({ S, unit, track, block, on, logged, onInclude, onBlock, onMov
           {score.type === 'load' && num(t('Weight'), score.w ?? null, v => setScore({ w: v, unit }), unit)}
         </div>}
         <div className="lrow" style={{ padding: '4px 0' }}>
-          <span className="lrow-m"><span className="lrow-t">Rx</span><span className="lrow-s">{t('Done as prescribed, no scaling.')}</span></span>
+          <span className="lrow-m"><span className="lrow-t">Rx</span>{explainRx && <span className="lrow-s">{HELP.rx()}</span>}</span>
           <Switch aria-label="Rx" checked={!!lb.rx} onChange={v => onBlock(x => { x.rx = v })} />
         </div>
       </div>
