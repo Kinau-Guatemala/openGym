@@ -81,4 +81,15 @@ export const SHIPPED_ALIASES = {
   // a burpee broad jump is the burpee long jump.
   'hollow crunch': '5649', 'predator jack': '7556', 'burpee bj': '8704', 'burpee broad jump': '5187',
   'wall ball sentado': '0625', 'sit wall ball': '0625',
+  // From the 2 Nov re-test. A squat hold is the static bodyweight squat; push-ups with a shoulder tap
+  // are the catalogue's shoulder tap push-up; a DB step up over is the step over the box (no KB
+  // version, so a KB one is the KB step-up); a tempo DL is the deadlift with that equipment; a
+  // farmer side bend is T22's farmer bend; a hang squat clean with DBs (or "KB´s / DB´s") is the DB
+  // hang clean (no squat-catch one); a KB goblet sumo squat is the KB sumo squat; a land mine row is
+  // the one-arm landmine row (the only one).
+  'squat hold': '6344', 'push up s tap': '0699', 'push up shoulder tap': '0699',
+  'db step up over': '9612', 'kb step up over': '4400', 'tempo dl': '0032', 'kb tempo dl': '3322',
+  'sb lunge': '9940', 'kb farmer side bend': '4396',
+  'db hang squat clean': '4449', 'kb db hang squat clean': '4449', 'kb goblet sumo squat': '4089',
+  'land mine row': '4038', 'bb land mine row': '4038',
 }
