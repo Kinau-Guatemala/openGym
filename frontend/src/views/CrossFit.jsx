@@ -7,6 +7,7 @@
 //                          could not read: typed by hand, the image beside it.
 //   #/crossfit/new?shared=1  an image being read (lib/wod-intake.js), on its way to the above
 //   #/crossfit/edit/<date> the program saved for that date
+//   #/crossfit/box/<date>  the box feed's program for that date, read-only (T32, lib/box-subscribe.js)
 //
 // The editor works on a draft (lib/wod-draft.js) and writes nothing until Save. A movement's
 // exercise chip opens the exercise picker; the pick is remembered for that printed name
@@ -19,7 +20,7 @@ import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { exOr } from '../lib/exercises.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
-import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
+import { fmtAgo, fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
 import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps } from '../lib/rx.js'
@@ -34,6 +35,8 @@ import { MUSCLE_NAME } from '../lib/muscles.js'
 import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod, quotaText } from '../lib/coach-api.js'
+import { boxPrint, boxRows, cachedAt, cachedFeed, clearBoxFeed, fetchFeed, forgetOtherFeeds, httpsUrl, keepFeed, refreshBoxFeed, subscribeBoxFeed } from '../lib/box-subscribe.js'
+import { MOBILE } from '../lib/mobile.js'
 import { INTAKE_ROUTE, beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fromDataUrl, isoForChoice, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
 import CrossFitRecords from './CrossFitRecords.jsx'
@@ -87,19 +90,25 @@ export default function CrossFit() {
   const recent = dates.filter(d => d < today).sort().reverse()
   // An image read while the person was elsewhere: the job ran and was charged, so it is offered here.
   const read = readyIntake(useSyncExternalStore(subscribeIntake, currentIntake))
-  const row = d => {
-    const w = wodOf(S, d)
-    return <div key={d} className="item" {...tappable(() => nav('/crossfit/edit/' + d))}>
+  // T32: the box feed's programs, where the member has none of their own for the day.
+  const feed = useBoxFeed(S.boxFeed)
+  const box = boxRows(feed, d => !!wodOf(S, d), today, tomorrowISO())
+  const row = (d, w = wodOf(S, d), fromBox = false) => {
+    const open = () => nav((fromBox ? '/crossfit/box/' : '/crossfit/edit/') + d)
+    return <div key={d} className="item" {...tappable(open)}>
       <span className="lrow-i" style={{ background: d === today ? 'var(--orange)' : 'var(--surface-3)' }}><Icon name="flame" /></span>
       <div className="grow" style={{ minWidth: 0 }}>
         <div className="tt">{w.title || fmtDate(d, true)}</div>
-        <div className="ss">{[w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</div>
+        <div className="ss">{[fromBox ? feed.box : null, w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</div>
+        {!fromBox && feed?.programs[d] && boxPrint(feed.programs[d]) !== w.boxPrint && <button className="small" style={LINK} onClick={e => { e.stopPropagation(); nav('/crossfit/box/' + d) }}>
+          {t('Box version available')}</button>}
       </div>
       {d <= today && <Button size="sm" variant="tinted" style={{ width: 'auto', flex: 'none' }}
-        onClick={e => { e.stopPropagation(); nav('/crossfit/log/' + d) }}>{t('Log')}</Button>}
+        onClick={e => { e.stopPropagation(); if (fromBox) copyBoxProgram(nav, d, w, 'log'); else nav('/crossfit/log/' + d) }}>{t('Log')}</Button>}
       <Icon name="chevronRight" className="chev" />
     </div>
   }
+  const boxRow = r => row(r.date, r.program, true)
   return <div className="narrow">
     <div className="hdr">
       <button className="iconbtn" data-back="/home" onClick={() => nav('/home')} aria-label={t('Home')}><Icon name="chevronLeft" /></button>
@@ -121,10 +130,92 @@ export default function CrossFit() {
       </div>
     </div>}
     <GapLine S={S} onOpen={() => nav('/stats')} />
-    {!dates.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
-    {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(row)}</div></>}
-    {recent.length > 0 && <><h4 className="sec">{t('Recent')}</h4><div className="list">{recent.map(row)}</div></>}
+    {box.next.length > 0 && <><h4 className="sec">{t('From {0}', feed.box)}</h4><div className="list">{box.next.map(boxRow)}</div></>}
+    {!dates.length && !box.next.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
+    {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(d => row(d))}</div></>}
+    {recent.length > 0 && <><h4 className="sec">{t('Recent')}</h4><div className="list">{recent.map(d => row(d))}</div></>}
+    {box.earlier.length > 0 && <details style={{ marginTop: 14 }}>
+      <summary className="sec" style={{ cursor: 'pointer' }}>{t('Earlier from {0}', feed.box)}</summary>
+      <div className="list">{box.earlier.map(boxRow)}</div>
+    </details>}
     <CrossFitRecords S={S} />
+  </div>
+}
+
+const LINK = { background: 'none', border: 0, padding: 0, marginTop: 2, color: 'var(--accent)', cursor: 'pointer', font: 'inherit', fontSize: 13 }
+
+// The cached feed of `url`, fetched again when the screen opens and when the app comes back to
+// the front (at most every 10 minutes, lib/box-subscribe.js). A feed left over from an address
+// unsubscribed elsewhere goes, once the profile has loaded (until then `url` is the default '').
+function useBoxFeed(url) {
+  const feed = useSyncExternalStore(subscribeBoxFeed, () => cachedFeed(url))
+  const ready = useStore(s => s.ready)
+  useEffect(() => {
+    if (ready) forgetOtherFeeds(url)
+    if (!url) return
+    const go = () => { if (document.visibilityState !== 'hidden') refreshBoxFeed(url) }
+    go()
+    document.addEventListener('visibilitychange', go)
+    return () => document.removeEventListener('visibilitychange', go)
+  }, [url, ready])
+  return feed
+}
+
+// "Log" or "Edit" on a box program: a copy goes into the member's own programs for its date, and
+// from then on it is theirs; a later feed does not change it. Their own program for the day is
+// replaced only once they say so. A movement the feed names no catalogue exercise for (the
+// publisher's own exercise, or none picked) is resolved from its printed name and the member's
+// picks, as a parsed program is (lib/wod-draft.js resolveInto). The copy remembers which version
+// of the box's it came from (boxPrint), so "Box version available" waits for a different one.
+export const boxCopy = (program, aliases) => {
+  const fill = m => (m.exId ? m : resolveInto(m, aliases))
+  const p = { ...structuredClone(program), boxPrint: boxPrint(program) }
+  for (const tr of p.tracks) for (const b of tr.blocks) b.movements = b.movements.map(m => ({ ...fill(m), alts: (m.alts || []).map(fill) }))
+  return p
+}
+function copyBoxProgram(nav, date, program, to, opts) {
+  const go = () => {
+    const st = useStore.getState()
+    st.setWod(date, boxCopy(program, st.S.wodAliases))
+    nav(`/crossfit/${to}/${date}`, opts)
+  }
+  if (wodOf(useStore.getState().S, date)) confirmSheet({
+    title: t('Replace the program?'), message: t('{0} already has your own program. The box version replaces it.', fmtDate(date, true)),
+    confirmText: t('Replace'), danger: true, onConfirm: go,
+  })
+  else go()
+}
+
+// #/crossfit/box/<date>: the box's program for that day, as it was published. Log and Edit work
+// on the member's copy (copyBoxProgram).
+export function CrossFitBox() {
+  const nav = useNavigate()
+  const { date } = useParams()
+  const S = useStore(s => s.S)
+  const feed = useBoxFeed(S.boxFeed)
+  const [tab, setTab] = useState(0)
+  const program = feed?.programs[date]
+  if (!program) return <Navigate to="/crossfit" replace />
+  const ti = Math.min(tab, program.tracks.length - 1)
+  const track = program.tracks[ti]
+  return <div className="narrow">
+    <div className="hdr">
+      <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
+        <h1>{program.title || fmtDate(date, true)}</h1>
+        <div className="sub">{[feed.box, program.title ? fmtDate(date, true) : null].filter(Boolean).join(' · ')}</div>
+      </div>
+    </div>
+    {wodOf(S, date) && <div className="small muted" style={{ marginBottom: 12 }}>{t('You have your own program for this day. Logging or editing the box version replaces it.')}</div>}
+    {program.tracks.length > 1 && <div className="chips" style={{ margin: '0 0 10px' }}>
+      {program.tracks.map((tr, i) => <button key={tr.id} className={'chip nocap' + (i === ti ? ' on' : '')} onClick={() => setTab(i)}>{tr.label || t('Track {0}', i + 1)}</button>)}
+    </div>}
+    {track.blocks.map(b => <BlockCard key={b.id} S={S} track={track} block={b} readOnly />)}
+    <div style={{ height: 18 }} />
+    {date <= todayISO() && <><Button variant="primary" onClick={() => copyBoxProgram(nav, date, program, 'log', { replace: true })}>{t('Log')}</Button>
+      <div style={{ height: 8 }} /></>}
+    <Button icon="pencil" onClick={() => copyBoxProgram(nav, date, program, 'edit', { replace: true })}>{t('Edit')}</Button>
+    <div style={{ height: 24 }} />
   </div>
 }
 
@@ -458,7 +549,8 @@ const at = (d, { ti, bi, mi, ai }) => {
   return ai == null ? m : m.alts[ai]
 }
 
-function BlockCard({ S, track, block, explain, onEdit, onInclude, onMovement, onAddMovement, onPick, onChoose }) {
+// `readOnly`: shown, not edited (a box program): no pencils, switch or pickers.
+function BlockCard({ S, track, block, explain, readOnly, onEdit, onInclude, onMovement, onAddMovement, onPick, onChoose }) {
   const on = includeOf(track, block, S)
   const meta = [
     formatLabel(block.format),
@@ -469,25 +561,25 @@ function BlockCard({ S, track, block, explain, onEdit, onInclude, onMovement, on
   ].filter(Boolean).join(' · ')
   return <div className="card" style={on ? undefined : { opacity: 0.62 }}>
     <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
-      <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} {...tappable(onEdit)}>
+      <div style={{ flex: 1, minWidth: 0, cursor: readOnly ? undefined : 'pointer' }} {...(readOnly ? {} : tappable(onEdit))}>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
           <div style={{ fontWeight: 600, fontSize: 17 }}>{block.label || formatLabel(block.format)}</div>
           {block.warmup && <span className="tag" style={{ whiteSpace: 'nowrap' }}>{t('Warm-up')}</span>}
-          <Icon name="pencil" className="dim" style={{ fontSize: 13 }} />
+          {!readOnly && <Icon name="pencil" className="dim" style={{ fontSize: 13 }} />}
         </div>
         <div className="small muted">{meta}</div>
       </div>
-      <label className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      {!readOnly && <label className="small muted" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         {t('Include')}
         <Switch aria-label={t('Include')} checked={on} onChange={onInclude} />
-      </label>
+      </label>}
     </div>
     {explain && helpLine(HELP.include())}
-    {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} rungs={ladderOf(block.scheme)} onEdit={() => onMovement(mi)}
+    {block.movements.map((m, mi) => <MovementRow key={m.id} S={S} m={m} rungs={ladderOf(block.scheme)} readOnly={readOnly} onEdit={() => onMovement(mi)}
       onPick={(ai, item) => onPick(mi, ai, item)} onChoose={(ai, item, exId) => onChoose(mi, ai, item, exId)} />)}
-    <div style={{ marginTop: 6 }}>
+    {!readOnly && <div style={{ marginTop: 6 }}>
       <Button size="sm" variant="ghost" icon="plus" onClick={onAddMovement}>{t('Add movement')}</Button>
-    </div>
+    </div>}
   </div>
 }
 
@@ -525,7 +617,7 @@ function ExChoice({ item, onPick, onChoose }) {
   return <ExChip item={item} onClick={onPick} />
 }
 
-function MovementRow({ S, m, rungs, onEdit, onPick, onChoose }) {
+function MovementRow({ S, m, rungs, readOnly, onEdit, onPick, onChoose }) {
   const rx = rxFor(m, S)
   const d = doseFor(m, S)
   const dose = fmtDose(d)
@@ -533,20 +625,22 @@ function MovementRow({ S, m, rungs, onEdit, onPick, onChoose }) {
   const line = (steps ? [steps] : [dose + (dose && m.perSide ? ' ' + t('each side') : ''), d.restSec > 0 ? t('{0} rest', fmtRest(d.restSec)) : null,
     rx ? `${fmtNum(rx.w)} ${rx.unit}` : null]).filter(Boolean).join(' · ')
   return <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 10, paddingTop: 10 }}>
-    <div {...tappable(onEdit)} style={{ cursor: 'pointer' }}>
+    <div {...(readOnly ? {} : tappable(onEdit))} style={readOnly ? undefined : { cursor: 'pointer' }}>
       <div className="row" style={{ gap: 6 }}>
         <div style={{ flex: 1, minWidth: 0 }}>{m.raw || m.rawName}</div>
-        <Icon name="pencil" className="dim" style={{ fontSize: 13 }} />
+        {!readOnly && <Icon name="pencil" className="dim" style={{ fontSize: 13 }} />}
       </div>
       {line && <div className="small muted" style={{ marginTop: 2 }}>{line}{rx && <span className="dim"> · Rx</span>}</div>}
     </div>
-    <div className="chips" style={{ margin: '8px 0 0', flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', alignItems: 'center' }}>
+    {readOnly ? <div className="small dim" style={{ marginTop: 4 }}>
+      {[m, ...(m.alts || [])].map(x => (x.exId ? exerciseNameFor(exOr(x.exId)) : x.rawName)).join(` ${t('or')} `)}</div>
+    : <div className="chips" style={{ margin: '8px 0 0', flexWrap: 'wrap', overflow: 'visible', touchAction: 'auto', alignItems: 'center' }}>
       <ExChoice item={m} onPick={() => onPick(null, m)} onChoose={exId => onChoose(null, m, exId)} />
       {(m.alts || []).map((a, ai) => <span key={ai} className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
         <span className="small dim">{t('or')}</span>
         <ExChoice item={a} onPick={() => onPick(ai, a)} onChoose={exId => onChoose(ai, a, exId)} />
       </span>)}
-    </div>
+    </div>}
   </div>
 }
 
@@ -714,6 +808,7 @@ export function CrossFitSettings({ S, update }) {
         <a href={feedUrl} target="_blank" rel="noreferrer" style={{ wordBreak: 'break-all', fontSize: '.8rem' }}>{feedUrl}</a>
       </div>
     </Section>}
+    <BoxFeedSettings S={S} update={update} />
     <Section title={t('Programs')}>
       <Row icon="flame" iconTint="var(--orange)" title={t('Count warm-ups')}
         subtitle={t('Warm-up blocks in a main track start included. Extra tracks always count theirs.')}>
@@ -731,4 +826,56 @@ export function CrossFitSettings({ S, update }) {
       </Row>)}
     </Section>
   </>
+}
+
+// T32: the box feed this member reads. Subscribing checks the address first (an https feed with
+// `v: 1`) and keeps what it read, so the list has the programs straight away.
+const FEED_ERRORS = {
+  https: () => t('Only https addresses can be used.'),
+  network: () => t('The feed could not be reached. Check the address and your connection.'),
+  invalid: () => t('This address is not a box feed.'),
+  scan: () => t('The camera could not scan. Paste the address instead.'),
+}
+function BoxFeedSettings({ S, update }) {
+  const url = S.boxFeed || ''
+  const feed = useSyncExternalStore(subscribeBoxFeed, () => cachedFeed(url))
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const subscribe = async value => {
+    const href = httpsUrl(value)
+    setError(href ? null : 'https')
+    if (!href) return
+    setBusy(true)
+    const r = await fetchFeed(href)
+    setBusy(false)
+    if (r.error) { setError(r.error); return }
+    keepFeed(href, r.feed)
+    update(s => { s.boxFeed = href })
+    setText('')
+    toast(t('Subscribed to {0}', r.feed.box))
+  }
+  const scan = async () => {
+    let code = null
+    try { code = await (await import('../lib/scan.js')).scanCode() } catch { setError('scan'); return }
+    if (code?.value) { setText(code.value); subscribe(code.value) }
+  }
+  const unsubscribe = () => { clearBoxFeed(); update(s => { s.boxFeed = '' }) }
+  const at = cachedAt(url)
+  // The row carries the name, for Settings search (settings-pages.js) to land on.
+  return <Section footer={url ? t('Your box’s programs show in your CrossFit list. Logging one makes it yours.') : null}>
+    <Row icon="qr" iconTint="var(--orange)" title={t('Box feed')}
+      subtitle={!url ? t('Paste the address your box shares, or scan its QR code. Its programs then show in your CrossFit list.')
+        : [feed?.box, at ? t('Updated {0}', fmtAgo(at)) : null].filter(Boolean).join(' · ') || url} />
+    {url ? <>
+      <Row title={t('Unsubscribe')} danger onClick={unsubscribe} />
+    </> : <div style={{ padding: 12 }}>
+      <TextField value={text} type="url" inputMode="url" placeholder="https://…" aria-label={t('Feed address')}
+        onChange={e => { setText(e.target.value); setError(null) }} onKeyDown={e => { if (e.key === 'Enter') subscribe(text) }} />
+      {error && <div className="small" role="alert" style={{ color: 'var(--orange)', marginTop: 6 }}>{FEED_ERRORS[error]()}</div>}
+      <div style={{ height: 10 }} />
+      <Button variant="primary" disabled={busy || !text.trim()} onClick={() => subscribe(text)}>{busy ? t('Checking…') : t('Subscribe')}</Button>
+      {MOBILE && <><div style={{ height: 8 }} /><Button icon="qr" disabled={busy} onClick={scan}>{t('Scan QR code')}</Button></>}
+    </div>}
+  </Section>
 }

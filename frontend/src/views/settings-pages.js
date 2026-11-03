@@ -123,6 +123,7 @@ export const SEARCH = [
   // CrossFit
   { page: 'crossfit', title: 'Count warm-ups', icon: 'flame', tint: 'var(--orange)', kw: 'crossfit wod warm up warmup program include' },
   { page: 'crossfit', title: 'Hard sets per muscle per week', icon: 'target', tint: 'var(--green)', kw: 'hypertrophy volume target gap muscle sets weekly crossfit' },
+  { page: 'crossfit', title: 'Box feed', icon: 'qr', tint: 'var(--orange)', kw: 'box gym feed subscribe qr scan url programs wod shared' },
   // Look & Home
   { page: 'look', title: 'Theme', icon: 'moon', tint: 'var(--indigo)', kw: 'dark mode light mode theme appearance night', opts: ['Dark', 'Light', 'System'] },
   { page: 'look', title: 'Accent color', icon: 'palette', tint: 'var(--purple)', kw: 'color colour accent tint custom own picker hex rgb', opts: [...Object.values(ACCENT_NAMES), 'Your own color'], tkw: () => t('custom color picker') },

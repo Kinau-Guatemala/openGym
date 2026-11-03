@@ -46,7 +46,7 @@ import PermissionSteps from './views/PermissionSteps.jsx'
 import Home from './views/Home.jsx'
 import Plan from './views/Plan.jsx'
 import Workout from './views/Workout.jsx'
-import CrossFit, { CrossFitEdit } from './views/CrossFit.jsx'
+import CrossFit, { CrossFitBox, CrossFitEdit } from './views/CrossFit.jsx'
 
 // Screens most sessions never open (the Coach, the admin dashboard, photos, measurements, the
 // balance check) are their own chunks rather than part of the code every start parses: ~200 KB
@@ -312,6 +312,7 @@ function Shell() {
       <Route path="/crossfit/new" element={<CrossFitEdit />} />
       <Route path="/crossfit/edit/:date" element={<CrossFitEdit />} />
       <Route path="/crossfit/log/:date" element={<CrossFitLog />} />
+      <Route path="/crossfit/box/:date" element={<CrossFitBox />} />
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
       {/* The Coach screens gate themselves on the instance config; the routes exist
