@@ -16,6 +16,8 @@ import esNames from '../exercise-names/es.js'
 import CrossFit, { CrossFitEdit, CrossFitSettings, whichDaySheet } from './CrossFit.jsx'
 import CrossFitLog from './CrossFitLog.jsx'
 import { beginIntake, currentIntake, setIntakeImage } from '../lib/wod-intake.js'
+import Home from './Home.jsx'
+import { exerciseHistorySheet } from '../sheets.jsx'
 
 vi.mock('../lib/api.js', async importOriginal => ({ ...await importOriginal(), api: vi.fn(async () => ({})) }))
 
@@ -57,6 +59,8 @@ const PROGRAM = {
       block('b4', 'emom', [mv('m0', '30 sec Double unders', 'double unders', '3885', { dose: { sec: 30 } })], { rounds: 4, everySec: 90 }),
       block('b5', 'rounds', [mv('m0', '5 Clean and press', 'clean and press', '0028', { dose: { reps: 5 } })], { rounds: 3, roundsMax: 4 }),
       block('b6', 'interval', [mv('m0', '200 m Run', 'run', null, { dose: { m: 200 } })], { rounds: 4, everySec: 180 }),
+      block('b7', 'rounds', [mv('m0', 'Max Pull-ups', 'max pull-ups', '0652', { dose: { sets: 2 } })], { rounds: 5 }),
+      block('b8', 'other', [mv('m0', 'Partner burpees', 'partner burpees', '1160', { dose: { reps: 10 } })], { everySec: 90 }),
     ] },
     { id: 't1', label: '', kind: 'extra', blocks: [] },
   ],
@@ -98,6 +102,7 @@ async function mount(entry, el) {
       <Route path="/crossfit/edit/:date" element={<CrossFitEdit />} />
       <Route path="/crossfit/log/:date" element={<CrossFitLog />} />
       <Route path="/settings" element={el} />
+      <Route path="/home" element={<Home />} />
       <Route path="*" element={null} />
     </Routes>
   </MemoryRouter>))
@@ -125,7 +130,16 @@ function collect(el) {
   }
   return out
 }
-const unprinted = s => PRINTED.reduce((x, p) => x.split(p).join(''), s)
+// The printed wording is taken out where it stands as its own words, never from inside a word
+// ("row" is printed; "Tomorrow" is not).
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const PRINTED_RE = new RegExp(`(^|[^\\p{L}])(${PRINTED.map(esc).join('|')})(?=$|[^\\p{L}])`, 'gu')
+const unprinted = s => s.replace(PRINTED_RE, '$1')
+// A word of the English keys that no Spanish string or exercise name uses: new English text,
+// even one no pack has a key for yet.
+const words = s => (s.match(/\p{L}[\p{L}'’]*/gu) || []).map(w => w.toLowerCase())
+const ES_WORDS = new Set(['PR', ...Object.values(es), ...Object.values(esNames)].filter(v => typeof v === 'string').flatMap(words))
+const EN_ONLY = new Set(Object.keys(es).flatMap(words).filter(w => !ES_WORDS.has(w)))
 // Each string that still reads English, with why.
 function english(strings) {
   const bad = []
@@ -135,6 +149,7 @@ function english(strings) {
     const hit = s.match(NEVER_RE)
     if (hit) bad.push(`${JSON.stringify(s0)} has "${hit[2]}"`)
     else if (typeof es[s] === 'string' && es[s] !== s) bad.push(`${JSON.stringify(s0)} is untranslated`)
+    else { const w = words(s).find(x => EN_ONLY.has(x)); if (w) bad.push(`${JSON.stringify(s0)} has the English word "${w}"`) }
   }
   return bad
 }
@@ -296,6 +311,28 @@ const SCREENS = {
     expect(host.querySelector('.seg button.on').textContent).toBe('lb')
   },
   'log, already logged': async () => { logPast(); await mount('/crossfit/log/' + PAST) },
+  // The CrossFit row on Home, and the Rx line in an exercise's history sheet.
+  'home, today has a program': async () => {
+    useStore.setState({ S: { ...useStore.getState().S, wods: { [TODAY]: { ...clone(PROGRAM), _ts: 1 } } } })
+    await mount('/home')
+    const row = [...host.querySelectorAll('.today-row')].find(r => r.textContent.includes(es['Today’s WOD']))
+    expect(row).toBeTruthy()
+    return row
+  },
+  'home, no program today': async () => {
+    await mount('/home')
+    const row = [...host.querySelectorAll('.today-row')].find(r => r.textContent.includes(es['Add today’s WOD']))
+    expect(row).toBeTruthy()
+    return row
+  },
+  'exercise sheet, the Rx line': async () => {
+    logPast()
+    await mount('/crossfit')
+    await act(async () => exerciseHistorySheet('3305'))
+    const line = (await sheet()).querySelector('[data-rx-line]')
+    expect(line).toBeTruthy()
+    return line
+  },
   'settings, no picks': async () => { await mount('/settings', <CrossFitSettings S={useStore.getState().S} update={() => {}} />) },
   'settings, with picks': async () => {
     useStore.getState().setAlias('ring rows', '0043')
@@ -311,7 +348,7 @@ beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   toasts = []
   unsub = useUI.subscribe(s => { if (s.toastMsg) toasts.push(s.toastMsg) })
-  useUI.setState({ sheets: [] })
+  useUI.setState({ sheets: [], toastMsg: '' })
   useStore.setState({ S: { ...clone(DEF), wods: { [PAST]: { ...clone(PROGRAM), _ts: 1 }, [NEXT]: { ...clone(PROGRAM), _ts: 1 } } }, user: null, ready: true })
 })
 afterEach(() => {
@@ -335,5 +372,7 @@ describe('CrossFit in Spanish (T28)', () => {
   // The check itself: it catches English, and lets the box's printed wording through.
   it('flags English and passes printed text', () => {
     expect(english(['For time', 'fortime', '5 rounds', 'Pick exercise', 'Pista 1', '3 Rounds 10 Burpees', 'AMRAP', 'Rx'])).toHaveLength(4)
+    // a new sentence no pack has, and English around a printed word
+    expect(english(['Tap a block to change it', 'Tomorrow', 'The Coach couldn’t run.', 'row', '20 Cal Row'])).toHaveLength(3)
   })
 })
