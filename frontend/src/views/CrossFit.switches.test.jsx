@@ -61,6 +61,18 @@ describe('the log screen', () => {
     expect(card('Finisher').textContent).not.toContain(HELP.rx())
   })
 
+  // T30's kg / lb switch still reaches every block the explained list renders, not just the first.
+  it('the kg / lb switch converts a later block’s weight', async () => {
+    const wod = block('WOD', { format: 'fortime', rounds: 1, movements: [{ id: 'm0', raw: '10 C&J', rawName: 'c and j', exId: '5122', dose: { reps: 10 }, rx: { male: { w: 135, unit: 'lb' }, female: { w: 95, unit: 'lb' } }, alts: [] }] })
+    useStore.setState({ S: { ...clone(DEF), unit: 'kg', wods: { '2026-10-27': { ...program, tracks: [{ ...program.tracks[0], blocks: [block('Warm', { warmup: true }), wod] }], _ts: 1 } } } })
+    await mount('/crossfit/log/2026-10-27')
+    const weight = () => [...card('WOD').querySelectorAll('.measure-field')].find(f => f.firstChild.textContent === 'Weight')
+    expect([weight().querySelector('input').value, weight().querySelector('i').textContent]).toEqual(['60', 'kg'])
+    await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'lb').click())
+    expect([weight().querySelector('input').value, weight().querySelector('i').textContent]).toEqual(['135', 'lb'])
+    expect(card('WOD').textContent).toContain(HELP.rx())
+  })
+
   it('the ? sheet lists Include, Rx and the score', async () => {
     await mount('/crossfit/log/2026-10-27')
     await help()
