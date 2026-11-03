@@ -2245,6 +2245,7 @@ export default {
   'Today’s WOD': 'WOD du jour',
   'Track': 'Piste',
   'Track name': 'Nom de la piste',
+  'Full Equipment': 'Équipement complet',
   'Track {0}': 'Piste {0}',
   'Type the movement': 'Écris le mouvement',
   'Up to': 'Jusqu’à',

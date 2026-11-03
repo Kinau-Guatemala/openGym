@@ -2256,6 +2256,7 @@ export default {
   'Today’s WOD': 'WOD วันนี้',
   'Track': 'แทร็ก',
   'Track name': 'ชื่อแทร็ก',
+  'Full Equipment': 'อุปกรณ์ครบชุด',
   'Track {0}': 'แทร็ก {0}',
   'Type the movement': 'พิมพ์ท่า',
   'Up to': 'สูงสุด',

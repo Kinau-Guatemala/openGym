@@ -2245,6 +2245,7 @@ export default {
   'Today’s WOD': 'Bugünün WOD’u',
   'Track': 'Parkur',
   'Track name': 'Parkur adı',
+  'Full Equipment': 'Tam ekipman',
   'Track {0}': 'Parkur {0}',
   'Type the movement': 'Hareketi yaz',
   'Up to': 'En fazla',

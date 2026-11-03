@@ -2245,6 +2245,7 @@ export default {
   'Today’s WOD': 'Dzisiejszy WOD',
   'Track': 'Ścieżka',
   'Track name': 'Nazwa ścieżki',
+  'Full Equipment': 'Pełny sprzęt',
   'Track {0}': 'Ścieżka {0}',
   'Type the movement': 'Wpisz ruch',
   'Up to': 'Do',

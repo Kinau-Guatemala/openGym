@@ -23,6 +23,7 @@ import { syncSideAggregate } from './workout-model.js'
 import { includeOf } from './wod-draft.js'
 import { doseFor, rxFor, rxPrinted, stepRxFor, stepsOf } from './rx.js'
 import { convertMoves, convertWeight } from './units.js'
+import { t } from './i18n-core.js'
 
 export const WOD_RIR = 5
 const METCON = new Set(['emom', 'amrap', 'fortime', 'interval'])
@@ -74,6 +75,12 @@ export const isCardioRow = (m, exId, dose, block) =>
 // The score a block asks for until another is picked: rounds+reps for an AMRAP, a time for a For
 // time, a load for a strength block, none for the rest. The log screen's selector shows it.
 export const SCORE_OF = { amrap: 'rounds', fortime: 'time', strength: 'load' }
+
+// A block's format as the review and log screens name it; an unknown one is Other.
+export const formatLabel = f => ({
+  amrap: 'AMRAP', emom: 'EMOM', fortime: t('For time'), rounds: t('Rounds'),
+  interval: t('Intervals'), strength: t('Strength'), other: t('Other'),
+})[f] || t('Other')
 
 /**
  * A block's score as saved: of the type the selector shows (the format's default when it was

@@ -23,7 +23,7 @@ import { fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
 import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps } from '../lib/rx.js'
-import { ladderOf } from '../lib/wod-log.js'
+import { formatLabel, ladderOf } from '../lib/wod-log.js'
 import { fmtRest } from '../lib/duration.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
@@ -43,10 +43,6 @@ const ui = () => useUI.getState()
 const toast = m => ui().toast(m)
 
 const FORMATS = ['amrap', 'emom', 'fortime', 'rounds', 'interval', 'strength', 'other']
-const formatLabel = f => ({
-  amrap: 'AMRAP', emom: 'EMOM', fortime: t('For time'), rounds: t('Rounds'),
-  interval: t('Intervals'), strength: t('Strength'), other: t('Other'),
-})[f] || t('Other')
 const DOSE_KINDS = ['reps', 'cal', 'm', 'sec']
 const doseLabel = k => ({ reps: t('Reps'), cal: t('Calories'), m: t('Meters'), sec: t('Seconds') })[k]
 
@@ -217,7 +213,7 @@ function WhichDay({ go, close }) {
 /* ============================ the editor ============================ */
 
 // A brand-new hand-entered program starts with the main track, ready for its first block.
-const emptyProgram = () => ({ title: '', tracks: [{ id: 'full', label: 'Full Equipment', kind: 'main', blocks: [] }] })
+const emptyProgram = () => ({ title: '', tracks: [{ id: 'full', label: t('Full Equipment'), kind: 'main', blocks: [] }] })
 
 // #/crossfit/new?shared=1 is the image being read; everything else is the editor. Two components,
 // so going from one to the other mounts the editor fresh with what the intake handed it.

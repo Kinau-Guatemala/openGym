@@ -1442,6 +1442,7 @@ export const PT_BR_OVERRIDES = {
   'Today’s WOD': 'WOD de hoje',
   'Track': 'Faixa',
   'Track name': 'Nome da faixa',
+  'Full Equipment': 'Equipamento completo',
   'Track {0}': 'Faixa {0}',
   'Type the movement': 'Digite o movimento',
   'Up to': 'Até',

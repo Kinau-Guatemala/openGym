@@ -11,6 +11,7 @@
 // exactly as printed.
 import { LB_PER_KG } from './units.js'
 import { t } from './i18n-core.js'
+import { fmtNum } from './format.js'
 
 const GRID = { kg: 2.5, lb: 5 }
 const unitOf = u => (String(u || '').toLowerCase() === 'kg' ? 'kg' : 'lb')
@@ -89,6 +90,6 @@ export function fmtSteps(movement, S, rungs) {
   const reps = counts.every(n => n > 0) && new Set(counts).size > 1 ? counts.join('-') + (kind?.[1] || '') : ''
   const loads = steps.map(s => stepRxFor(s, movement, S)).filter(Boolean)
   const first = loads[0], last = loads.at(-1)
-  const load = !first ? '' : loads.every(l => l.w === first.w) ? `${first.w} ${first.unit}` : `${first.w}→${last.w} ${first.unit}`
+  const load = !first ? '' : loads.every(l => l.w === first.w) ? `${fmtNum(first.w)} ${first.unit}` : `${fmtNum(first.w)}→${fmtNum(last.w)} ${first.unit}`
   return [reps, load].filter(Boolean).join(' @ ')
 }

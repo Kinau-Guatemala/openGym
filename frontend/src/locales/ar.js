@@ -2300,6 +2300,7 @@ export default {
   'Today’s WOD': 'تمرين اليوم (WOD)',
   'Track': 'مسار',
   'Track name': 'اسم المسار',
+  'Full Equipment': 'معدات كاملة',
   'Track {0}': 'المسار {0}',
   'Type the movement': 'اكتب الحركة',
   'Up to': 'حتى',
