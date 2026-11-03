@@ -102,7 +102,9 @@
           "label": "MIN 8-15 TC 7", "warmup": false, "format": "amrap", "capMin": 7, "rounds": 3, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
           "raw": "WOD\nAMRAP 42\n3 RONDAS\nMIN 8-15 TC 7\n14 Mts Sled Pull & Push 200KG/150KG\n8 DB Devil Press",
           "movements": [
-            { "raw": "14 Mts Sled Pull & Push 200KG/150KG", "rawName": "sled pull & push", "name": "sled pull and push", "slot": null, "dose": { "m": 14 }, "perSide": false,
+            { "raw": "14 Mts Sled Pull & Push 200KG/150KG", "rawName": "sled pull", "name": "sled pull", "slot": null, "dose": { "m": 14 }, "perSide": false,
+              "rx": { "male": { "w": 200, "unit": "kg" }, "female": { "w": 150, "unit": "kg" } }, "alts": [] },
+            { "raw": "14 Mts Sled Pull & Push 200KG/150KG", "rawName": "sled push", "name": "sled push", "slot": null, "dose": { "m": 14 }, "perSide": false,
               "rx": { "male": { "w": 200, "unit": "kg" }, "female": { "w": 150, "unit": "kg" } }, "alts": [] },
             { "raw": "8 DB Devil Press", "rawName": "db devil press", "name": "dumbbell devils press", "slot": null, "dose": { "reps": 8 }, "perSide": false, "rx": null, "alts": [] }
           ]

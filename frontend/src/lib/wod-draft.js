@@ -1,7 +1,7 @@
 // The program editor's working copy (views/CrossFitEdit.jsx): a posted program — parsed from an
 // image (coach job parse-wod) or typed in — readied for review, plus the rules the screen and the
 // logger (T08) share about which blocks count.
-import { norm, rawNameOf, resolveMovement } from './crossfit-resolve.js'
+import { norm, rawNameOf, resolveMovement, splitMovement } from './crossfit-resolve.js'
 
 const list = v => (Array.isArray(v) ? v : [])
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -54,7 +54,9 @@ export function prepareDraft(program, userAliases = {}) {
       kind: tr.kind === 'extra' ? 'extra' : 'main',
       blocks: withIds(tr.blocks, 'b').map(b => ({
         ...b,
-        movements: withIds(b.movements, 'm').map(m => ({
+        // A line that joins two movements is those two (splitMovement), here, where every
+        // program meets the catalogue and the user's picks before review.
+        movements: withIds(b.movements, 'm').flatMap(m => splitMovement(m, userAliases) || [m]).map(m => ({
           ...resolved(m, userAliases),
           alts: list(m.alts).filter(isMap).map(a => resolved(a, userAliases)),
         })),

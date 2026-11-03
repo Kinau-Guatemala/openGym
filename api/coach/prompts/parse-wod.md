@@ -53,6 +53,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 | `20/15 Cal` | a male/female dose: `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }` |
 | `DB´s`, `KB´s` | dumbbells, kettlebells (the apostrophe is the box's plural) |
 | `S2OH` | shoulder to overhead · `BMU` bar muscle up · `T2B` toes to bar · `C&J` clean and jerk |
+| `5 Muscle Clean + Push press`, `14 Mts Sled Pull & Push 200KG/150KG`, `1 Clean + 2 Seg F.R tempo 3 Jerk` | two **different** movements joined by `+` or `&` under one count are **two** movements, in order. Each takes the line's count, or its own where printed, and the load where printed; both keep the whole line as `raw`. `5 Muscle Clean + Push press` → `"muscle clean"` `{ "reps": 5 }` **and** `"push press"` `{ "reps": 5 }`; `14 Mts Sled Pull & Push 200KG/150KG` → `"sled pull"` **and** `"sled push"`, each `{ "m": 14 }` with the 200/150 kg Rx; `1 Clean + 2 Seg F.R tempo 3 Jerk` (a `COMPLEX`) → `"clean"` `{ "reps": 1 }` **and** `"jerk"` `{ "reps": 3 }`. A pause or tempo (`2 Seg F.R tempo`) stays in `raw`, never in a `rawName`. **Not** a named lift that is one exercise: `Clean & Jerk`, `C&J`, `Hang Clean & Jerks`, `Snatch Balance` stay one movement |
 | `ALT` | alternating |
 | `Row/Ski/Bike` | **one** movement with alternatives: the first is the movement, the others go in `alts` |
 | `/ 2` after a line | split between partners; keep it in `raw` only |
@@ -68,7 +69,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 - `doseFemale`: **only** when the dose itself is printed as a male/female split (`20/15 Cal Row` → `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }`), same keys as `dose`; otherwise leave it out. Different doses for different alternatives (`250 mts Row/Ski/500 mts Bike`) are not a split: each alternative carries its own `dose`. A load pair (`185/135`) is `rx`, never `doseFemale`.
 - `rx`: `{ "male": { "w": 185, "unit": "lb" }, "female": { "w": 135, "unit": "lb" } }` or `null`. One printed load is the male figure, female `null`.
 - `steps`: **only** for the same movement printed once per set with its own load or reps (see the dialect above); otherwise leave it out. One entry per set, in order, each with that set's `reps`, `cal`, `m` or `sec` and its `rx` (same shape as the movement's). A ladder's rung is its step's `reps`. The movement's `raw` and `slot` are the first line's, and its `dose` and `rx` the first step's.
-- `A + B` on one line is two movements **only when B has its own dose** (`"4 Cleans + 4 Push press"` → two). A rest is never one of them (see `Rest 30 seg` above). Otherwise it is one movement, and the `+` stays in `rawName` (`"DB´s Lateral + Front Fly"` → `"db´s lateral + front fly"`, `"Sled Pull + Drag Just Arms"` → `"sled pull + drag just arms"`).
+- `A + B` on one line is two movements when B has its own dose (`"4 Cleans + 4 Push press"` → two), and when it joins two different movements under one count (`5 Muscle Clean + Push press`, see the dialect above). A rest is never one of them (see `Rest 30 seg` above). One exercise written in two parts stays one movement, and the `+` stays in `rawName`: `"DB´s Lateral + Front Fly"` → `"db´s lateral + front fly"` (one raise, lateral then front), `"Sled Pull + Drag Just Arms"` → `"sled pull + drag just arms"` (how the pull is done).
 
 ## Each block
 

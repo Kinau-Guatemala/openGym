@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GUESS_MARGIN, GUESS_MIN, guessMovement, norm, rawNameOf, resolveMovement } from './crossfit-resolve.js'
+import { GUESS_MARGIN, GUESS_MIN, guessMovement, norm, rawNameOf, resolveMovement, splitMovement } from './crossfit-resolve.js'
 import { SHIPPED_ALIASES } from './crossfit-aliases.js'
 import { EXIDX } from './exercises.js'
 
@@ -669,5 +669,47 @@ describe('crossfit resolve: the 2 Nov re-test', () => {
     expect(norm('maxi squat')).toBe('maxi squat')
     expect(norm('max')).toBe('max')
     for (const s of ['max squat clean', 'max max row', 'max']) expect(norm(norm(s))).toBe(norm(s))
+  })
+})
+
+describe('crossfit resolve: two movements on one line (T27)', () => {
+  // The out-v3 parses (3 Nov re-test), as the model wrote them.
+  const mv = (raw, rawName, dose, over = {}) => ({ id: 'm2', raw, rawName, name: rawName.replace(/[+&]/, 'and'), slot: null, exId: null, dose, perSide: false, rx: null, alts: [], ...over })
+  const parts = m => splitMovement(m)?.map(p => [p.id, p.rawName, p.exId, p.dose])
+  const rx = { male: { w: 200, unit: 'kg' }, female: { w: 150, unit: 'kg' } }
+
+  it('"5 Muscle Clean + Push press" is muscle clean ×5 and push press ×5', () => {
+    expect(parts(mv('5 Muscle Clean + Push press', 'muscle clean + push press', { reps: 5 })))
+      .toEqual([['m2', 'muscle clean', '5075', { reps: 5 }], ['m2-2', 'push press', '1200', { reps: 5 }]])
+  })
+
+  it('"14 Mts Sled Pull & Push": the second part takes the first one\'s noun, and both keep the Rx, raw and slot', () => {
+    const m = mv('14 Mts Sled Pull & Push 200KG/150KG', 'sled pull & push', { m: 14 }, { rx, slot: 'M1' })
+    expect(parts(m)).toEqual([['m2', 'sled pull', '9939', { m: 14 }], ['m2-2', 'sled push', '4428', { m: 14 }]])
+    for (const p of splitMovement(m)) {
+      expect([p.raw, p.rx, p.slot, p.perSide]).toEqual([m.raw, rx, 'M1', false])
+      expect(p).not.toHaveProperty('name')
+    }
+  })
+
+  it('"1 Clean + 2 Seg F.R tempo 3 Jerk": the tempo leaves the name, and a part\'s own count is its reps', () => {
+    const m = mv('1 Clean + 2 Seg F.R tempo 3 Jerk', 'clean + 2 seg f.r tempo 3 jerk', { reps: 1 }, { name: 'barbell clean and jerk complex' })
+    expect(parts(m)).toEqual([['m2', 'clean', '0648', { reps: 1 }], ['m2-2', 'jerk', '1529', { reps: 3 }]])
+    expect(splitMovement(m)[1].raw).toBe(m.raw)
+  })
+
+  it('a name that resolves whole stays one: C&J, clean & jerk, the sled drag and the alternating raise', () => {
+    for (const n of ['c&j', 'clean & jerk', 'hang clean & jerks', 'kb´s c&j', 'db´s c&j', 'sled pull + drag just arms', 'db´s lateral + front fly'])
+      expect(splitMovement(mv(n, n, { reps: 5 })), n).toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean + push press', { reps: 5 }), { 'muscle clean push press': { exId: '0001', _ts: 1 } }), 'the user\'s pick for the whole name').toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean + push press', { reps: 5 }, { exId: '0001' })), 'an exercise already chosen').toBeNull()
+  })
+
+  it('a shared timed dose stays one, and so does a line with a part that does not resolve for certain', () => {
+    expect(splitMovement(mv('40 seg Muscle Clean + Push press', 'muscle clean + push press', { sec: 40 }))).toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean + burpee pull ups', { reps: 5 }))).toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean + push pres', { reps: 5 })), 'a guess is not certain').toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean', { reps: 5 }))).toBeNull()
+    expect(splitMovement(mv('x', 'muscle clean + push press', { reps: 5 }, { alts: [{ rawName: 'row' }] }))).toBeNull()
   })
 })

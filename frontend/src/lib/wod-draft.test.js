@@ -42,6 +42,18 @@ describe('prepareDraft', () => {
     const d = prepareDraft({ tracks: [{ id: 'a', blocks: [] }, { id: 'a', blocks: [] }] })
     expect(d.tracks.map(t => t.id)).toEqual(['a', 't0'])
   })
+
+  it('splits a line that joins two movements, in place, and the saved split opens the same again (T27)', () => {
+    const line = { raw: '5 Muscle Clean + Push press', rawName: 'muscle clean + push press', name: 'muscle clean and push press', dose: { reps: 5 }, rx: null, alts: [] }
+    const program = { tracks: [{ id: 'full', blocks: [{ label: 'WARM UP', movements: [{ rawName: 'burpees', dose: { reps: 10 } }, line, { rawName: 'c&j', dose: { reps: 3 } }] }] }] }
+    const d = prepareDraft(program)
+    const moves = d.tracks[0].blocks[0].movements
+    expect(moves.map(m => [m.id, m.rawName, m.exId, m.dose.reps])).toEqual([
+      ['m0', 'burpees', moves[0].exId, 10], ['m1', 'muscle clean', '5075', 5], ['m1-2', 'push press', '1200', 5], ['m2', 'c&j', '5122', 3],
+    ])
+    expect(moves.slice(1, 3).every(m => m.raw === line.raw && !('via' in m) && !('candidates' in m))).toBe(true)
+    expect(prepareDraft(d)).toEqual(d)
+  })
 })
 
 describe('includeOf', () => {

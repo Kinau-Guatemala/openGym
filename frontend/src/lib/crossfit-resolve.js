@@ -3,7 +3,8 @@
 //
 // rawName: what is left of one movement's printed text once its dose and load are gone. The
 // parser (coach job parse-wod) splits a line into movements first: "12 DL + Max Squat Cleans" is
-// two movements (each side has its own dose), "DB´s Lateral + Front Fly" is one, "Row/Ski/Bike"
+// two movements (each side has its own dose), so is "5 Muscle Clean + Push press" (one count, two
+// movements; splitMovement below catches a parse that missed it), "DB´s Lateral + Front Fly" is one, "Row/Ski/Bike"
 // is one movement with alternatives, "M1"/"R1" is the slot. Then, per movement:
 //   - drop a leading slot label ("M1 ", "R3 ");
 //   - drop the leading dose, repeatedly: a number, range or pair ("12", "12-15", "20/15",
@@ -77,6 +78,54 @@ export function resolveMovement({ rawName, name } = {}, userAliases = {}) {
   const top = query && scoredSearch(CATALOGUE, query)[0]
   if (top && clearHit(top.score, query.split(/\s+/).length)) return { exId: top.e.id, via: 'search', candidates: [] }
   return guessMovement({ rawName, name })
+}
+
+/* ------------------------ two movements on one line ------------------------ */
+//
+// "5 Muscle Clean + Push press", "14 Mts Sled Pull & Push": one count, two movements, which the
+// parser should split (parse-wod.md) and sometimes does not. The net: a name joined by + or & that
+// does not resolve whole, while each part resolves for certain (not a guess), is those movements,
+// in order. A part without its noun takes the first part's ("sled pull & push" → "sled push"), a
+// tempo or pause ("2 seg f.r tempo") is dropped, and a part's own count is its reps
+// ("clean + 2 seg f.r tempo 3 jerk" → clean, and jerk ×3). "C&J" resolves whole, so it stays one.
+// A timed dose stays one movement: split, "40 seg DB´s Lateral + Front Fly" would log the time twice.
+const JOIN = /\s*[+&]\s*/
+const PAUSE = /^.*\b(?:tempo|pausa|pause)\b\s*/
+const COUNT = /^(\d+)\s+(?!(?:mts?|m|cal|seg|sec|k|km)\b)(?=[a-z])/
+const sure = r => !!r.exId && r.via !== 'guess'
+const timedOnly = d => d?.sec != null && d.reps == null && d.m == null && d.cal == null
+
+/**
+ * `m` as the movements it joins, each with its exercise, or null to keep it as it is. The first
+ * keeps `m.id` and the others take `<id>-2`, `<id>-3`, so a log can address each one.
+ */
+export function splitMovement(m, userAliases = {}) {
+  const parts = String(m?.rawName || '').split(JOIN)
+  // ponytail: a movement with alternatives stays whole; split its alts too if a program prints one
+  if (parts.length < 2 || parts.some(p => !p) || timedOnly(m.dose) || m.alts?.length) return null
+  if ((m.exId && m.via !== 'guess') || sure(resolveMovement(m, userAliases))) return null
+  const head = parts[0].split(' ').slice(0, -1).join(' ')
+  const out = []
+  for (const part of parts) {
+    let s = part.replace(PAUSE, '')
+    const count = COUNT.exec(s)
+    s = rawNameOf(count ? s.slice(count[0].length) : s)
+    let r = resolveMovement({ rawName: s }, userAliases)
+    if (!sure(r) && out.length && head) {
+      const r2 = resolveMovement({ rawName: `${head} ${s}` }, userAliases)
+      if (sure(r2)) { s = `${head} ${s}`; r = r2 }
+    }
+    if (!s || !sure(r)) return null
+    out.push({ rawName: s, exId: r.exId, reps: count ? +count[1] : null })
+  }
+  const { name, via, candidates, ...rest } = m
+  return out.map((p, i) => ({
+    ...rest,
+    id: i ? `${m.id}-${i + 1}` : m.id,
+    rawName: p.rawName,
+    exId: p.exId,
+    dose: p.reps == null ? m.dose : { ...m.dose, reps: p.reps },
+  }))
 }
 
 /* ---------------------------- the best guess ---------------------------- */
