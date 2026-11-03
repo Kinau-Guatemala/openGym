@@ -78,6 +78,16 @@ const convEntry = (e, from, to) => {
   }
 }
 
+/** A logged WOD's typed moves (lib/wod-log.js, `w.wod.moves`) with each weight, and each row's, in `to`. */
+export function convertMoves(moves, from, to) {
+  const c = v => convertWeight(v, from, to)
+  return Object.fromEntries(Object.entries(moves || {}).map(([k, lm]) => [k, !lm || typeof lm !== 'object' ? lm : {
+    ...lm,
+    ...(lm.w != null ? { w: c(lm.w) } : {}),
+    ...(Array.isArray(lm.sets) ? { sets: lm.sets.map(s => (s?.w != null ? { ...s, w: c(s.w) } : s)) } : {}),
+  }]))
+}
+
 /** A new state object with every weight expressed in `to`, and `unit` set to it. */
 export function convertStateUnit(S, to) {
   const from = S.unit || 'kg'
@@ -92,6 +102,9 @@ export function convertStateUnit(S, to) {
     const out = { ...s, entries: (s.entries || []).map(e => convEntry(e, from, to)) }
     if (out.bw != null) out.bw = bw(out.bw)
     if (Number.isFinite(out.vol)) out.vol = workoutVolume({ entries: out.entries.filter(e => Array.isArray(e?.sets)) })
+    // A logged WOD keeps what was typed, in the profile's unit, to re-open it with. Its load
+    // scores carry their own unit and stay as they are.
+    if (s.wod?.moves && typeof s.wod.moves === 'object') out.wod = { ...s.wod, moves: convertMoves(s.wod.moves, from, to) }
     return out
   }
   const out = { ...S, unit: to }

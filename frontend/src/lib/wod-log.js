@@ -6,8 +6,11 @@
 // day, id `wod-<date>`, so logging the same day again edits it.
 //
 //   choice = { tracks: ['full', 'pump'], include: { 'full/b0': true } }   include overrides includeOf
-//   logged = { start, moves: { '<track>/<block>/<movement>': { exId, w, r, cal, m, sec, min, sets } },
+//   logged = { start, unit, moves: { '<track>/<block>/<movement>': { exId, w, r, cal, m, sec, min, sets } },
 //              blocks: { '<track>/<block>': { score, rx } } }
+//
+// Weights in `logged` are in S.unit, as everything stored is; `unit` is the one the log screen
+// showed them in (kg or lb, picked there), kept as `w.wod.unit` so a re-open shows that one again.
 //
 // Rows per movement follow the block's format (crossfit-module-plan, training logic §1): metcon
 // blocks (EMOM, AMRAP, For time, intervals, ladders) give `noProg` entries, so they never seed a
@@ -19,6 +22,7 @@ import { isCardio } from './exercises.js'
 import { syncSideAggregate } from './workout-model.js'
 import { includeOf } from './wod-draft.js'
 import { doseFor, rxFor, rxPrinted, stepRxFor, stepsOf } from './rx.js'
+import { convertMoves, convertWeight } from './units.js'
 
 export const WOD_RIR = 5
 const METCON = new Set(['emom', 'amrap', 'fortime', 'interval'])
@@ -224,7 +228,7 @@ export function buildWodWorkout(S, date, program, choice, logged, now = Date.now
   // has done work, so none was dropped and the order holds).
   w.entries.forEach((e, i) => { for (const k of KEEP) if (entries[i][k] != null) e[k] = entries[i][k] })
   w.src = 'wod'
-  w.wod = { date, ...wod, moves: movesOf(logged) }
+  w.wod = { date, ...wod, moves: movesOf(logged), ...(logged?.unit ? { unit: logged.unit } : {}) }
   return { active, w }
 }
 
@@ -241,11 +245,29 @@ function movesOf(logged) {
 }
 
 /**
- * The log screen's starting state for a day already logged as `w`, so saving again edits what
- * was logged rather than the program's printed doses: `{ tracks, include, logged }`. A log that
- * kept what was typed (`w.wod.moves`) comes back as typed; an older one is read off its rows.
+ * The weights typed on the log screen (each movement's weight and rows, a load score) moved from
+ * `from` to `to`, on the plate grid of convertWeight. A load score carries its own unit, which a
+ * profile's unit change leaves as it is (crossfit-records.js), so it is moved from that one. The
+ * rest is kept as it is.
  */
-export function relogState(program, w) {
+export function loggedIn(logged, from, to) {
+  if (!logged) return logged
+  const blocks = {}
+  for (const [k, lb] of Object.entries(logged.blocks || {})) {
+    const su = ['kg', 'lb'].includes(lb?.score?.unit) ? lb.score.unit : from
+    blocks[k] = lb?.score?.w != null ? { ...lb, score: { ...lb.score, w: convertWeight(lb.score.w, su, to), unit: to } } : lb
+  }
+  return { ...logged, moves: convertMoves(logged.moves, from, to), blocks }
+}
+
+/**
+ * The log screen's starting state for a day already logged as `w`, so saving again edits what
+ * was logged rather than the program's printed doses: `{ tracks, include, logged, unit }`. A log
+ * that kept what was typed (`w.wod.moves`) comes back as typed; an older one is read off its rows.
+ * The weights come back in the unit the log was typed in (`w.wod.unit`, else `profileUnit`, the
+ * one they are stored in), which is `unit`.
+ */
+export function relogState(program, w, profileUnit) {
   const blocks = {}, include = {}
   // A block saved without a score opens on its format's default again, not on "none".
   for (const b of list(w?.wod?.blocks)) blocks[b.ref] = { ...(b.score?.type && b.score.type !== 'none' ? { score: b.score } : {}), rx: !!b.rx }
@@ -256,7 +278,8 @@ export function relogState(program, w) {
   }
   const saved = w?.wod?.moves
   const moves = saved && typeof saved === 'object' ? structuredClone(saved) : movesFromRows(program, w, tracks)
-  return { tracks, include, logged: { moves, blocks } }
+  const unit = w?.wod?.unit || profileUnit
+  return { tracks, include, logged: loggedIn({ moves, blocks }, profileUnit, unit), unit }
 }
 
 // An older log, without the typed values: the exercise, weight, cardio minutes and strength rows
