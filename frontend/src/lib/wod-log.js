@@ -69,6 +69,16 @@ function ladderMachine(m, exId, dose, block) {
   return exId === '0685' || /\b(m|mts?|meters?|metres?|metros?)\b/i.test(m?.raw || '') ? 'm' : 'cal'
 }
 
+// `20 DB Reverse Lunge 10/10`: the box prints the total, then each side's share, and the parse keeps
+// the total as reps, while a merged R / L line keeps each side's. The reps one side gets of a set of
+// `n` the movement's printed dose planned. A partial round's odd leftover gives L the extra one.
+export function sideReps(m, n) {
+  const r = /\b(\d+)\/\1\b(?![.,]\d)(?!\s*(?:(?:kg|lbs?|cal|mts?)\b|["”]))/i.exec(m?.raw || '')
+  return r && pos(m.dose?.reps) === 2 * r[1] ? Math.ceil(n / 2) : n
+}
+/** `dose` with its reps as each side's, for a per-side movement: what every screen shows. */
+export const eachSide = (m, dose) => (m?.perSide && pos(dose?.reps) ? { ...dose, reps: sideReps(m, dose.reps) } : dose)
+
 /** Whether a movement logs as one cardio row in this block (the log screen asks for minutes). */
 export const isCardioRow = (m, exId, dose, block) =>
   !!ladderMachine(m, exId, dose, block) || isCardioMove(dose, exId, !!ladderOf(block?.scheme))
@@ -215,8 +225,10 @@ export function wodToSession(program0, choice, logged, S) {
           amounts.forEach((a, j) => {
             const n = a ?? (pos(dose.reps) || pos(dose.sec))
             const w = stepW?.[j % stepW.length] ?? w0
+            // Typed reps, or an option's own count, are each side's already.
+            const side = lm.r != null || optionOf(m, lm.exId) ? n : sideReps(m, n)
             let row = pos(dose.sec) && !pos(dose.reps) ? { mode: 'time', sec: m.perSide ? 2 * n : n, w, done: true }
-              : m.perSide ? syncSideAggregate({ sides: { L: { w, r: n, done: true }, R: { w, r: n, done: true } } })
+              : m.perSide ? syncSideAggregate({ sides: { L: { w, r: side, done: true }, R: { w, r: side !== n ? n - side : side, done: true } } })
                 : { w, r: n, done: true }
             if (metcon) row = { ...row, wodRir: WOD_RIR }
             entry.sets.push(row)

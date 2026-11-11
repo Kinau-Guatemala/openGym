@@ -16,7 +16,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf, liveWod } from '../lib/wod-draft.js'
-import { SCORE_OF, doseOn, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -183,6 +183,8 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
   const Su = { ...S, unit }
   const exId = lm.exId || m.exId
   const dose = doseOn(m, lm.exId, S)
+  // `20 DB Reverse Lunge 10/10` prints the total: the line and the reps field show each side's.
+  const each = optionOf(m, lm.exId) ? dose : eachSide(m, dose)
   const ladder = ladderOf(block.scheme)
   const printed = [m.exId, ...list(m.alts).map(a => a.exId)].filter(Boolean)
   const swapped = lm.exId && !printed.includes(lm.exId)
@@ -195,7 +197,7 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
   const pick = () => {
     const picker = exercisePicker(ex => { picker.close(); onChange(x => { x.exId = ex.id; delete x.w }) }, { title: t('Substitute'), like: exId || undefined })
   }
-  const line = (steps ? [fmtSteps(m, Su, ladder)] : [fmtDose(dose) + (fmtDose(dose) && m.perSide ? ' ' + t('each side') : ''), dose.restSec > 0 ? t('{0} rest', fmtRest(dose.restSec)) : null,
+  const line = (steps ? [fmtSteps(m, Su, ladder)] : [fmtDose(each) + (fmtDose(each) && m.perSide ? ' ' + t('each side') : ''), dose.restSec > 0 ? t('{0} rest', fmtRest(dose.restSec)) : null,
     rx ? `Rx ${fmtNum(rx.w)} ${rx.unit}` : null]).filter(Boolean).join(' · ')
   const rows = list(lm.sets).length ? lm.sets
     : steps ? steps.map((s, i) => ({ w: w ?? (exId === m.exId ? stepRxFor(s, m, Su)?.w : null) ?? null, r: (emptyStep(s) ? null : s.reps || dose.reps) || ladder?.[i] || null }))
@@ -225,7 +227,7 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
         {ladder && !pos(dose.reps) ? <div className="measure-field"><span>{t('Reps')}</span><div className="small muted" style={{ padding: '14px 2px' }}>{ladder.join('-')}</div></div>
           : pos(dose.sec) && !pos(dose.reps) ? num(m.perSide ? t('Seconds each side') : t('Seconds'), lm.sec ?? dose.sec, v => set('sec', v), null, false)
             : pos(dose.total) && !pos(dose.reps) ? num(t('Total'), lm.total ?? dose.total, v => set('total', v), null, false)
-            : num(m.perSide ? t('Reps each side') : t('Reps'), lm.r ?? (steps ? null : dose.reps || null), v => set('r', v), null, false)}
+            : num(m.perSide ? t('Reps each side') : t('Reps'), lm.r ?? (steps ? null : each.reps || null), v => set('r', v), null, false)}
       </>}
     </div>)}
   </div>

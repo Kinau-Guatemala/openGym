@@ -13,7 +13,7 @@ const DIR = tempData();
 const cfg = await import('../coach/config.js');
 const jobs = await import('../coach/jobs.js');
 const { coachRoutes } = await import('../coach/routes.js');
-const { validateWod, everyOf, withTarget, withTimedSides, withScaled } = await import('../coach/core/validate.js');
+const { validateWod, everyOf, withTarget, withTimedSides, withRepSides, withScaled } = await import('../coach/core/validate.js');
 const { taskOf } = await import('../coach/core/prompt.js');
 const { attemptOnce } = await import('../coach/core/pipeline.js');
 const { PROMPTS } = await import('../coach/core/prompts.js');
@@ -529,6 +529,17 @@ test('validateWod: the 11 Nov structure, Rx/SC, options, THEN, TARGET, drop sets
   assert.deepEqual([hold.movements[2].dose, hold.movements[2].perSide, hold.movements[2].rx], [{ sec: 20 }, true, null]);
 });
 
+test('validateWod: 20 DB Reverse Lunge 10/10 read as 20 reps at 10/10 lb is 20 reps per side; the DL keeps its load (T36 fixture)', () => {
+  const sides = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'pump').blocks.at(-1);
+  assert.deepEqual(sides.movements.map(m => [m.rawName, m.dose, m.perSide, m.rx]), [
+    ['db reverse lunge', { reps: 20 }, true, null],
+    ['dl', { reps: 12 }, false, { male: { w: 225, unit: 'lb' }, female: { w: 155, unit: 'lb' } }]]);
+});
+
+test('the parse prompt reads a count then an equal pair as the total and each side (T36)', () => {
+  assert.match(PROMPTS['parse-wod'], /\| `R` \/ `L`, `7\/7` \| per side.*the total, then each side's share: `20 DB Reverse Lunge 10\/10` → `dose: \{ "reps": 20 \}`, `perSide: true`, `rx: null`/);
+});
+
 test('validateWod: drop is kept only on a movement with steps (T34)', () => {
   const move = over => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format: 'rounds', movements: [{ raw: 'x', rawName: 'curls', dose: { reps: 15 }, ...over }] }] }] }).proposal.program.tracks[0].blocks[0].movements[0];
   assert.equal(move({ drop: true, steps: [{ reps: 15 }, {}] }).drop, true);
@@ -566,6 +577,28 @@ test('withTimedSides: an equal pair with no unit on a timed dose is per side, ne
     m('40 seg Hold 20/20', { sec: 40 }, null),
     m('1 min Farmer hold 24/24', { sec: 60 }, kg(24))               // neither the seconds nor half: a load
   ]) assert.deepEqual(withTimedSides(x), x, x.raw);
+});
+
+test('withRepSides: a count then an equal pair with no unit is the total and each side, never a load (T36)', () => {
+  const lb = (male, female = male) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } });
+  const m = (raw, dose, rx = null, perSide = false) => ({ raw, rawName: 'x', dose, rx, perSide });
+  // The pair the model also read as the Rx goes with it; one it left alone stays left alone.
+  assert.deepEqual(withRepSides(m('20 DB Reverse Lunge 10/10', { reps: 20 }, lb(10))), m('20 DB Reverse Lunge 10/10', { reps: 20 }, null, true));
+  assert.deepEqual(withRepSides(m('24 Land Mine Press 12/12', { reps: 24 })), m('24 Land Mine Press 12/12', { reps: 24 }, null, true));
+  assert.deepEqual(withRepSides(m('18 DB´s Gorilla Row 9/9', { reps: 18 }, lb(9))), m('18 DB´s Gorilla Row 9/9', { reps: 18 }, null, true));
+  for (const x of [
+    m('12 DL 225/155', { reps: 12 }, lb(225, 155)),
+    m('12 Swings 24KG/16KG', { reps: 12 }),
+    m('15 Wall Balls 20/14', { reps: 15 }, lb(20, 14)),
+    m('10 BJ 30"/24"', { reps: 10 }),
+    m('12 Thrusters 95/95', { reps: 12 }, lb(95)),                      // reps are not twice the pair
+    m('40 seg max DB OH Hold 20/20', { sec: 40 }, lb(20)),                // T34's
+    m('20 Lunges 10/10 kg', { reps: 20 }, lb(10)),
+    m('20 Lunges 10/10 cal', { reps: 20 }),
+    m('20 Lunges 10/10 DB 50/35', { reps: 20 }, lb(50, 35)),              // the line prints a real load
+    m('20 Lunges 10/10 24KG', { reps: 20 }),
+    m('20 DB Reverse Lunge 10/10', { reps: 20 }, null, true)              // already per side
+  ]) assert.deepEqual(withRepSides(x), x, x.raw);
 });
 
 test('withScaled: an SC line right after its RX line, same slot and length, folds into alts by position (T34)', () => {

@@ -49,7 +49,7 @@ Within a track, a **block** is one piece of work under one heading: `WARM UP`, t
 | `Rest 30 seg`, `Rest 1 min`, `Descanso 30 seg` **inside a line or a minute** (`M3 Rest 30 seg + 40 DU`) | a rest, never a movement: the work on that line is the movement and the rest is its `dose.restSec` (`"M3 Rest 30 seg + 40 DU"` → one movement, `rawName: "du"`, `slot: "M3"`, `dose: { "reps": 40, "restSec": 30 }`). A rest with no work on its line stays in the block's `raw` |
 | `seg` | seconds: `20 seg machine` → `dose: { "sec": 20 }` |
 | `Cal`, `mts`, `m`, `1K` | `dose.cal`, `dose.m` (`1K` = 1000 m) |
-| `R` / `L`, `7/7` | per side: `perSide: true`. An R line and its L line are **one** movement. |
+| `R` / `L`, `7/7` | per side: `perSide: true`. An R line and its L line are **one** movement. A count followed by an equal pair with no unit is the total, then each side's share: `20 DB Reverse Lunge 10/10` → `dose: { "reps": 20 }`, `perSide: true`, `rx: null` (the 10/10 is reps, not a load); `24 Land Mine Press 12/12` → `{ "reps": 24 }`, `perSide: true` |
 | `12-15` | `dose: { "reps": 12, "repsMax": 15 }` |
 | `185/135`, `95/65` | male/female Rx. **A barbell pair without a unit is pounds** (`"lb"`); kilograms only when printed (`24KG/16KG`). |
 | `20/15 Cal` | a male/female dose: `dose: { "cal": 20 }`, `doseFemale: { "cal": 15 }` |

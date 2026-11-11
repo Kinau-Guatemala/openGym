@@ -279,6 +279,16 @@
             { "raw": "M3 40 seg max DB OH Hold 20/20", "rawName": "db oh hold", "name": "dumbbell overhead hold", "slot": "M3", "dose": { "sec": 40 }, "perSide": false,
               "rx": { "male": { "w": 20, "unit": "kg" }, "female": { "w": 20, "unit": "kg" } }, "alts": [] }
           ]
+        },
+        {
+          "label": "3 RONDAS", "warmup": false, "format": "rounds", "capMin": null, "rounds": 3, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "3 RONDAS\n20 DB Reverse Lunge 10/10\n12 DL 225/155",
+          "movements": [
+            { "raw": "20 DB Reverse Lunge 10/10", "rawName": "db reverse lunge", "name": "dumbbell reverse lunge", "slot": null, "dose": { "reps": 20 }, "perSide": false,
+              "rx": { "male": { "w": 10, "unit": "lb" }, "female": { "w": 10, "unit": "lb" } }, "alts": [] },
+            { "raw": "12 DL 225/155", "rawName": "dl", "name": "barbell deadlift", "slot": null, "dose": { "reps": 12 }, "perSide": false,
+              "rx": { "male": { "w": 225, "unit": "lb" }, "female": { "w": 155, "unit": "lb" } }, "alts": [] }
+          ]
         }
       ]
     }

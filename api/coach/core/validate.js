@@ -955,6 +955,18 @@ export function withTimedSides(m) {
   return { ...m, perSide: true, rx: null, dose: { ...m.dose, sec: 2 * w === m.dose.sec ? w : m.dose.sec } };
 }
 
+// `20 DB Reverse Lunge 10/10` read as 20 reps at a 10/10 load: the total, then the split, is per
+// side. Only when the reps are twice the pair, no unit follows it and the line prints no other
+// load (`95/65`, `24KG`); a 10/10 the model also read as the Rx is dropped with it.
+export function withRepSides(m) {
+  const r = /\b(\d+)\/\1\b(?![.,]\d)(?!\s*(?:(?:kg|lbs?|cal|mts?)\b|["”]))/i.exec(m.raw);
+  const w = r && +r[1];
+  if (!r || m.perSide || m.dose.reps !== 2 * w || /\d\s*(?:kg|lbs?)\b/i.test(m.raw)
+    || [...m.raw.matchAll(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/g)].some(p => +p[1] !== +p[2])) return m;
+  const asRx = m.rx?.male?.w === w && m.rx?.female?.w === w;
+  return { ...m, perSide: true, ...(asRx ? { rx: null } : {}) };
+}
+
 // `M2 RX 2 Kips + 2 Hip to Bar + 1 BMU` / `SC 2 kips + 2 knee to chest + 1 pull up` read as six
 // movements in one minute: the SC line is the scaled version, so each of its movements becomes the
 // `alts` entry, with its own dose, of the Rx movement at the same position. Lines of different
@@ -1048,7 +1060,7 @@ function wodBlock(b, i, where, errors) {
     benchmark: strOrNull(b.benchmark, 40),
     raw,
     movements: withSteps(withScaled(withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean))
-      .map(m => withTimedSides(withTarget(m)))), format === 'emom', capMin, rounds)
+      .map(m => withRepSides(withTimedSides(withTarget(m))))), format === 'emom', capMin, rounds)
   };
 }
 const restWindowBlock = b => !b.warmup && !b.movements.length && (isRestWindow(b.raw) || isRestWindow(b.label));
