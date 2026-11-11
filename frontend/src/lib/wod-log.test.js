@@ -151,6 +151,28 @@ describe('wodToSession: sets per block format', () => {
     expect(eff[slug] / top).toBeCloseTo(2.13, 2)
   })
 
+  it('per side: a count then an equal pair is the total, split over L and R; R / L lines and typed reps are each side\'s (T36)', () => {
+    const side = (raw, dose, logged) => {
+      const p = program([block('b1', 'fortime', [mv('m0', SNATCH, dose, { raw, perSide: true })], { rounds: 2 })])
+      return wodToSession(p, all, { moves: { 'full/b1/m0': logged || {} } }, S0()).entries[0].sets
+    }
+    const lr = sets => sets.map(s => s.sides ? [s.sides.L.r, s.sides.R.r] : s)
+    expect(lr(side('20 DB Reverse Lunge 10/10', { reps: 20 }))).toEqual([[10, 10], [10, 10]])
+    expect(lr(side('24 Land Mine Press 12/12', { reps: 24 }))).toEqual([[12, 12], [12, 12]])
+    // An R line and its L line, merged by the parser: reps are each side's already.
+    expect(lr(side('7 DB Hang Snatch R', { reps: 7 }))).toEqual([[7, 7], [7, 7]])
+    // A 10/10 that is not half the reps, or has a unit, is a load.
+    expect(lr(side('10 DB Lunges 10/10', { reps: 10 }))).toEqual([[10, 10], [10, 10]])
+    expect(lr(side('20 Lunges 10/10 kg', { reps: 20 }))).toEqual([[20, 20], [20, 20]])
+    // Typed on the log screen (and so on a re-log), the reps are each side's as typed.
+    expect(lr(side('20 DB Reverse Lunge 10/10', { reps: 20 }, { r: 8 }))).toEqual([[8, 8], [8, 8]])
+    // T34's timed per side is unchanged: 20 s a side is 40 s.
+    expect(side('M3 40 seg max DB OH Hold 20/20', { sec: 20 })[0]).toMatchObject({ mode: 'time', sec: 40 })
+    // A partial round's leftover is the total too: 7 of 20 is 4 a side.
+    const p = program([block('b1', 'amrap', [mv('m0', SNATCH, { reps: 20 }, { raw: '20 DB Reverse Lunge 10/10', perSide: true })], { capMin: 10 })])
+    expect(lr(wodToSession(p, all, { blocks: { 'full/b1': { score: { type: 'rounds', rounds: 1, reps: 7 } } } }, S0()).entries[0].sets)).toEqual([[10, 10], [4, 4]])
+  })
+
   it('cardio movements: one row per movement, cal or m with minutes, explicit cardio mode', () => {
     const p = program([
       block('b1', 'emom', [mv('m0', ROW, { cal: 20 }, { doseFemale: { cal: 15 }, alts: [{ exId: SKI, rawName: 'ski', dose: {} }] })], { capMin: 10 }),

@@ -122,3 +122,16 @@ describe('kg / lb while logging a WOD (T30)', () => {
     expect(pressed()).toBe('lb')
   })
 })
+
+describe('per side while logging a WOD (T36)', () => {
+  it('a count then an equal pair shows and prefills each side\'s reps', async () => {
+    const lunges = { title: 'Coaches', tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [
+      { id: 'b0', label: 'WOD', format: 'fortime', rounds: 1, movements: [{ id: 'm0', raw: '20 DB Reverse Lunge 10/10', rawName: 'db reverse lunge', exId: DL, dose: { reps: 20 }, perSide: true, rx: null, alts: [] }] },
+    ] }] }
+    useStore.setState({ S: { ...clone(DEF), unit: 'kg', wods: { [DATE]: { ...lunges, _ts: 1 } } }, user: null })
+    await mount()
+    const reps = [...host.querySelectorAll('.measure-field')].find(f => f.firstChild.textContent === 'Reps each side')
+    expect(reps.querySelector('input').value).toBe('10')
+    expect(host.textContent).toContain('20 DB Reverse Lunge 10/10 · 10 each side')
+  })
+})
