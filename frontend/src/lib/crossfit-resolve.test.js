@@ -746,6 +746,25 @@ describe('crossfit resolve: the 11 Nov images', () => {
   })
 })
 
+// The 11 Nov re-test follow-ups (T37): rawName as the model gave it, with its English name.
+// "kb high pull to squat" has no honest catalogue match and stays a pick.
+const FOLLOWUPS_11NOV = [
+  ['hold plank', 'plank hold', ['0463', 'shipped']],
+  ['Hold Plank', 'plank hold', ['0463', 'shipped']],
+  ['plank hold', 'plank hold', ['0463', 'shipped']],
+  ['max plank', 'plank', ['0463', 'shipped']],
+  ['kb´s hang squat cleans', 'kettlebell hang squat clean', ['0535', 'shipped']],
+  ['KB´s Hang Squat Cleans', 'kettlebell hang squat clean', ['0535', 'shipped']],
+  ['kb hang squat clean', 'kettlebell hang squat clean', ['0535', 'shipped']],
+]
+
+describe('crossfit resolve: the 11 Nov re-test follow-ups', () => {
+  it.each(FOLLOWUPS_11NOV)('%s (%s) → %j', (rawName, name, want) => {
+    const r = resolveMovement({ rawName, name })
+    expect([r.exId, r.via]).toEqual(want)
+  })
+})
+
 describe('crossfit resolve: two movements on one line (T27)', () => {
   // The out-v3 parses (3 Nov re-test), as the model wrote them.
   const mv = (raw, rawName, dose, over = {}) => ({ id: 'm2', raw, rawName, name: rawName.replace(/[+&]/, 'and'), slot: null, exId: null, dose, perSide: false, rx: null, alts: [], ...over })

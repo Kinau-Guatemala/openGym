@@ -107,4 +107,7 @@ export const SHIPPED_ALIASES = {
   'comando pull up estricto': '4726', 'comando pull up estrcito': '4726',
   'close grip pull up estricto': '5479', 'close grip pull up estrcito': '5479', 'chin up estrcito': '1326',
   'di jump': '4964', 'poop jack': '7556', 'land mind row': '4038', 'bb land mind row': '4038',
+  // From the 11 Nov re-test follow-ups. A plank hold is the plank (the front plank, a hold, as "max
+  // plank"); a KB hang squat clean is the KB hang clean (no squat-catch one, as T25's DB one).
+  'hold plank': '0463', 'plank hold': '0463', 'kb hang squat clean': '0535',
 }
