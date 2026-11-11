@@ -105,6 +105,53 @@ const substituteKey = (id, base, model) => `${id} ${base} ${model}`;
 /** The model used in place of `model` after the provider refused it, or null. */
 export const modelSubstitute = (id, cfg, model) => substitutes.get(substituteKey(id, baseUrlFor(id, cfg), model)) || null;
 
+/* The compatibility ladder (#804). An OpenAI-compatible endpoint is any gateway at all, and
+ * several (one-api/new-api resellers, Azure fronts, some LiteLLM setups) refuse a request with
+ * one generic 400, "please check the request parameters", that names nothing. Each rung is one
+ * change to the request a server that refuses it is known to want, in the order that gives up
+ * least: close the schema (#701), drop the schema for plain JSON mode, swap the output-limit
+ * field (reasoning models want max_completion_tokens, older servers only know max_tokens), drop
+ * temperature (reasoning models take only their default), and last ask for JSON in the prompt
+ * alone. A 400 that names the parameter goes to its rung directly; a generic one takes the next
+ * rung that changes anything, and only on a spec that opts in (`compatLadder`), since OpenAI and
+ * the other hosted APIs always say what is wrong. The rungs that worked are remembered per
+ * provider, endpoint and model, here for the server and in the device file on the phone. */
+export const COMPAT_STEPS = Object.freeze(['strict', 'json_object', 'tokens', 'temperature', 'plain']);
+const compatProfiles = new Map();
+const compatKey = (id, base, model) => `${id} ${base} ${model}`;
+const cleanSteps = steps => (Array.isArray(steps) ? COMPAT_STEPS.filter(s => steps.includes(s)) : []);
+/** The rungs an endpoint and model needed last time, or null. */
+export const compatProfile = (id, cfg, model) => compatProfiles.get(compatKey(id, baseUrlFor(id, cfg), model)) || null;
+/** Seed (or clear, with an empty list) what an endpoint needs, e.g. from the phone's device file. */
+export function rememberCompatProfile(id, cfg, model, steps) {
+  const key = compatKey(id, baseUrlFor(id, cfg), model);
+  const clean = cleanSteps(steps);
+  if (clean.length) compatProfiles.set(key, clean); else compatProfiles.delete(key);
+}
+// What a 400 says about the request, matched on the provider's words. Order matters: a schema
+// complaint usually also says "response_format".
+// A text-only model refusing the image (OpenAI "image_url is only supported by certain
+// models", OpenRouter "No endpoints found that support image input", a gateway's "text-only").
+// Words that name images and support, not ones about the image itself (too large, corrupt).
+// DeepSeek answers "unknown variant `image_url`", vLLM "At most 0 image(s) may be provided".
+// The model ids are cut out first: a gateway often prefixes one, and "…-vision-instruct:
+// temperature is not supported" is a vision model refusing something else. pipeline.js reads a
+// failed image job with this as `novision`; invoke() walks no compatibility rung for it.
+export function refusesImages(msg, ...models) {
+  let m = String(msg || '').toLowerCase();
+  for (const id of models) if (id) m = m.split(String(id).toLowerCase()).join('');
+  return /text[- ]only|unknown variant `?image_url|at most 0 image/.test(m) || (/image|vision|multimodal/.test(m) && /support/.test(m));
+}
+
+function namedRungs(msg) {
+  if (/additionalProperties|must be explicitly set/i.test(msg)) return ['strict', 'json_object', 'plain'];
+  if (/max_(?:completion_)?tokens/i.test(msg)) return ['tokens'];
+  if (/temperature/i.test(msg)) return ['temperature'];
+  if (/response_format|json_schema|json_object|json mode|structured|\bschema\b/i.test(msg)) return ['json_object', 'plain'];
+  return null;
+}
+const applySteps = (spec, base, steps) => steps.reduce((b, s) => spec.compat[s](b), base);
+
 /** A fetch, bounded by AbortController. Never throws for HTTP status; throws for transport. */
 async function call(fetchImpl, url, init, timeoutMs, signal) {
   const ctl = new AbortController();
@@ -209,12 +256,31 @@ export function httpAdapter(spec) {
 
       // `images` ([{ mime, data }], base64) only for a parse-wod job; a spec that has no image
       // part ignores it, and the job runner refuses those providers before it gets here.
-      let body = spec.body({ model: chosen, prompt, system: system || null, schema: schema || null, maxTokens, ...(images && images.length ? { images } : {}) });
+      const build = () => spec.body({ model: chosen, prompt, system: system || null, schema: schema || null, maxTokens, base, ...(images && images.length ? { images } : {}) });
+      let steps = spec.compat ? (compatProfiles.get(compatKey(id, base, chosen)) || []) : [];
+      let body = spec.compat ? applySteps(spec, build(), steps) : build();
       let triedOtherModel = false;
-      let retriedWithStrictSchema = false;
-      let retriedWithoutJsonMode = false;
       let transientRetries = 0;
+      let firstRefusal = null;
+      // Every request shape sent in this call, so no rung ever asks the same thing twice.
+      const sent = new Set();
+      // The next rung out of `rungs` that changes the request at all, or null. A 400 that names a
+      // token field already swapped (`undo`) swaps it back: a remembered "tokens" step that the
+      // first guess of the field (#869) has made the wrong way round.
+      const nextRung = (rungs, undo = false) => {
+        if (!spec.compat) return null;
+        const now = JSON.stringify(body);
+        for (const r of rungs) {
+          if (steps.includes(r) && !(undo && r === 'tokens')) continue;
+          const next = steps.includes(r) ? steps.filter(x => x !== r) : cleanSteps([...steps, r]);
+          const tried = applySteps(spec, build(), next);
+          const key = JSON.stringify(tried);
+          if (key !== now && !sent.has(key)) return { steps: next, body: tried };
+        }
+        return null;
+      };
       for (;;) {
+        sent.add(JSON.stringify(body));
         let res;
         try {
           res = await reach(spec, base, spec.path(chosen), url => call(fetchImpl, url, {
@@ -234,24 +300,22 @@ export function httpAdapter(spec) {
             transientRetries++;
             continue;
           }
-          // A hosted validator that enforces strict JSON Schema refuses the flat schemas on
-          // additionalProperties (OpenRouter, #701). The strict copy is a wire-only change —
-          // local grammar-sampling servers keep getting the flat shape they can convert — and
-          // only after the endpoint itself said no to it, so Ollama, LM Studio and vLLM never
-          // see a request they did not already ask for.
-          if (res.status === 400 && spec.withStrictSchema && !retriedWithStrictSchema
-            && body.response_format && body.response_format.type === 'json_schema'
-            && /additionalProperties|must be explicitly set/i.test(msg)) {
-            body = spec.withStrictSchema(body);
-            retriedWithStrictSchema = true;
-            continue;
-          }
-          // Some OpenAI-compatible servers reject the JSON-mode flag outright, and some providers
-          // reject a schema they cannot serve (Gemini: "the specified schema produces a constraint
-          // that has too many states"). Once, without it: the validator still judges the answer.
-          if (res.status === 400 && spec.withoutJsonMode && !retriedWithoutJsonMode && /response_format|json_schema|json_object|json mode|structured|\bschema\b/i.test(msg)) {
-            body = spec.withoutJsonMode(body);
-            retriedWithoutJsonMode = true;
+          // A 400 that names what it refuses (OpenRouter's strict-schema validator, #701; a server
+          // without JSON mode; a reasoning model's output-limit field or temperature) goes to the
+          // rung for it. A rung that changes nothing (a complaint about a temperature this request
+          // never sent) is no retry: asking again would be asking the same wrong thing.
+          // A model that cannot see refusing the image: no rung sends anything but the same
+          // image, so none is tried.
+          const blind = !!(images && images.length) && refusesImages(msg, chosen, asked);
+          const named = res.status === 400 && !blind ? namedRungs(msg) : null;
+          let rung = named ? nextRung(named, true) : null;
+          // A 400 that names nothing walks the ladder, on an endpoint that opted in (#804).
+          if (!rung && res.status === 400 && !named && !blind && spec.compatLadder && !isModelGone(res.status, msg)) rung = nextRung(COMPAT_STEPS);
+          if (rung && !(signal && signal.aborted)) {
+            if (!firstRefusal) firstRefusal = `${res.status} ${shownError(spec, data, 280)}`;
+            steps = rung.steps;
+            body = rung.body;
+            transientRetries = 0;
             continue;
           }
           // The model is gone for this key: once, with one it can use. The provider's own
@@ -264,6 +328,8 @@ export function httpAdapter(spec) {
               substitutes.set(substituteKey(id, base, asked), next);
               chosen = next;
               if ('model' in body) body = { ...body, model: next };
+              // What the refused model needed says nothing about this one.
+              if (spec.compat) { steps = compatProfiles.get(compatKey(id, base, next)) || []; body = applySteps(spec, build(), steps); }
               transientRetries = 0;
               continue;
             }
@@ -273,6 +339,13 @@ export function httpAdapter(spec) {
             const tried = chosen !== asked ? ` (and neither is "${chosen}")` : '';
             return { code: 1, text: '', stderr: `${res.status} the model "${asked}" is not available to this key${tried}: ${shownError(spec, data, 200)}. Pick another one in the Coach settings.` };
           }
+          // Every rung refused too: the gateway's own first words are the ones worth reading, and
+          // what was learnt for this endpoint is dropped rather than kept half-right.
+          if (spec.compat && firstRefusal) {
+            compatProfiles.delete(compatKey(id, base, chosen));
+            const last = `${res.status} ${shownError(spec, data, 200)}`;
+            return { code: 1, text: '', stderr: last === firstRefusal ? `${firstRefusal} (also tried ${steps.length} compatibility fallbacks)` : `${firstRefusal} (fallbacks tried: ${steps.join(', ')}; last answer: ${last})`.slice(0, 600) };
+          }
           // A spent limit may say when it lifts in a header; the pipeline hands it on (T24).
           const retryAfter = res.status === 429 ? res.headers?.get?.('retry-after') : null;
           return { code: 1, text: '', stderr: `${res.status} ${shownError(spec, data, 280)}`, ...(retryAfter ? { retryAfter } : {}) };
@@ -281,6 +354,7 @@ export function httpAdapter(spec) {
         try { out = spec.readText(data); } catch (e) { out = { error: `unexpected response shape: ${trim(e.message, 100)}` }; }
         if (out.error) return { code: 1, text: '', stderr: out.error };
         if (out.truncated) return { code: 1, text: '', stderr: 'the answer was cut off at the output limit; try a smaller plan or a bigger model' };
+        if (spec.compat) rememberCompatProfile(id, cfg, chosen, steps);
         return { code: 0, text: String(out.text || '').trim(), stderr: '', ...(chosen !== asked ? { model: chosen } : {}) };
       }
     }

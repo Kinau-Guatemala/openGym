@@ -26,13 +26,13 @@ describe('sourceOf', () => {
 })
 
 describe('sessionEffSets options', () => {
-  const w = at(1, [entry(CHEST, done(3)), entry(QUADS, [{ mode: 'cardio', min: 30, done: true }])])
+  const w = at(1, [entry(CHEST, done(3)), entry(QUADS, [{ mode: 'cardio', min: 90, done: true }])])
   it('byEntry splits the default session sums per entry, uncapped', () => {
     const total = sessionEffSets(w, new Map())
     const parts = sessionEffSets(w, new Map(), { byEntry: true })
     expect(parts.map(p => p.entry)).toEqual(w.entries)
     expect(parts[0].sets.chest + parts[1].sets.chest).toBe(total.chest)
-    expect(parts[1].sets.quadriceps).toBe(3)       // 30 min of cardio = 3 sets
+    expect(parts[1].sets.quadriceps).toBe(3)       // 90 min of cardio = 3 sets
   })
   it('excludeCardio drops cardio-mode rows, by row mode', () => {
     const out = sessionEffSets(w, new Map(), { excludeCardio: true })
@@ -99,7 +99,7 @@ describe('muscleGap', () => {
     const out = muscleGap(runs, NOW)
     expect(out.every(r => r.setsPerWeek === 0 && r.deficit === 10)).toBe(true)
     // fatigue still counts them
-    expect(sessionEffSets(runs[0], new Map()).quadriceps).toBe(4.5)
+    expect(sessionEffSets(runs[0], new Map()).quadriceps).toBe(1.5)   // 45 min = 45 / 30 sets
   })
 
   it('hypTarget changes the deficits', () => {

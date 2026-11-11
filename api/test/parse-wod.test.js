@@ -768,6 +768,23 @@ test('an endpoint that refuses images answers the vision message; other 4xx stay
   }
 });
 
+// A vision model refusing something else (its id prefixed by the gateway) is not refusing the
+// image: an image job still gets the compatibility ladder's retry. A real refusal gets none.
+test('an image job on a vision model keeps the compatibility ladder for an unrelated 400', async () => {
+  const compatible = (await import('../coach/core/adapters/compatible.js')).default;
+  const MODEL = 'llama-3.2-11b-vision-instruct';
+  const run = async msg => {
+    let n = 0;
+    const fetch = async () => ++n === 1
+      ? { ok: false, status: 400, headers: { get: () => null }, json: async () => ({ error: { message: msg } }), text: async () => JSON.stringify({ error: { message: msg } }) }
+      : { ok: true, status: 200, headers: { get: () => null }, json: async () => chat({ ok: 1 }), text: async () => JSON.stringify(chat({ ok: 1 })) };
+    const r = await compatible.invoke({ cfg: { provider: 'compatible', providerOptions: { compatible: { baseUrl: 'http://127.0.0.1:1/v1' } } }, prompt: 'p', system: 's', schema: null, images: [{ mime: 'image/jpeg', data: IMAGE }], env: {}, model: MODEL, fetch, retryDelayMs: 0 });
+    return { n, code: r.code };
+  };
+  assert.deepEqual(await run(`${MODEL}: temperature is not supported`), { n: 2, code: 0 });
+  assert.deepEqual(await run('image_url is only supported by certain models'), { n: 1, code: 1 });
+});
+
 /* ---------- the Claude provider: the image rides the Agent SDK's streaming input (T16) ---------- */
 
 const claudeMod = await import('../coach/adapters/claude.js');
