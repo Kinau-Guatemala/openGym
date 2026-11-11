@@ -42,6 +42,9 @@ export function resolveInto(m, userAliases = {}, S) {
 // One already resolved keeps its exercise; one without, or with only a guess, is resolved again,
 // so a pick made since (here or on another device) settles it. One merged away since reads as its
 // target (S.exMerged, see liveWod).
+// ponytail: saving the draft stores that target, so a day saved while the merge stood keeps it
+// after an Undo (views/CrossFit.jsx boxCopy, filling a box movement, is the same). Only that day,
+// on an explicit save, as the screen showed it; keep the saved id instead if an Undo must reach it.
 const resolved = (m, aliases, S) => (m.exId && m.via !== 'guess' ? { ...m, exId: mergedInto(S, m.exId) } : resolveInto(m, aliases, S))
 
 /**

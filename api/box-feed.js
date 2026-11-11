@@ -40,8 +40,8 @@ const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v)
 /**
  * Where `id` went through the merges in `merged` (S.exMerged, `{ [fromId]: { into, _ts } }`),
  * following merges of merges; `id` itself when it was never merged. A hand copy of the app's
- * lib/exercise-merge.js mergedInto, which the api image cannot import: box-subscribe.test.js holds
- * the two to the same answers.
+ * lib/exercise-merge.js mergedInto, which the api image cannot import: the app's
+ * crossfit-merge.test.js holds the two to the same answers.
  */
 export function mergedExId(merged, id) {
   const m = isMap(merged) ? merged : {}
