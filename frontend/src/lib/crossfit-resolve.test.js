@@ -672,6 +672,80 @@ describe('crossfit resolve: the 2 Nov re-test', () => {
   })
 })
 
+// The 11 Nov images (6 programs, T33): rawName as the model gave it, with its English name. The
+// model keeps "max" mid-name, a box height and a "*" note, which norm drops.
+const NOV_IMAGES = [
+  ['kb max russian twist', 'kettlebell russian twist', ['4393', 'search']],
+  ['max db oh hold', 'dumbbell overhead hold', ['2913', 'shipped']],
+  ['db oh hold', 'dumbbell overhead hold', ['2913', 'shipped']],
+  ['bj 30"/24"', 'box jump', ['3650', 'shipped']],
+  ['bj 24"', 'box jump', ['3650', 'shipped']],
+  ["bj 30''/24''", 'box jump', ['3650', 'shipped']],
+  ['bj 30”/24”', 'box jump', ['3650', 'shipped']],
+  ['wall balls  *goal 100 unbroken', 'wall ball', ['2458', 'shipped']],
+  ['high.h.c', 'barbell high hang clean', ['1520', 'shipped']],
+  ['high hang clean', 'barbell high hang clean', ['1520', 'shipped']],
+  ['h.p.c', 'barbell hang power clean', ['5704', 'shipped']],
+  ['hpc', 'barbell hang power clean', ['5704', 'shipped']],
+  ['p.c', 'barbell power clean', ['0648', 'shipped']],
+  ['pc', 'barbell power clean', ['0648', 'shipped']],
+  ['di jump', 'jump', ['4964', 'shipped']],
+  ['poop jacks', 'burpee jumping jack', ['7556', 'shipped']],
+  ['comando pull ups estrcitos', 'strict commando pull-up', ['4726', 'shipped']],
+  ['comando pull ups estrictos', 'strict commando pull-up', ['4726', 'shipped']],
+  ['comando pull ups', 'commando pull-up', ['4726', 'shipped']],
+  ['commando pull ups', 'commando pull-up', ['4726', 'shipped']],
+  ['close grip pull ups estrcitos', 'strict close-grip pull-up', ['5479', 'shipped']],
+  ['close grip pull ups estrictos', 'strict close-grip pull-up', ['5479', 'shipped']],
+  ['close grip pull ups', 'close-grip pull-up', ['5479', 'shipped']],
+  ['pull ups estrcitos', 'strict pull-up', ['0652', 'shipped']],
+  ['chin ups estrcitos', 'strict chin-up', ['1326', 'shipped']],
+  ['bb land mind row', 'barbell landmine row', ['4038', 'shipped']],
+  ['land mind row', 'landmine row', ['4038', 'shipped']],
+  ['db´s gorilla row', 'dumbbell gorilla row', ['7230', 'shipped']],
+  ['kb gorilla rows', 'kettlebell gorilla row', ['7230', 'shipped']],
+  ['c2b', 'chest-to-bar pull-up', ['0652', 'shipped']],
+  ['toe touches', 'toe touch', ['5275', 'shipped']],
+  ['tricep kicks', 'dumbbell triceps kickback', ['0333', 'shipped']],
+  ['db´s kick backs', 'dumbbell kickback', ['0333', 'shipped']],
+  ['back reverse lunges', 'barbell reverse lunge', ['0078', 'shipped']],
+  ['db´s squat cleans', 'dumbbell squat clean', ['0295', 'shipped']],
+  ['db snatch alt', 'dumbbell snatch', ['3888', 'shipped']],
+  ['kb´s farmer hold', 'kettlebell farmer carry hold', ['3576', 'shipped']],
+  ['db´s bench flys', 'dumbbell bench fly', ['0308', 'shipped']],
+  ['elevated hex press', 'dumbbell incline hex press', ['5067', 'shipped']],
+]
+
+describe('crossfit resolve: the 11 Nov images', () => {
+  it.each(NOV_IMAGES)('%s (%s) → %j', (rawName, name, want) => {
+    const r = resolveMovement({ rawName, name })
+    expect([r.exId, r.via]).toEqual(want)
+  })
+
+  it('"max" is the dose anywhere as a whole word, and a bare "max" stays', () => {
+    expect(norm('kb max russian twist')).toBe('kb russian twist')
+    expect(norm('max db oh hold')).toBe('db oh hold')
+    expect(norm('maxi squat')).toBe('maxi squat')
+    expect(norm('max')).toBe('max')
+    for (const s of ['kb max russian twist', 'mts max row', 'max max']) expect(norm(norm(s))).toBe(norm(s))
+  })
+
+  it('drops a box height, in inches written ", \'\' or ”', () => {
+    for (const s of ['bj 30"/24"', 'bj 24"', "bj 30''/24''", 'bj 30”/24”', 'BJ 30 " / 24 "', 'bj 30/24"']) expect(norm(s), s).toBe('bj')
+    expect(norm('box jump 24"')).toBe('box jump')
+    expect(norm('wall ball 20/14')).toBe('wall ball 20 14')   // a load, not a height: left to rawNameOf
+    for (const s of ['bj 30"/24"', 'box jump 24"']) expect(norm(norm(s))).toBe(norm(s))
+  })
+
+  it('drops a note after "*", only where a note starts (after a space or at the start)', () => {
+    expect(norm('wall balls  *goal 100 unbroken')).toBe('wall ball')
+    expect(norm('wall balls *')).toBe('wall ball')
+    expect(norm(norm('wall balls *goal 100'))).toBe('wall ball')
+    expect(norm('c*b')).toBe('c b')   // a "*" inside a word is not a note
+    expect(norm('3*5 back squat')).toBe('3 5 back squat')
+  })
+})
+
 describe('crossfit resolve: two movements on one line (T27)', () => {
   // The out-v3 parses (3 Nov re-test), as the model wrote them.
   const mv = (raw, rawName, dose, over = {}) => ({ id: 'm2', raw, rawName, name: rawName.replace(/[+&]/, 'and'), slot: null, exId: null, dose, perSide: false, rx: null, alts: [], ...over })
