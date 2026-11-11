@@ -1698,6 +1698,7 @@ export default {
   'Max reps': 'Повт. Макс',
   'Most reps in a Max set per workout': 'Найбільше повторів у підході Макс за тренування',
   'Per set': 'По підходах',
+  'Total': 'Усього',
   'Estimated 1RM of each working set, one line per set number': 'Розрахунковий 1ПМ кожного робочого підходу, одна лінія на номер підходу',
   'Reps in each working set, one line per set number': 'Повтори в кожному робочому підході, одна лінія на номер підходу',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Де ти найчастіше здаєш: підхід {0} ({1} з {2} тренувань)',
@@ -2290,6 +2291,7 @@ export default {
   'What the switches do': 'Що роблять перемикачі',
   'Substitute': 'Замінити',
   'Reps each side': 'Повтори на сторону',
+  'Seconds each side': 'Секунди на сторону',
   'Nothing to log: pick a track and an exercise for each movement': 'Нічого записувати: виберіть трек і вправу для кожного руху',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

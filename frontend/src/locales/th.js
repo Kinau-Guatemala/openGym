@@ -1712,6 +1712,7 @@ export default {
   'Max reps': 'ครั้งสูงสุด',
   'Most reps in a Max set per workout': 'จำนวนครั้งมากที่สุดในเซ็ตสูงสุดต่อการฝึก',
   'Per set': 'ต่อเซ็ต',
+  'Total': 'รวม',
   'Estimated 1RM of each working set, one line per set number': '1RM โดยประมาณของแต่ละเซ็ตทำงาน หนึ่งเส้นต่อหมายเลขเซ็ต',
   'Reps in each working set, one line per set number': 'จำนวนครั้งในแต่ละเซ็ตทำงาน หนึ่งเส้นต่อหมายเลขเซ็ต',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'จุดที่คุณแผ่วบ่อยที่สุด: เซ็ต {0} ({1} จาก {2} ครั้ง)',
@@ -2304,6 +2305,7 @@ export default {
   'What the switches do': 'สวิตช์แต่ละตัวทำอะไร',
   'Substitute': 'เปลี่ยนท่า',
   'Reps each side': 'ครั้งต่อข้าง',
+  'Seconds each side': 'วินาทีต่อข้าง',
   'Nothing to log: pick a track and an exercise for each movement': 'ไม่มีอะไรให้บันทึก: เลือกแทร็กและท่าสำหรับแต่ละการเคลื่อนไหว',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

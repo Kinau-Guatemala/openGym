@@ -1704,6 +1704,7 @@ export default {
   'Max reps': 'Max ism.',
   'Most reps in a Max set per workout': 'A legtöbb ismétlés egy Max sorozatban edzésenként',
   'Per set': 'Sorozatonként',
+  'Total': 'Összesen',
   'Estimated 1RM of each working set, one line per set number': 'Minden munkasorozat becsült 1RM-je, sorozatszámonként egy vonal',
   'Reps in each working set, one line per set number': 'Minden munkasorozat ismétlései, sorozatszámonként egy vonal',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Ahol a leggyakrabban visszaesel: {0}. sorozat ({2} edzésből {1})',
@@ -2296,6 +2297,7 @@ export default {
   'What the switches do': 'Mit csinálnak a kapcsolók',
   'Substitute': 'Csere',
   'Reps each side': 'Ismétlés oldalanként',
+  'Seconds each side': 'Másodperc oldalanként',
   'Nothing to log: pick a track and an exercise for each movement': 'Nincs mit rögzíteni: válassz egy pályát és minden mozdulathoz egy gyakorlatot',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

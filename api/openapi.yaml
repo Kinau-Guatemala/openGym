@@ -4265,7 +4265,14 @@ components:
                                   Present only when the dose itself is printed as a male/female split
                                   (`20/15 Cal Row` → `dose {cal: 20}`, `doseFemale {cal: 15}`). Pick it by
                                   sex the way `rx` is picked; absent means `dose` applies to both.
-                              perSide: { type: boolean }
+                              perSide:
+                                type: boolean
+                                description: The reps or seconds are each side's (`20/20` on `40 seg` → `sec` 20).
+                              drop:
+                                type: boolean
+                                description: |
+                                  Present only with `steps` that are one set's drops (`15 + 12 + max`), done back to
+                                  back every round; without it the steps are the whole plan.
                               rx:
                                 description: Male/female load as printed; a unitless barbell pair is pounds.
                                 oneOf:
@@ -4280,6 +4287,8 @@ components:
                                   `10-8-6-4-2` with `Jerks 135/95` … `Jerks 225/155`, or an EMOM's `M2 12 Lunges
                                   95/65` … `M10 4 Lunges 175/115`. One entry per set, in order; its fields replace
                                   the movement's `dose` / `rx` for that set.
+                                  An empty step (`{}`) is the ladder rung at its index, else max reps: the last
+                                  set of a drop set (`15 + 12 + max` → `[{reps: 15}, {reps: 12}, {}]`).
                                 type: array
                                 minItems: 2
                                 maxItems: 30
@@ -4308,7 +4317,8 @@ components:
       description: >-
         `sets` is the times the line is done (`2x200` → `{sets: 2, m: 200}`, `2 Set de Max` →
         `{sets: 2}`), `restSec` the rest printed between repeats. Both are optional: a dose without
-        `sets` is done once.
+        `sets` is done once. `total` is a target across all of the slot's minutes rather than each
+        minute's (`EMOM 12` / `M3 TARGET 70 HPU` → `{total: 70}`).
       properties:
         reps: { type: number }
         repsMax: { type: number }
@@ -4317,6 +4327,7 @@ components:
         sec: { type: number }
         sets: { type: integer, minimum: 1, maximum: 50 }
         restSec: { type: integer, minimum: 0, maximum: 1800 }
+        total: { type: integer, minimum: 1, maximum: 2000 }
 
     CoachWodLoad:
       type: object

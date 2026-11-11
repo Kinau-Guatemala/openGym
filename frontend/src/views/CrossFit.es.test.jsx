@@ -30,7 +30,7 @@ const NEVER = [
   'For time', 'Rounds', 'rounds', 'Every', 'every', 'Intervals', 'Strength', 'Other', 'Sets', 'sets',
   'Include', 'Warm-up', 'Each side', 'each side', 'Pick exercise', 'Weight', 'Score', 'Try again',
   'Track', 'Full Equipment', 'Calories', 'Meters', 'Seconds', 'Minutes', 'Scaled', 'Substitute',
-  'Done', 'Delete', 'Save', 'Log', 'Edit', 'Add', 'Back', 'Cancel', 'rest', 'Men', 'Women',
+  'Done', 'Delete', 'Save', 'Log', 'Edit', 'Add', 'Back', 'Cancel', 'rest', 'Men', 'Women', 'Max',
   'fortime', 'amrap', 'emom', 'interval', 'strength', 'other',
 ]
 const NEVER_RE = new RegExp(`(^|[^\\p{L}-])(${NEVER.join('|')})(?=$|[^\\p{L}-])`, 'u')
@@ -62,6 +62,10 @@ const PROGRAM = {
       block('b6', 'interval', [mv('m0', '200 m Run', 'run', null, { dose: { m: 200 } })], { rounds: 4, everySec: 180 }),
       block('b7', 'rounds', [mv('m0', 'Max Pull-ups', 'max pull-ups', '0652', { dose: { sets: 2 } })], { rounds: 5 }),
       block('b8', 'other', [mv('m0', 'Partner burpees', 'partner burpees', '1160', { dose: { reps: 10 } })], { everySec: 90 }),
+      // T34: a TARGET total across an EMOM slot's minutes, and a drop set ending on max.
+      block('b9', 'emom', [mv('m0', 'M1 TARGET 70 HPU', 'hpu', '0662', { slot: 'M1', dose: { total: 70 } }),
+        mv('m1', 'M2 40 seg DB OH Hold 20/20', 'db oh hold', '0043', { slot: 'M2', dose: { sec: 20 }, perSide: true })], { capMin: 4 }),
+      block('b10', 'rounds', [mv('m0', '15 + 12 + max DB Curls', 'db curls', '0043', { dose: { reps: 15 }, steps: [{ reps: 15 }, { reps: 12 }, {}] })], { rounds: 3 }),
     ] },
     { id: 't1', label: '', kind: 'extra', blocks: [] },
   ],
@@ -256,6 +260,18 @@ const SCREENS = {
     await click([...host.querySelectorAll('[style*="cursor: pointer"]')].find(d => d.textContent.includes('Deadlift')))
     return sheet()
   },
+  'editor, a TARGET total and a drop set': async () => {
+    await mount({ pathname: '/crossfit/new', state: { draft: PROGRAM, date: NEXT } })
+    expect(host.textContent).toContain(es['{0} total'].replace('{0}', '70'))
+    expect(host.textContent).toContain(`15 → 12 → ${es.Max}`)
+  },
+  'movement sheet, a TARGET total': async () => {
+    await mount({ pathname: '/crossfit/new', state: { draft: PROGRAM, date: NEXT } })
+    await click([...host.querySelectorAll('[style*="cursor: pointer"]')].find(d => d.textContent.includes('TARGET')))
+    const el = await sheet()
+    expect(el.querySelector('.chip.on').textContent).toBe(es.Total)
+    return el
+  },
   'movement sheet, new and empty': async () => {
     await mount({ pathname: '/crossfit/new', state: { draft: PROGRAM, date: NEXT } })
     await click(byText(host, 'Añadir movimiento'))
@@ -335,6 +351,12 @@ const SCREENS = {
     expect(host.querySelector('.seg button.on').textContent).toBe('lb')
   },
   'log, already logged': async () => { logPast(); await mount('/crossfit/log/' + PAST) },
+  'log, a TARGET total, a drop set and a hold each side': async () => {
+    await mount('/crossfit/log/' + PAST)
+    for (const k of ['Total', 'Seconds each side']) shows(host, k)
+    expect(host.textContent).toContain(es['{0} total'].replace('{0}', '70'))
+    expect(host.textContent).toContain(`15 → 12 → ${es.Max}`)
+  },
   // The CrossFit row on Home, and the Rx line in an exercise's history sheet.
   'home, today has a program': async () => {
     useStore.setState({ S: { ...useStore.getState().S, wods: { [TODAY]: { ...clone(PROGRAM), _ts: 1 } } } })

@@ -46,6 +46,14 @@ test('feedProgram keeps the allowlisted fields and drops everything else, unknow
   assert.deepEqual(feedProgram({ tracks: 'nope', title: { x: 1 } }), { tracks: [] });
 });
 
+test('a TARGET total, a scaled alternative\'s dose and a drop set\'s empty max step travel (T34)', () => {
+  const p = program();
+  const m = p.tracks[0].blocks[0].movements[0];
+  Object.assign(m, { dose: { total: 70 }, steps: [{ reps: 15 }, { reps: 12 }, {}], alts: [{ rawName: 'pull up', dose: { reps: 1, total: 20 } }] });
+  const out = feedProgram(p).tracks[0].blocks[0].movements[0];
+  assert.deepEqual([out.dose, out.steps, out.alts[0].dose], [{ total: 70 }, [{ reps: 15 }, { reps: 12 }, {}], { reps: 1, total: 20 }]);
+});
+
 test('nothing outside the allowlist reaches the feed, at any depth', () => {
   const text = JSON.stringify(buildFeed({ '2026-11-03': program() }, { name: 'Box', today: '2026-11-03', now: 0 }));
   for (const leak of ['note', 'secret', 'include', 'logged', 'score', 'via', 'candidates', 'junk', 'who', 'done', 'pick', '_ts', '"id"']) {

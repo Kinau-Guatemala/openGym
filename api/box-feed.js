@@ -16,7 +16,7 @@ export const BOX_FEED_DAYS = 14
 // array) it holds; a function makes the value.
 const LOAD = { w: true, unit: true }
 const RX = { male: LOAD, female: LOAD }
-const DOSE = { reps: true, repsMax: true, cal: true, m: true, sec: true, sets: true, restSec: true }
+const DOSE = { reps: true, repsMax: true, cal: true, m: true, sec: true, sets: true, restSec: true, total: true }
 const STEP = { reps: true, cal: true, m: true, sec: true, rx: RX }
 // A catalogue id (4 or 5 digits) travels; a custom exercise's (the owner's uid(), with letters)
 // points into a customEx the feed does not carry, so it goes as null and the reader resolves
@@ -25,7 +25,7 @@ const EX_ID = v => (typeof v === 'string' && /^\d{4,5}$/.test(v) ? v : null)
 const ALT = { raw: true, rawName: true, exId: EX_ID, dose: DOSE, doseFemale: DOSE, rx: RX, perSide: true }
 export const MOVEMENT_FIELDS = {
   raw: true, rawName: true, exId: EX_ID, dose: DOSE, doseFemale: DOSE, rx: RX, steps: STEP,
-  perSide: true, slot: true, alts: ALT
+  perSide: true, drop: true, slot: true, alts: ALT
 }
 export const BLOCK_FIELDS = {
   label: true, format: true, capMin: true, rounds: true, roundsMax: true, everySec: true,

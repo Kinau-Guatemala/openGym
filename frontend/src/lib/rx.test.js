@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { _setLangState } from './i18n-core.js'
-import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from './rx.js'
+import { rxFor, doseFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from './rx.js'
 
 const hang = { rx: { male: { w: 185, unit: 'lb' }, female: { w: 135, unit: 'lb' } } }
 
@@ -58,6 +58,12 @@ describe('doseFor / fmtDose', () => {
     expect(fmtDose({ sets: 2 })).toBe('2 × Max')
     expect(fmtDose({ sets: 1, m: 8000 })).toBe('8000 m')
   })
+
+  it('a TARGET total across the slot\'s minutes: "70 total" (T34)', () => {
+    expect(fmtDose({ total: 70 })).toBe('70 total')
+    _setLangState('es', { '{0} total': '{0} en total' }, null, null)
+    try { expect(fmtDose({ total: 70 })).toBe('70 en total') } finally { _setLangState('en', {}, null, null) }
+  })
 })
 
 describe('fmtRounds (T23)', () => {
@@ -97,6 +103,16 @@ describe('steps (T26)', () => {
     expect(fmtSteps({ dose: { reps: 20 }, rx: { male: { w: 24, unit: 'kg' }, female: null }, steps: [20, 18, 16].map(reps => ({ reps })) }, { body: 'male', unit: 'kg' })).toBe('20-18-16 @ 24 kg')
     expect(fmtSteps({ dose: { cal: 10 }, steps: [{ cal: 10 }, { cal: 12 }] }, male)).toBe('10-12 cal')
     expect(fmtSteps({ dose: {} }, male)).toBe('')
+  })
+
+  it('fmtSteps: a drop set\'s empty step is max, "15 → 12 → Max"; in a ladder it is the rung (T34)', () => {
+    const curls = { dose: { reps: 15 }, steps: [{ reps: 15 }, { reps: 12 }, {}] }
+    expect(fmtSteps(curls, male)).toBe('15 → 12 → Max')
+    expect(fmtSteps({ ...curls, rx: { male: { w: 30, unit: 'lb' } } }, male)).toBe('15 → 12 → Max @ 30 lb')
+    expect(fmtSteps({ dose: {}, steps: [{ reps: 10 }, {}, {}] }, male, [10, 8, 6])).toBe('10-8-6')
+    // a ladder's empty steps with no rungs to hand (the movement sheet): no counts, never "Max"
+    expect(fmtSteps({ dose: {}, steps: [{ rx: { male: { w: 135, unit: 'lb' } } }, {}, { rx: { male: { w: 225, unit: 'lb' } } }] }, male)).toBe('135→225 lb')
+    expect([{}, { rx: null }, { reps: 0 }, { rx: { male: null } }].map(emptyStep)).toEqual([true, true, false, false])
   })
 
   // T28: a converted load keeps its half plate, written the language's way ("102,5" in Spanish).

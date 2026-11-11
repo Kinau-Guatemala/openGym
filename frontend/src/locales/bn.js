@@ -2100,6 +2100,7 @@ export default {
   'New personal records': 'নতুন ব্যক্তিগত রেকর্ড',
   'and {0} more': 'আরও {0}টি',
   'Per set': 'প্রতি সেটে',
+  'Total': 'মোট',
   'Estimated 1RM of each working set, one line per set number': 'প্রতিটি ওয়ার্কিং সেটের আনুমানিক 1RM, সেট নম্বর অনুযায়ী একটি করে লাইন',
   'Reps in each working set, one line per set number': 'প্রতিটি ওয়ার্কিং সেটের রেপ, সেট নম্বর অনুযায়ী একটি করে লাইন',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'যেখানে সবচেয়ে বেশি ছেড়ে দেন: সেট {0} ({2}টির মধ্যে {1}টি ওয়ার্কআউট)',
@@ -2372,6 +2373,7 @@ export default {
   'What the switches do': 'সুইচগুলো কী করে',
   'Substitute': 'বদলান',
   'Reps each side': 'প্রতি পাশে রেপ',
+  'Seconds each side': 'প্রতি পাশে সেকেন্ড',
   'Nothing to log: pick a track and an exercise for each movement': 'লেখার কিছু নেই: একটি ট্র্যাক এবং প্রতিটি মুভমেন্টের জন্য একটি ব্যায়াম বাছুন',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

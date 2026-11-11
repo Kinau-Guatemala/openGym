@@ -1701,6 +1701,7 @@ export default {
   'Max reps': 'Maks tekrar',
   'Most reps in a Max set per workout': 'Antrenman başına bir Maks setteki en çok tekrar',
   'Per set': 'Set bazında',
+  'Total': 'Toplam',
   'Estimated 1RM of each working set, one line per set number': 'Her çalışma setinin tahmini 1RM değeri, her set numarası için bir çizgi',
   'Reps in each working set, one line per set number': 'Her çalışma setindeki tekrar sayısı, her set numarası için bir çizgi',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'En sık düştüğün set: {0}. set ({2} antrenmanın {1} tanesinde)',
@@ -2293,6 +2294,7 @@ export default {
   'What the switches do': 'Anahtarlar ne yapar',
   'Substitute': 'Değiştir',
   'Reps each side': 'Taraf başına tekrar',
+  'Seconds each side': 'Taraf başına saniye',
   'Nothing to log: pick a track and an exercise for each movement': 'Kaydedecek bir şey yok: bir parkur ve her hareket için bir egzersiz seç',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

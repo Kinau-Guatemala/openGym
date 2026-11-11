@@ -718,6 +718,8 @@ function wodDose(v, where, errors, field = 'dose') {
   // `2x200`, `2 Set de Max`: the times the line is done, and the rest between them.
   if (v.sets != null) { if (isInt(v.sets, 1, 50)) out.sets = v.sets; else errors.push(`${where}.${field}.sets must be a whole number from 1 to 50`); }
   if (v.restSec != null) { if (isInt(v.restSec, 0, 1800)) out.restSec = v.restSec; else errors.push(`${where}.${field}.restSec must be whole seconds from 0 to 1800`); }
+  // `EMOM 12` / `M3 TARGET 70 HPU`: the reps across all of that slot's minutes, not each minute's.
+  if (v.total != null) { if (isInt(v.total, 1, 2000)) out.total = v.total; else errors.push(`${where}.${field}.total must be a whole number from 1 to 2000`); }
   return out;
 }
 
@@ -784,7 +786,9 @@ function wodMovement(m, i, where, errors) {
     ...wodDoseFemale(m.doseFemale, at, errors),
     perSide: m.perSide === true,
     rx,
-    ...(steps ? { steps } : {}),
+    // `15 + 12 + max` / `*Menos peso en cada Drop`: the steps are one set's drops, done back to back
+    // every round; without `drop` they are the whole plan (T26's R1 / R2 / R3 loads).
+    ...(steps ? { steps, ...(m.drop === true ? { drop: true } : {}) } : {}),
     alts: (Array.isArray(m.alts) ? m.alts : []).filter(a => a && isStr(a.rawName)).slice(0, 5)
       .map(a => ({ exId: null, rawName: clampStr(a.rawName.trim(), 80), dose: wodDose(a.dose, `${at}.alts`, errors), ...wodDoseFemale(a.doseFemale, `${at}.alts`, errors) }))
   };
@@ -849,6 +853,48 @@ function withSteps(moves, emom, capMin, rounds) {
     if (bad < 0) return out;
     runs.splice(bad, 1, ...runs[bad].map(m => [m]));
   }
+}
+
+// `M3 TARGET 70 HPU` read as 70 reps a minute: it is 70 in total across that slot's minutes.
+export function withTarget(m) {
+  const r = /\bTARGET\s+(\d+)\b/i.exec(m.raw);
+  if (!r || m.dose.reps !== +r[1] || !isInt(+r[1], 1, 2000)) return m;
+  const { reps, ...dose } = m.dose;
+  return { ...m, dose: { ...dose, total: reps } };
+}
+
+// `M3 40 seg max DB OH Hold 20/20` read as a 20/20 kg load: on a timed dose an equal pair with no
+// unit is the seconds per side.
+export function withTimedSides(m) {
+  const r = /\b(\d+)\/\1\b(?!\s*(?:kg|lbs?)\b)/i.exec(m.raw);
+  const w = r && +r[1];
+  // The pair is the seconds each side (`30 seg … 30/30`) or splits the line's (`40 seg … 20/20`);
+  // an equal pair that is neither (`1 min Farmer hold 24/24`) is a load printed without its unit.
+  if (!r || !(m.dose.sec > 0) || m.rx?.male?.w !== w || m.rx?.female?.w !== w || (m.dose.sec !== w && m.dose.sec !== 2 * w)) return m;
+  return { ...m, perSide: true, rx: null, dose: { ...m.dose, sec: 2 * w === m.dose.sec ? w : m.dose.sec } };
+}
+
+// `M2 RX 2 Kips + 2 Hip to Bar + 1 BMU` / `SC 2 kips + 2 knee to chest + 1 pull up` read as six
+// movements in one minute: the SC line is the scaled version, so each of its movements becomes the
+// `alts` entry, with its own dose, of the Rx movement at the same position. Lines of different
+// lengths stay as they are.
+const RX_LINE = /^(?:M\d+\s+)?RX\b/i;
+const SC_LINE = /^(?:M\d+\s+)?(?:SC|Scaled)\b/i;
+export function withScaled(moves) {
+  const lineAt = i => { let j = i; while (j < moves.length && moves[j].raw === moves[i].raw && moves[j].slot === moves[i].slot) j++; return moves.slice(i, j); };
+  const out = [];
+  for (let i = 0; i < moves.length;) {
+    const rx = lineAt(i);
+    const sc = i + rx.length < moves.length ? lineAt(i + rx.length) : [];
+    if (RX_LINE.test(rx[0].raw) && SC_LINE.test(sc[0]?.raw || '') && sc.length === rx.length && sc[0].slot === rx[0].slot) {
+      // The same movement and dose in both versions (kips → kips) is no alternative.
+      const same = (m, s) => nameKey(m.rawName) === nameKey(s.rawName) && JSON.stringify([m.dose, m.doseFemale]) === JSON.stringify([s.dose, s.doseFemale]);
+      rx.forEach((m, k) => out.push(same(m, sc[k]) ? m
+        : { ...m, alts: [...m.alts, { exId: null, rawName: sc[k].rawName, dose: sc[k].dose, ...(sc[k].doseFemale ? { doseFemale: sc[k].doseFemale } : {}) }].slice(0, 5) }));
+      i += rx.length * 2;
+    } else { out.push(...rx); i += rx.length; }
+  }
+  return out;
 }
 
 // `EVERY 3x4`, `EVERY4x3`, `EVERY 1:30 x 8`, `EVERY 2 + :30 x 4`: the period in seconds (a bare
@@ -920,7 +966,8 @@ function wodBlock(b, i, where, errors) {
     scheme: strOrNull(b.scheme, 60),
     benchmark: strOrNull(b.benchmark, 40),
     raw,
-    movements: withSteps(withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean)), format === 'emom', capMin, rounds)
+    movements: withSteps(withScaled(withoutRests(b.movements.slice(0, MAX_WOD_MOVES).map((m, j) => wodMovement(m, j, at, errors)).filter(Boolean))
+      .map(m => withTimedSides(withTarget(m)))), format === 'emom', capMin, rounds)
   };
 }
 const restWindowBlock = b => !b.warmup && !b.movements.length && (isRestWindow(b.raw) || isRestWindow(b.label));

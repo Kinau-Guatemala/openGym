@@ -1756,6 +1756,7 @@ export default {
   'Max reps': 'تكرارات أقصى',
   'Most reps in a Max set per workout': 'أكبر عدد تكرارات في مجموعة أقصى لكل تمرين',
   'Per set': 'لكل مجموعة',
+  'Total': 'الإجمالي',
   'Estimated 1RM of each working set, one line per set number': '1RM المقدّر لكل مجموعة عمل، خط لكل رقم مجموعة',
   'Reps in each working set, one line per set number': 'تكرارات كل مجموعة عمل، خط لكل رقم مجموعة',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'أكثر مكان تتراجع فيه: المجموعة {0} ({1} من {2} تمارين)',
@@ -2348,6 +2349,7 @@ export default {
   'What the switches do': 'ما تفعله المفاتيح',
   'Substitute': 'استبدال',
   'Reps each side': 'تكرارات لكل جانب',
+  'Seconds each side': 'ثوانٍ لكل جانب',
   'Nothing to log: pick a track and an exercise for each movement': 'لا شيء للتسجيل: اختر مسارًا وتمرينًا لكل حركة',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

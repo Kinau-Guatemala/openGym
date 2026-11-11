@@ -47,8 +47,9 @@ const ui = () => useUI.getState()
 const toast = m => ui().toast(m)
 
 const FORMATS = ['amrap', 'emom', 'fortime', 'rounds', 'interval', 'strength', 'other']
-const DOSE_KINDS = ['reps', 'cal', 'm', 'sec']
-const doseLabel = k => ({ reps: t('Reps'), cal: t('Calories'), m: t('Meters'), sec: t('Seconds') })[k]
+// `total`: a TARGET across an EMOM slot's minutes (`M3 TARGET 70 HPU`), not each minute's.
+const DOSE_KINDS = ['reps', 'cal', 'm', 'sec', 'total']
+const doseLabel = k => ({ reps: t('Reps'), cal: t('Calories'), m: t('Meters'), sec: t('Seconds'), total: t('Total') })[k]
 
 // An icon inside a chip, sitting on the text line (the exercise picker's chips do the same).
 const CHIP_ICON = { fontSize: 12, display: 'inline-block', marginInlineEnd: 4, verticalAlign: '-1px' }

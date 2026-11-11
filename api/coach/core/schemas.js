@@ -119,7 +119,7 @@ const STR_OR_NULL = { type: ['string', 'null'] };
 const DOSE = {
   type: 'object',
   properties: { reps: { type: 'number' }, repsMax: { type: 'number' }, cal: { type: 'number' }, m: { type: 'number' }, sec: { type: 'number' },
-    sets: { type: 'integer' }, restSec: { type: 'integer' } }
+    sets: { type: 'integer' }, restSec: { type: 'integer' }, total: { type: 'integer' } }
 };
 const LOAD = { type: ['object', 'null'], properties: { w: { type: 'number' }, unit: { type: 'string', enum: ['lb', 'kg'] } } };
 const RX = { type: ['object', 'null'], properties: { male: LOAD, female: LOAD } };
@@ -127,7 +127,7 @@ const MOVEMENT_SCHEMA = {
   type: 'object',
   properties: {
     raw: STR, rawName: STR, name: STR, slot: STR_OR_NULL,
-    dose: DOSE, doseFemale: DOSE, perSide: { type: 'boolean' },
+    dose: DOSE, doseFemale: DOSE, perSide: { type: 'boolean' }, drop: { type: 'boolean' },
     rx: RX,
     steps: { type: ['array', 'null'], maxItems: 30, items: { type: 'object', properties: { reps: { type: 'number' }, cal: { type: 'number' }, m: { type: 'number' }, sec: { type: 'number' }, rx: RX } } },
     alts: { type: 'array', items: { type: 'object', properties: { rawName: STR, dose: DOSE, doseFemale: DOSE }, required: ['rawName'] } }

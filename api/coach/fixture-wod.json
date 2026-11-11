@@ -221,6 +221,64 @@
             { "raw": "M2 10 Burpees", "rawName": "burpees", "name": "burpee", "slot": "M2", "dose": { "reps": 10 }, "perSide": false, "rx": null, "alts": [] },
             { "raw": "M3 Rest 30 seg + 40 DU", "rawName": "du", "name": "double under", "slot": "M3", "dose": { "reps": 40, "restSec": 30 }, "perSide": false, "rx": null, "alts": [] }
           ]
+        },
+        {
+          "label": "EMOM 10 COLECTIVO", "warmup": false, "format": "emom", "capMin": 10, "rounds": null, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "EMOM 10 COLECTIVO\nM1 4 OHS\nM2 RX 2 Kips + 2 Hip to Bar + 1 BMU\nSC 2 kips + 2 knee to chest + 1 pull up",
+          "movements": [
+            { "raw": "M1 4 OHS", "rawName": "ohs", "name": "barbell overhead squat", "slot": "M1", "dose": { "reps": 4 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "RX 2 Kips + 2 Hip to Bar + 1 BMU", "rawName": "kips", "name": "kipping swing", "slot": "M2", "dose": { "reps": 2 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "RX 2 Kips + 2 Hip to Bar + 1 BMU", "rawName": "hip to bar", "name": "hip to bar pull-up", "slot": "M2", "dose": { "reps": 2 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "RX 2 Kips + 2 Hip to Bar + 1 BMU", "rawName": "bmu", "name": "bar muscle-up", "slot": "M2", "dose": { "reps": 1 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "SC 2 kips + 2 knee to chest + 1 pull up", "rawName": "kips", "name": "kipping swing", "slot": "M2", "dose": { "reps": 2 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "SC 2 kips + 2 knee to chest + 1 pull up", "rawName": "knee to chest", "name": "hanging knee raise", "slot": "M2", "dose": { "reps": 2 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "SC 2 kips + 2 knee to chest + 1 pull up", "rawName": "pull up", "name": "pull-up", "slot": "M2", "dose": { "reps": 1 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        },
+        {
+          "label": "TC 12 · 3 RONDAS", "warmup": false, "format": "rounds", "capMin": 12, "rounds": 3, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "TC 12\n3 RONDAS\n10 Hang Leg raises / 18 Leg raises\n15 T2B\nEVERY DROP\n7 Push press 135/95",
+          "movements": [
+            { "raw": "10 Hang Leg raises / 18 Leg raises", "rawName": "hang leg raises", "name": "hanging leg raise", "slot": null, "dose": { "reps": 10 }, "perSide": false, "rx": null,
+              "alts": [ { "rawName": "leg raises", "dose": { "reps": 18 } } ] },
+            { "raw": "15 T2B", "rawName": "t2b", "name": "toes to bar", "slot": null, "dose": { "reps": 15 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        },
+        {
+          "label": "THEN", "warmup": false, "format": "fortime", "capMin": null, "rounds": null, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "TC 12\nTHEN\n15 Sushy Rolls / 15 BMU / 15 C2B",
+          "movements": [
+            { "raw": "15 Sushy Rolls / 15 BMU / 15 C2B", "rawName": "sushy rolls", "name": "sushi roll", "slot": null, "dose": { "reps": 15 }, "perSide": false, "rx": null,
+              "alts": [ { "rawName": "bmu", "dose": { "reps": 15 } }, { "rawName": "c2b", "dose": { "reps": 15 } } ] }
+          ]
+        },
+        {
+          "label": "EMOM 12", "warmup": false, "format": "emom", "capMin": 12, "rounds": null, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "EMOM 12\nM1 40 DU\nM2 15 Hang Cleans 115/75\nM3 TARGET 70 HPU",
+          "movements": [
+            { "raw": "M1 40 DU", "rawName": "du", "name": "double under", "slot": "M1", "dose": { "reps": 40 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M2 15 Hang Cleans 115/75", "rawName": "hang cleans", "name": "barbell hang clean", "slot": "M2", "dose": { "reps": 15 }, "perSide": false,
+              "rx": { "male": { "w": 115, "unit": "lb" }, "female": { "w": 75, "unit": "lb" } }, "alts": [] },
+            { "raw": "M3 TARGET 70 HPU", "rawName": "hpu", "name": "hand-release push-up", "slot": "M3", "dose": { "reps": 70 }, "perSide": false, "rx": null, "alts": [] }
+          ]
+        },
+        {
+          "label": "3 RONDAS", "warmup": false, "format": "rounds", "capMin": null, "rounds": 3, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "3 RONDAS\n15 + 12 + max DB´s Bicep curls\n*Menos peso en cada Drop",
+          "movements": [
+            { "raw": "15 + 12 + max DB´s Bicep curls", "rawName": "db´s bicep curls", "name": "dumbbell biceps curl", "slot": null, "dose": { "reps": 15 }, "perSide": false, "rx": null,
+              "steps": [{ "reps": 15 }, { "reps": 12 }, {}], "drop": true, "alts": [] }
+          ]
+        },
+        {
+          "label": "EMOM 12 COLECTIVO", "warmup": false, "format": "emom", "capMin": 12, "rounds": null, "everySec": null, "roundsMax": null, "scheme": null, "benchmark": null,
+          "raw": "EMOM 12 COLECTIVO\nM1 30 seg sprints machine\nM2 40 seg max plank\nM3 40 seg max DB OH Hold 20/20",
+          "movements": [
+            { "raw": "M1 30 seg sprints machine", "rawName": "sprints machine", "name": "rowing machine", "slot": "M1", "dose": { "sec": 30 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M2 40 seg max plank", "rawName": "plank", "name": "plank", "slot": "M2", "dose": { "sec": 40 }, "perSide": false, "rx": null, "alts": [] },
+            { "raw": "M3 40 seg max DB OH Hold 20/20", "rawName": "db oh hold", "name": "dumbbell overhead hold", "slot": "M3", "dose": { "sec": 40 }, "perSide": false,
+              "rx": { "male": { "w": 20, "unit": "kg" }, "female": { "w": 20, "unit": "kg" } }, "alts": [] }
+          ]
         }
       ]
     }

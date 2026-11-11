@@ -506,6 +506,56 @@ describe('wodToSession: a movement with steps logs one set per step (T26)', () =
   })
 })
 
+describe('wodToSession: the 11 Nov structure (T34)', () => {
+  // The fixture's pump blocks b1-b7 (N1-N6), checked by validateWod, every movement picked as a deadlift
+  // except the sprint machine (a row) and the scaled alternative (a push-up).
+  const pump = () => {
+    const p = validateWod(JSON.parse(readFileSync(resolve(__dirname, '../../../api/coach/fixture-wod.json'), 'utf8'))).proposal.program
+    const tr = p.tracks.find(t => t.id === 'pump')
+    tr.blocks.forEach(b => b.movements.forEach(m => { m.exId = m.rawName === 'sprints machine' ? ROW : DL; m.alts.forEach(a => { a.exId = PUSHUP }) }))
+    return { title: 'T', tracks: [tr] }
+  }
+  const only = (ref, logged = {}) => entryOf(wodToSession(pump(), { tracks: ['pump'] }, logged, S0()), 'pump/' + ref)
+  const reps = e => e.sets.map(s => s.r)
+
+  it('N1: the Rx movements, 5 sets each in an EMOM 10 with M1 and M2; the scaled one is a swap as before', () => {
+    expect(only('b1').map(reps)).toEqual([[4, 4, 4, 4, 4], [2, 2, 2, 2, 2], [2, 2, 2, 2, 2], [1, 1, 1, 1, 1]])
+    const [, , hip] = only('b1', { moves: { 'pump/b1/m2': { exId: PUSHUP } } })
+    expect([hip.id, hip.swappedFrom, reps(hip)]).toEqual([PUSHUP, undefined, [2, 2, 2, 2, 2]])
+  })
+
+  it('N2 and N3: one option per line, the rounds only on the block they head; THEN once, the penalty never', () => {
+    expect(only('b2').map(reps)).toEqual([[10, 10, 10], [15, 15, 15]])
+    // the other option, picked, is done at its own count: 18 leg raises, not 10
+    expect(reps(only('b2', { moves: { 'pump/b2/m0': { exId: PUSHUP } } })[0])).toEqual([18, 18, 18])
+    // a substitute that is not an option keeps the movement's
+    expect(reps(only('b2', { moves: { 'pump/b2/m0': { exId: BURPEE } } })[0])).toEqual([10, 10, 10])
+    expect(only('b3').map(reps)).toEqual([[15]])
+  })
+
+  it('N4: TARGET 70 over the slot\'s 4 minutes is 18, 18, 17, 17; one set of 70 outside an EMOM; typed reps win', () => {
+    expect(only('b4').map(reps)).toEqual([[40, 40, 40, 40], [15, 15, 15, 15], [18, 18, 17, 17]])
+    // the total done, typed, is spread the same way; kept as typed for a re-open
+    expect(reps(only('b4', { moves: { 'pump/b4/m2': { total: 72 } } })[2])).toEqual([18, 18, 18, 18])
+    const { w } = buildWodWorkout(S0(), '2026-11-11', pump(), { tracks: ['pump'] }, { moves: { 'pump/b4/m2': { total: 72 } } }, Date.parse('2026-11-12T12:00:00Z'))
+    expect(w.wod.moves['pump/b4/m2']).toEqual({ total: 72 })
+    expect(reps(only('b4', { moves: { 'pump/b4/m2': { r: 20 } } })[2])).toEqual([20, 20, 20, 20])
+    const ft = program([block('b0', 'fortime', [mv('m0', BURPEE, { total: 100 })], { capMin: 12 })])
+    expect(wodToSession(ft, all, {}, S0()).entries[0].sets.map(s => [s.mode, s.r])).toEqual([[undefined, 100]])
+  })
+
+  it('N5: a drop set is its steps every round, the max one with no reps to fill in; steps without drop are the whole plan', () => {
+    expect(only('b5').map(reps)).toEqual([[15, 12, 0, 15, 12, 0, 15, 12, 0]])
+    const r3 = program([block('b0', 'rounds', [mv('m0', DL, { reps: 15 }, { steps: [{ reps: 15 }, { reps: 10 }, { reps: 5 }] })], { rounds: 3 })])
+    expect(wodToSession(r3, all, {}, S0()).entries[0].sets.map(s => s.r)).toEqual([15, 10, 5])
+  })
+
+  it('N6: the 20/20 hold is 20 s a side, logged as 40 s with no load, each of its 4 minutes', () => {
+    const hold = only('b6')[2]
+    expect(hold.sets).toEqual(Array(4).fill({ mode: 'time', sec: 40, w: 0, done: true, wodRir: 5 }))
+  })
+})
+
 describe('loggedIn: the log screen in kg or lb (T30)', () => {
   const typed = { moves: { 'full/b0/m0': { sets: [{ w: 135, r: 5 }, { r: 3 }] }, 'full/b1/m0': { w: 135, r: 10 }, 'full/b1/m1': { cal: 12 } },
     blocks: { 'full/b0': { score: { type: 'load', w: 135, unit: 'lb' }, rx: true }, 'full/b1': { score: { type: 'time', sec: 300 } } } }

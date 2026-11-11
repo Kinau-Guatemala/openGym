@@ -1701,6 +1701,7 @@ export default {
   'Max reps': 'Reps Máx',
   'Most reps in a Max set per workout': 'Más repeticiones en una serie Máx por entrenamiento',
   'Per set': 'Por serie',
+  'Total': 'Total',
   'Estimated 1RM of each working set, one line per set number': '1RM estimado de cada serie efectiva, una línea por número de serie',
   'Reps in each working set, one line per set number': 'Repeticiones de cada serie efectiva, una línea por número de serie',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Donde más sueles flojear: serie {0} ({1} de {2} entrenamientos)',
@@ -2293,6 +2294,7 @@ export default {
   'What the switches do': 'Qué hace cada opción',
   'Substitute': 'Sustituir',
   'Reps each side': 'Reps por lado',
+  'Seconds each side': 'Segundos por lado',
   'Nothing to log: pick a track and an exercise for each movement': 'Nada que registrar: elige una pista y un ejercicio para cada movimiento',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)
