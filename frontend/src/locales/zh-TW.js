@@ -2287,6 +2287,7 @@ export default {
   'What the switches do': '各個開關的作用',
   'Substitute': '替換',
   'Reps each side': '每側次數',
+  'Seconds each side': '每側秒數',
   'Nothing to log: pick a track and an exercise for each movement': '沒有可記錄的內容：選擇一個軌道並為每個動作選一個練習',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

@@ -1491,6 +1491,7 @@ export const PT_BR_OVERRIDES = {
   'What the switches do': 'O que cada chave faz',
   'Substitute': 'Substituir',
   'Reps each side': 'Reps por lado',
+  'Seconds each side': 'Segundos por lado',
   'Nothing to log: pick a track and an exercise for each movement': 'Nada para registrar: escolha uma trilha e um exercício para cada movimento',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

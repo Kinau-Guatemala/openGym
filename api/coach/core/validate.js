@@ -786,7 +786,9 @@ function wodMovement(m, i, where, errors) {
     ...wodDoseFemale(m.doseFemale, at, errors),
     perSide: m.perSide === true,
     rx,
-    ...(steps ? { steps } : {}),
+    // `15 + 12 + max` / `*Menos peso en cada Drop`: the steps are one set's drops, done back to back
+    // every round; without `drop` they are the whole plan (T26's R1 / R2 / R3 loads).
+    ...(steps ? { steps, ...(m.drop === true ? { drop: true } : {}) } : {}),
     alts: (Array.isArray(m.alts) ? m.alts : []).filter(a => a && isStr(a.rawName)).slice(0, 5)
       .map(a => ({ exId: null, rawName: clampStr(a.rawName.trim(), 80), dose: wodDose(a.dose, `${at}.alts`, errors), ...wodDoseFemale(a.doseFemale, `${at}.alts`, errors) }))
   };
@@ -866,8 +868,10 @@ export function withTarget(m) {
 export function withTimedSides(m) {
   const r = /\b(\d+)\/\1\b(?!\s*(?:kg|lbs?)\b)/i.exec(m.raw);
   const w = r && +r[1];
-  if (!r || !(m.dose.sec > 0) || m.rx?.male?.w !== w || m.rx?.female?.w !== w) return m;
-  return { ...m, perSide: true, rx: null };
+  // The pair is the seconds each side (`30 seg … 30/30`) or splits the line's (`40 seg … 20/20`);
+  // an equal pair that is neither (`1 min Farmer hold 24/24`) is a load printed without its unit.
+  if (!r || !(m.dose.sec > 0) || m.rx?.male?.w !== w || m.rx?.female?.w !== w || (m.dose.sec !== w && m.dose.sec !== 2 * w)) return m;
+  return { ...m, perSide: true, rx: null, dose: { ...m.dose, sec: 2 * w === m.dose.sec ? w : m.dose.sec } };
 }
 
 // `M2 RX 2 Kips + 2 Hip to Bar + 1 BMU` / `SC 2 kips + 2 knee to chest + 1 pull up` read as six
@@ -883,7 +887,10 @@ export function withScaled(moves) {
     const rx = lineAt(i);
     const sc = i + rx.length < moves.length ? lineAt(i + rx.length) : [];
     if (RX_LINE.test(rx[0].raw) && SC_LINE.test(sc[0]?.raw || '') && sc.length === rx.length && sc[0].slot === rx[0].slot) {
-      rx.forEach((m, k) => out.push({ ...m, alts: [...m.alts, { exId: null, rawName: sc[k].rawName, dose: sc[k].dose, ...(sc[k].doseFemale ? { doseFemale: sc[k].doseFemale } : {}) }].slice(0, 5) }));
+      // The same movement and dose in both versions (kips → kips) is no alternative.
+      const same = (m, s) => nameKey(m.rawName) === nameKey(s.rawName) && JSON.stringify([m.dose, m.doseFemale]) === JSON.stringify([s.dose, s.doseFemale]);
+      rx.forEach((m, k) => out.push(same(m, sc[k]) ? m
+        : { ...m, alts: [...m.alts, { exId: null, rawName: sc[k].rawName, dose: sc[k].dose, ...(sc[k].doseFemale ? { doseFemale: sc[k].doseFemale } : {}) }].slice(0, 5) }));
       i += rx.length * 2;
     } else { out.push(...rx); i += rx.length; }
   }

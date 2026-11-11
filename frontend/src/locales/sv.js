@@ -2749,6 +2749,7 @@ export default {
   'What the switches do': 'Vad reglagen gör',
   'Substitute': 'Ersättning',
   'Reps each side': 'Reps per sida',
+  'Seconds each side': 'Sekunder per sida',
   'Nothing to log: pick a track and an exercise for each movement': 'Inget att logga: välj ett spår och en övning för varje rörelse',
   'Gap': 'Lucka',
   'Hypertrophy gap': 'Hypertrofilucka',

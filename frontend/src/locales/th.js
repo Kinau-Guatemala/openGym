@@ -2305,6 +2305,7 @@ export default {
   'What the switches do': 'สวิตช์แต่ละตัวทำอะไร',
   'Substitute': 'เปลี่ยนท่า',
   'Reps each side': 'ครั้งต่อข้าง',
+  'Seconds each side': 'วินาทีต่อข้าง',
   'Nothing to log: pick a track and an exercise for each movement': 'ไม่มีอะไรให้บันทึก: เลือกแทร็กและท่าสำหรับแต่ละการเคลื่อนไหว',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

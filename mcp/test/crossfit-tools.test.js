@@ -121,12 +121,12 @@ describe('get_wods', () => {
     const p = structuredClone(program)
     const [first, second] = p.tracks[0].blocks[1].movements
     first.dose = { total: 70 }
-    Object.assign(second, { dose: { reps: 15 }, steps: [{ reps: 15 }, { reps: 12 }, {}] })
+    Object.assign(second, { dose: { reps: 15 }, steps: [{ reps: 15 }, { reps: 12 }, {}], drop: true })
     S.wods[TODAY] = p
     const [target, drop] = (await call('get_wods')).programs[0].tracks[0].blocks[1].movements
     expect([target.dose, target.total]).toEqual(['70 total', 70])
     expect(drop.steps.map(s => [s.dose, s.max])).toEqual([['15', undefined], ['12', undefined], [null, true]])
-    expect(drop.total).toBe(null)
+    expect([drop.total, drop.drop, target.drop]).toEqual([null, true, false])
   })
 
   test('a best guess for a misspelled name is flagged with its candidates, never passed as the exercise', async () => {

@@ -100,17 +100,18 @@ const unitsOf = dose => pos(dose.reps) || pos(dose.cal) || 0
 // the reps a partial round reached. A line done `sets` times (`2 Set de 10`) is that many sets
 // per round, here and nowhere else. A movement with steps is one set per step instead, its amount
 // the step's own, else the full dose, else the rung at that index; an empty step is the rung, else
-// 0, max reps to fill in (a drop set's last). A `TARGET` total is spread over the sets the slot gets
-// in an EMOM (70 over 4: 18, 18, 17, 17), and is one set elsewhere. The others plan as before.
-// ponytail: steps are the whole plan, never per round, so a drop set under `3 RONDAS` logs one pass
-// (3 sets, not 9), the same as T26's R1/R2/R3 steps must; mark drop sets apart if that matters.
+// 0, max reps to fill in (a drop set's last), and a drop set (`drop`) is all its steps every round.
+// A `TARGET` total is spread over the sets the slot gets in an EMOM (70 over 4: 18, 18, 17, 17), and
+// is one set elsewhere. The others plan as before.
 function setsPlan(block, doses, score, steps) {
   const rungs = ladderOf(block.scheme)
   return roundsPlan(block, doses, score, rungs).map((p, i) => {
     const d = doses[i]
     if (steps[i]) {
-      return steps[i].map((s, j) => (emptyStep(s) ? rungs?.[j] ?? 0
+      const one = steps[i].map((s, j) => (emptyStep(s) ? rungs?.[j] ?? 0
         : pos(s.reps) || pos(s.cal) || pos(s.m) || pos(s.sec) || (unitsOf(d) || pos(d.m) || pos(d.sec) ? null : rungs?.[j] ?? null)))
+      // A drop set is all its steps in every round; other steps are the whole plan.
+      return list(block.movements)[i]?.drop ? p.flatMap(() => one) : one
     }
     const total = !pos(d.reps) && Math.floor(pos(d.total))
     if (!total) return p
@@ -140,6 +141,12 @@ function roundsPlan(block, doses, score, rungs) {
   })
 }
 
+// An option the box printed with its own count (`10 Hang Leg raises / 18 Leg raises`): picked, it is
+// done at its own dose, not the movement's.
+export const optionOf = (m, exId) => (exId && exId !== m.exId ? list(m.alts).find(a => a?.exId === exId && Object.keys(a.dose || {}).length) : null)
+/** The dose for S.body of `m` done as `exId`: an option's own when it prints one, else the movement's. */
+export const doseOn = (m, exId, S) => doseFor(optionOf(m, exId) || m, S)
+
 /**
  * The rows the chosen part of `program` logs as, before the finish: `{ entries, wod, capMin }`.
  * `entries` are active-session entries carrying `wodBlock` (and `rx`, `swappedFrom`), `wod` is the
@@ -161,14 +168,14 @@ export function wodToSession(program, choice, logged, S) {
       const moves = list(block.movements)
       const doses = moves.map(m => {
         const lm = logged?.moves?.[`${ref}/${m.id}`] || {}
-        const d = { ...doseFor(m, S) }
-        for (const k of ['r', 'cal', 'm', 'sec']) if (lm[k] != null) d[k === 'r' ? 'reps' : k] = Number(lm[k]) || 0
+        const d = { ...doseOn(m, lm.exId, S) }
+        for (const k of ['r', 'cal', 'm', 'sec', 'total']) if (lm[k] != null) d[k === 'r' ? 'reps' : k] = Number(lm[k]) || 0
         return d
       })
       // What was typed for the movement wins over its steps: the typed count or weight is every set's.
       const steps = moves.map(m => {
         const lm = logged?.moves?.[`${ref}/${m.id}`] || {}
-        return ['r', 'cal', 'm', 'sec'].some(k => lm[k] != null) ? null : stepsOf(m)
+        return ['r', 'cal', 'm', 'sec', 'total'].some(k => lm[k] != null) || optionOf(m, lm.exId) ? null : stepsOf(m)
       })
       const plan = setsPlan(block, doses, score, steps)
       moves.forEach((m, i) => {
@@ -204,8 +211,8 @@ export function wodToSession(program, choice, logged, S) {
         } else {
           amounts.forEach((a, j) => {
             const n = a ?? (pos(dose.reps) || pos(dose.sec))
-            const w = stepW?.[j] ?? w0
-            let row = pos(dose.sec) && !pos(dose.reps) ? { mode: 'time', sec: n, w, done: true }
+            const w = stepW?.[j % stepW.length] ?? w0
+            let row = pos(dose.sec) && !pos(dose.reps) ? { mode: 'time', sec: m.perSide ? 2 * n : n, w, done: true }
               : m.perSide ? syncSideAggregate({ sides: { L: { w, r: n, done: true }, R: { w, r: n, done: true } } })
                 : { w, r: n, done: true }
             if (metcon) row = { ...row, wodRir: WOD_RIR }
@@ -252,7 +259,7 @@ export function buildWodWorkout(S, date, program, choice, logged, now = Date.now
 }
 
 // What was typed per movement, as sent, so re-opening the day restores it exactly (relogState).
-const MOVE_KEYS = ['exId', 'w', 'r', 'cal', 'm', 'sec', 'min', 'sets']
+const MOVE_KEYS = ['exId', 'w', 'r', 'cal', 'm', 'sec', 'min', 'sets', 'total']
 function movesOf(logged) {
   const out = {}
   for (const [key, lm] of Object.entries(logged?.moves || {})) {

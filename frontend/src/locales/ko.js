@@ -2294,6 +2294,7 @@ export default {
   'What the switches do': '스위치 설명',
   'Substitute': '대체',
   'Reps each side': '한쪽당 반복',
+  'Seconds each side': '한쪽당 초',
   'Nothing to log: pick a track and an exercise for each movement': '기록할 것이 없습니다: 트랙과 각 동작의 운동을 고르세요',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

@@ -2291,6 +2291,7 @@ export default {
   'What the switches do': 'Що роблять перемикачі',
   'Substitute': 'Замінити',
   'Reps each side': 'Повтори на сторону',
+  'Seconds each side': 'Секунди на сторону',
   'Nothing to log: pick a track and an exercise for each movement': 'Нічого записувати: виберіть трек і вправу для кожного руху',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

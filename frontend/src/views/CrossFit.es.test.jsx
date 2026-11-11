@@ -63,7 +63,8 @@ const PROGRAM = {
       block('b7', 'rounds', [mv('m0', 'Max Pull-ups', 'max pull-ups', '0652', { dose: { sets: 2 } })], { rounds: 5 }),
       block('b8', 'other', [mv('m0', 'Partner burpees', 'partner burpees', '1160', { dose: { reps: 10 } })], { everySec: 90 }),
       // T34: a TARGET total across an EMOM slot's minutes, and a drop set ending on max.
-      block('b9', 'emom', [mv('m0', 'M1 TARGET 70 HPU', 'hpu', '0662', { slot: 'M1', dose: { total: 70 } })], { capMin: 4 }),
+      block('b9', 'emom', [mv('m0', 'M1 TARGET 70 HPU', 'hpu', '0662', { slot: 'M1', dose: { total: 70 } }),
+        mv('m1', 'M2 40 seg DB OH Hold 20/20', 'db oh hold', '0043', { slot: 'M2', dose: { sec: 20 }, perSide: true })], { capMin: 4 }),
       block('b10', 'rounds', [mv('m0', '15 + 12 + max DB Curls', 'db curls', '0043', { dose: { reps: 15 }, steps: [{ reps: 15 }, { reps: 12 }, {}] })], { rounds: 3 }),
     ] },
     { id: 't1', label: '', kind: 'extra', blocks: [] },
@@ -350,8 +351,9 @@ const SCREENS = {
     expect(host.querySelector('.seg button.on').textContent).toBe('lb')
   },
   'log, already logged': async () => { logPast(); await mount('/crossfit/log/' + PAST) },
-  'log, a TARGET total and a drop set': async () => {
+  'log, a TARGET total, a drop set and a hold each side': async () => {
     await mount('/crossfit/log/' + PAST)
+    for (const k of ['Total', 'Seconds each side']) shows(host, k)
     expect(host.textContent).toContain(es['{0} total'].replace('{0}', '70'))
     expect(host.textContent).toContain(`15 → 12 → ${es.Max}`)
   },

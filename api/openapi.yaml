@@ -4265,7 +4265,14 @@ components:
                                   Present only when the dose itself is printed as a male/female split
                                   (`20/15 Cal Row` → `dose {cal: 20}`, `doseFemale {cal: 15}`). Pick it by
                                   sex the way `rx` is picked; absent means `dose` applies to both.
-                              perSide: { type: boolean }
+                              perSide:
+                                type: boolean
+                                description: The reps or seconds are each side's (`20/20` on `40 seg` → `sec` 20).
+                              drop:
+                                type: boolean
+                                description: |
+                                  Present only with `steps` that are one set's drops (`15 + 12 + max`), done back to
+                                  back every round; without it the steps are the whole plan.
                               rx:
                                 description: Male/female load as printed; a unitless barbell pair is pounds.
                                 oneOf:

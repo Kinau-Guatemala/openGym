@@ -2294,6 +2294,7 @@ export default {
   'What the switches do': 'O que faz cada interruptor',
   'Substitute': 'Substituir',
   'Reps each side': 'Reps por lado',
+  'Seconds each side': 'Segundos por lado',
   'Nothing to log: pick a track and an exercise for each movement': 'Nada a registar: escolhe uma faixa e um exercício para cada movimento',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

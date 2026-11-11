@@ -25,7 +25,7 @@ const EX_ID = v => (typeof v === 'string' && /^\d{4,5}$/.test(v) ? v : null)
 const ALT = { raw: true, rawName: true, exId: EX_ID, dose: DOSE, doseFemale: DOSE, rx: RX, perSide: true }
 export const MOVEMENT_FIELDS = {
   raw: true, rawName: true, exId: EX_ID, dose: DOSE, doseFemale: DOSE, rx: RX, steps: STEP,
-  perSide: true, slot: true, alts: ALT
+  perSide: true, drop: true, slot: true, alts: ALT
 }
 export const BLOCK_FIELDS = {
   label: true, format: true, capMin: true, rounds: true, roundsMax: true, everySec: true,

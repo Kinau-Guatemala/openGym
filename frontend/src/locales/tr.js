@@ -2294,6 +2294,7 @@ export default {
   'What the switches do': 'Anahtarlar ne yapar',
   'Substitute': 'Değiştir',
   'Reps each side': 'Taraf başına tekrar',
+  'Seconds each side': 'Taraf başına saniye',
   'Nothing to log: pick a track and an exercise for each movement': 'Kaydedecek bir şey yok: bir parkur ve her hareket için bir egzersiz seç',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

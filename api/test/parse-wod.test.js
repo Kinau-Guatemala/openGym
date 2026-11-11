@@ -513,7 +513,7 @@ test('validateWod: the 11 Nov structure, Rx/SC, options, THEN, TARGET, drop sets
   // N1, printed by the model as six movements in M2: the SC line folds into the Rx line's alts.
   assert.deepEqual(rxsc.movements.map(shape), [
     ['m0', 'M1', 'ohs', { reps: 4 }, []],
-    ['m1', 'M2', 'kips', { reps: 2 }, [['kips', { reps: 2 }]]],
+    ['m1', 'M2', 'kips', { reps: 2 }, []],
     ['m2', 'M2', 'hip to bar', { reps: 2 }, [['knee to chest', { reps: 2 }]]],
     ['m3', 'M2', 'bmu', { reps: 1 }, [['pull up', { reps: 1 }]]]]);
   // N2 and N3, as the prompt asks: options are alts with their own dose; THEN is its own block, the penalty only raw.
@@ -523,10 +523,16 @@ test('validateWod: the 11 Nov structure, Rx/SC, options, THEN, TARGET, drop sets
   assert.deepEqual(then.movements.map(shape), [['m0', null, 'sushy rolls', { reps: 15 }, [['bmu', { reps: 15 }], ['c2b', { reps: 15 }]]]]);
   // N4, read as 70 a minute: the safety net makes it 70 in total.
   assert.deepEqual(target.movements.map(m => [m.slot, m.dose]), [['M1', { reps: 40 }], ['M2', { reps: 15 }], ['M3', { total: 70 }]]);
-  // N5: one movement, the max an empty step, the note in raw.
-  assert.deepEqual([drop.movements.length, drop.movements[0].steps, drop.raw.split('\n').at(-1)], [1, [{ reps: 15 }, { reps: 12 }, {}], '*Menos peso en cada Drop']);
-  // N6, read as a 20/20 kg load: 40 s with 20 each side.
-  assert.deepEqual([hold.movements[2].dose, hold.movements[2].perSide, hold.movements[2].rx], [{ sec: 40 }, true, null]);
+  // N5: one movement, the max an empty step, done every round; the note in raw.
+  assert.deepEqual([drop.movements.length, drop.movements[0].steps, drop.movements[0].drop, drop.raw.split('\n').at(-1)], [1, [{ reps: 15 }, { reps: 12 }, {}], true, '*Menos peso en cada Drop']);
+  // N6, read as 40 s at a 20/20 kg load: 20 s each side.
+  assert.deepEqual([hold.movements[2].dose, hold.movements[2].perSide, hold.movements[2].rx], [{ sec: 20 }, true, null]);
+});
+
+test('validateWod: drop is kept only on a movement with steps (T34)', () => {
+  const move = over => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'WOD', format: 'rounds', movements: [{ raw: 'x', rawName: 'curls', dose: { reps: 15 }, ...over }] }] }] }).proposal.program.tracks[0].blocks[0].movements[0];
+  assert.equal(move({ drop: true, steps: [{ reps: 15 }, {}] }).drop, true);
+  assert.ok(!('drop' in move({ drop: true })) && !('drop' in move({ drop: 'yes', steps: [{ reps: 15 }, {}] })));
 });
 
 test('validateWod: dose.total is a whole number from 1 to 2000, or null (T34)', () => {
@@ -548,14 +554,17 @@ test('withTarget: a TARGET N line read as N reps is N in total; nothing else cha
 test('withTimedSides: an equal pair with no unit on a timed dose is per side, never a load or a rep line (T34)', () => {
   const kg = w => ({ male: { w, unit: 'kg' }, female: { w, unit: 'kg' } });
   const m = (raw, dose, rx) => ({ raw, rawName: 'x', dose, rx, perSide: false });
-  assert.deepEqual(withTimedSides(m('M3 40 seg max DB OH Hold 20/20', { sec: 40 }, kg(20))), { ...m('M3 40 seg max DB OH Hold 20/20', { sec: 40 }, null), perSide: true });
+  // The pair splits the line's seconds (40 → 20 a side), or is already each side's (30 seg … 30/30).
+  assert.deepEqual(withTimedSides(m('M3 40 seg max DB OH Hold 20/20', { sec: 40 }, kg(20))), { ...m('M3 40 seg max DB OH Hold 20/20', { sec: 20 }, null), perSide: true });
+  assert.deepEqual(withTimedSides(m('M2 30 seg Side Plank 30/30', { sec: 30 }, kg(30))), { ...m('M2 30 seg Side Plank 30/30', { sec: 30 }, null), perSide: true });
   for (const x of [
     m('18 DB´s Gorilla Row 9/9', { reps: 18 }, kg(9)),            // reps per side, the model's business
     m('40 seg Swings 24KG/16KG', { sec: 40 }, { male: { w: 24, unit: 'kg' }, female: { w: 16, unit: 'kg' } }),
     m('40 seg Hold 20/20 kg', { sec: 40 }, kg(20)),
     m('40 seg Hold 20KG/20KG', { sec: 40 }, kg(20)),
     m('40 seg Hold 20/20', { sec: 40 }, kg(25)),
-    m('40 seg Hold 20/20', { sec: 40 }, null)
+    m('40 seg Hold 20/20', { sec: 40 }, null),
+    m('1 min Farmer hold 24/24', { sec: 60 }, kg(24))               // neither the seconds nor half: a load
   ]) assert.deepEqual(withTimedSides(x), x, x.raw);
 });
 
@@ -565,8 +574,9 @@ test('withScaled: an SC line right after its RX line, same slot and length, fold
   const sc = ['kips', 'knee to chest', 'pull up'].map((n, i) => mv('SC 2 kips + 2 knee to chest + 1 pull up', n, [2, 2, 1][i]));
   const before = mv('M1 4 OHS', 'ohs', 4, 'M1');
   const out = withScaled([before, ...rx, ...sc]);
+  // kips → kips at the same dose is no alternative.
   assert.deepEqual(out.map(m => [m.rawName, m.alts.map(a => [a.exId, a.rawName, a.dose])]),
-    [['ohs', []], ['kips', [[null, 'kips', { reps: 2 }]]], ['hip to bar', [[null, 'knee to chest', { reps: 2 }]]], ['bmu', [[null, 'pull up', { reps: 1 }]]]]);
+    [['ohs', []], ['kips', []], ['hip to bar', [[null, 'knee to chest', { reps: 2 }]]], ['bmu', [[null, 'pull up', { reps: 1 }]]]]);
   // M2 printed on the Rx line, and Rx / Scaled spelled out, fold the same way.
   assert.equal(withScaled([mv('M2 Rx 5 BMU', 'bmu', 5), mv('Scaled 5 Pull ups', 'pull ups', 5)]).length, 1);
   // Different lengths, another slot, or no RX line: left as printed.
@@ -583,7 +593,8 @@ test('the parse prompt reads Rx/SC lines, options with their own counts, THEN, p
   assert.match(p, /- \*\*A penalty is not a movement\*\* \(`EVERY DROP`.*stays in the block's `raw`/);
   assert.match(p, /\| `M3 TARGET 70 HPU` in an `EMOM 12` \| .*`dose: \{ "total": 70 \}`, never `reps: 70` \|/);
   assert.match(p, /\| `15 \+ 12 \+ max DB´s Bicep curls`.*`steps: \[\{ "reps": 15 \}, \{ "reps": 12 \}, \{\}\]`/);
-  assert.match(p, /\| `M3 40 seg max DB OH Hold 20\/20` \| on a timed dose, an equal pair with no unit is per side.*`perSide: true`, `rx: null`/);
+  assert.match(p, /\| `M3 40 seg max DB OH Hold 20\/20` \| on a timed dose, an equal pair with no unit is the seconds each side.*`dose: \{ "sec": 20 \}`, `perSide: true`, `rx: null`/);
+  assert.match(p, /`"drop": true`, since the drops are one set done every round/);
 });
 
 test('everyOf: the period and repeats of an EVERY heading', () => {

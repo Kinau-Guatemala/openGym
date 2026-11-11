@@ -267,7 +267,7 @@
           "raw": "3 RONDAS\n15 + 12 + max DB´s Bicep curls\n*Menos peso en cada Drop",
           "movements": [
             { "raw": "15 + 12 + max DB´s Bicep curls", "rawName": "db´s bicep curls", "name": "dumbbell biceps curl", "slot": null, "dose": { "reps": 15 }, "perSide": false, "rx": null,
-              "steps": [{ "reps": 15 }, { "reps": 12 }, {}], "alts": [] }
+              "steps": [{ "reps": 15 }, { "reps": 12 }, {}], "drop": true, "alts": [] }
           ]
         },
         {

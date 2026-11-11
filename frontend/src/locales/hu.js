@@ -2297,6 +2297,7 @@ export default {
   'What the switches do': 'Mit csinálnak a kapcsolók',
   'Substitute': 'Csere',
   'Reps each side': 'Ismétlés oldalanként',
+  'Seconds each side': 'Másodperc oldalanként',
   'Nothing to log: pick a track and an exercise for each movement': 'Nincs mit rögzíteni: válassz egy pályát és minden mozdulathoz egy gyakorlatot',
   // T05 · image intake (Share / upload → parse → review)
   // T10 · hypertrophy gap (lib/muscle-gap.js: Stats card, map gap view, CrossFit line)

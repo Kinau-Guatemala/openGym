@@ -13,10 +13,10 @@ import { bestWeightForEntry } from '../lib/history.js'
 import { t, exerciseNameFor } from '../lib/i18n.js'
 import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
-import { rxFor, doseFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
+import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf } from '../lib/wod-draft.js'
-import { SCORE_OF, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, relogState, setsOf, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -181,12 +181,12 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
   // The printed loads in the unit shown: an Rx is converted onto the plate grid (lib/rx.js).
   const Su = { ...S, unit }
   const exId = lm.exId || m.exId
-  const dose = doseFor(m, S)
+  const dose = doseOn(m, lm.exId, S)
   const ladder = ladderOf(block.scheme)
   const printed = [m.exId, ...list(m.alts).map(a => a.exId)].filter(Boolean)
   const swapped = lm.exId && !printed.includes(lm.exId)
   const rx = exId === m.exId ? rxFor(m, Su) : null
-  const steps = stepsOf(m)
+  const steps = optionOf(m, lm.exId) ? null : stepsOf(m)
   const w = lm.w ?? (stepLoads(m, exId) ? null : defaultW(S, m, exId, unit))
   const cardio = exId && isCardioRow(m, exId, dose, block)
   const strength = block.format === 'strength' && !isMetcon(block)
@@ -222,7 +222,8 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
       </> : <>
         {num(t('Weight'), w, v => set('w', v), unit)}
         {ladder && !pos(dose.reps) ? <div className="measure-field"><span>{t('Reps')}</span><div className="small muted" style={{ padding: '14px 2px' }}>{ladder.join('-')}</div></div>
-          : pos(dose.sec) && !pos(dose.reps) ? num(t('Seconds'), lm.sec ?? dose.sec, v => set('sec', v), null, false)
+          : pos(dose.sec) && !pos(dose.reps) ? num(m.perSide ? t('Seconds each side') : t('Seconds'), lm.sec ?? dose.sec, v => set('sec', v), null, false)
+            : pos(dose.total) && !pos(dose.reps) ? num(t('Total'), lm.total ?? dose.total, v => set('total', v), null, false)
             : num(m.perSide ? t('Reps each side') : t('Reps'), lm.r ?? (steps ? null : dose.reps || null), v => set('r', v), null, false)}
       </>}
     </div>)}
