@@ -37,11 +37,16 @@ const plain = text => String(text || '')
   .replace(/[^a-z0-9]+/g, ' ').trim()
 
 // A leading unit word is the dose's, not the name's: "mts row" is row (`1x1000 mts Row`). Not a bare
-// "m", which is also "M.Climbers". The plurals are in the set so norm stays idempotent. A leading
-// "max" is the dose too: `12 DL + Max Squat Cleans` is squat clean (a bare "max" stays "max").
-const UNIT_WORD = /^(?:mts?|cals?|segs?|max)$/
+// "m", which is also "M.Climbers". The plurals are in the set so norm stays idempotent. "max" is the
+// dose wherever it stands: `12 DL + Max Squat Cleans` is squat clean, `KB Max Russian Twist` the KB
+// russian twist (a bare "max" stays "max"). So is a box height (`BJ 30"/24"`), and text after a "*"
+// is a note (`Wall Balls *Goal 100 unbroken`).
+const UNIT_WORD = /^(?:mts?|cals?|segs?)$/
+const INCH = `\\s*(?:["”]|'')`
+const BOX_HEIGHT = new RegExp(`\\d+(?:${INCH})?\\s*/\\s*\\d+${INCH}|\\d+${INCH}`, 'g')
 export const norm = text => {
-  const words = plain(text).split(' ')
+  let words = plain(String(text || '').replace(/\*[\s\S]*/, '').replace(BOX_HEIGHT, ' ')).split(' ')
+  if (words.some(w => w !== 'max')) words = words.filter(w => w !== 'max')
   while (words.length > 1 && UNIT_WORD.test(words[0])) words.shift()
   return words.map(singular).join(' ')
 }

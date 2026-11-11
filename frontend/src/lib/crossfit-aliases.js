@@ -92,4 +92,19 @@ export const SHIPPED_ALIASES = {
   'sb lunge': '9940', 'kb farmer side bend': '4396',
   'db hang squat clean': '4449', 'kb db hang squat clean': '4449', 'kb goblet sumo squat': '4089',
   'land mine row': '4038', 'bb land mine row': '4038',
+  // From the 11 Nov images. The Olympic-lift shorthand (High.H.C, H.P.C, P.C) is the barbell lift; a
+  // C2B is the pull-up (the catalogue has no chest-to-bar one); toe touches, in the core slot, are
+  // the lying toe touch; a DB gorilla row is the gorilla row (the same alternating floor row, and it
+  // credits the lats and core a plain bent-over row does not); DB squat cleans and an alternating DB
+  // snatch are the DB clean and the one-arm DB snatch; a farmer or overhead hold is the carry without
+  // the walk, as T22's DB farmer hold; a bench fly is the flat fly; an elevated hex press is the
+  // incline squeeze press. The typos as printed: DI (DL) jump, poop (pop) jacks, estrcitos, land mind.
+  'high h c': '1520', 'high hang clean': '1520', 'h p c': '5704', 'hpc': '5704', 'p c': '0648', 'pc': '0648',
+  'c2b': '0652', 'toe touch': '5275', 'tricep kick': '0333', 'back reverse lunge': '0078',
+  'db gorilla row': '7230', 'db squat clean': '0295', 'db snatch alt': '3888',
+  'kb farmer hold': '3576', 'db oh hold': '2913', 'db bench fly': '0308', 'elevated hex press': '5067',
+  'commando pull up': '4726', 'comando pull up': '4726', 'close grip pull up': '5479',
+  'comando pull up estricto': '4726', 'comando pull up estrcito': '4726',
+  'close grip pull up estricto': '5479', 'close grip pull up estrcito': '5479', 'chin up estrcito': '1326',
+  'di jump': '4964', 'poop jack': '7556', 'land mind row': '4038', 'bb land mind row': '4038',
 }
