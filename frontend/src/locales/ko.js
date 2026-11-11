@@ -1701,6 +1701,7 @@ export default {
   'Max reps': '최대 반복',
   'Most reps in a Max set per workout': '운동마다 최대 세트의 최다 반복 수',
   'Per set': '세트별',
+  'Total': '합계',
   'Estimated 1RM of each working set, one line per set number': '각 본세트의 추정 1RM, 세트 번호마다 선 하나',
   'Reps in each working set, one line per set number': '각 본세트의 반복 수, 세트 번호마다 선 하나',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': '가장 자주 떨어지는 세트: {0}세트 ({2}번 중 {1}번)',

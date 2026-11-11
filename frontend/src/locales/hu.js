@@ -1704,6 +1704,7 @@ export default {
   'Max reps': 'Max ism.',
   'Most reps in a Max set per workout': 'A legtöbb ismétlés egy Max sorozatban edzésenként',
   'Per set': 'Sorozatonként',
+  'Total': 'Összesen',
   'Estimated 1RM of each working set, one line per set number': 'Minden munkasorozat becsült 1RM-je, sorozatszámonként egy vonal',
   'Reps in each working set, one line per set number': 'Minden munkasorozat ismétlései, sorozatszámonként egy vonal',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Ahol a leggyakrabban visszaesel: {0}. sorozat ({2} edzésből {1})',

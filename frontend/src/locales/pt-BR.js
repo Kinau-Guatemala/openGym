@@ -1068,6 +1068,7 @@ export const PT_BR_OVERRIDES = {
   'Weight is up to you: pyramid sets are not progressed automatically.': 'Você escolhe o peso: as séries em pirâmide não progridem automaticamente.',
   'Most reps in a Max set per workout': 'Mais repetições em uma série Máx por treino',
   'Per set': 'Por série',
+  'Total': 'Total',
   'Estimated 1RM of each working set, one line per set number': '1RM estimado de cada série de trabalho, uma linha por número de série',
   'Reps in each working set, one line per set number': 'Repetições de cada série de trabalho, uma linha por número de série',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Onde você mais cai de rendimento: série {0} ({1} de {2} treinos)',

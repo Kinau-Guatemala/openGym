@@ -13,7 +13,7 @@ const DIR = tempData();
 const cfg = await import('../coach/config.js');
 const jobs = await import('../coach/jobs.js');
 const { coachRoutes } = await import('../coach/routes.js');
-const { validateWod, everyOf } = await import('../coach/core/validate.js');
+const { validateWod, everyOf, withTarget, withTimedSides, withScaled } = await import('../coach/core/validate.js');
 const { taskOf } = await import('../coach/core/prompt.js');
 const { attemptOnce } = await import('../coach/core/pipeline.js');
 const { PROMPTS } = await import('../coach/core/prompts.js');
@@ -504,6 +504,86 @@ test('the parse prompt reads a rising load or reps as steps, and side-by-side la
   assert.match(p, /In an EMOM only when each line is its own minute \(`M2`, `M4` … `M10`\): a rotation whose slots repeat .* keeps one movement per slot/);
   assert.match(p, /\| Ladders side by side for movements done alternately .*\| \*\*one\*\* block, `scheme` the first ladder/);
   assert.match(p, /- `steps`: \*\*only\*\* for the same movement printed once per set with its own load or reps/);
+});
+
+test('validateWod: the 11 Nov structure, Rx/SC, options, THEN, TARGET, drop sets, timed per side (T34 fixture)', () => {
+  const pump = validateWod(FIXTURE_WOD).proposal.program.tracks.find(t => t.id === 'pump');
+  const shape = m => [m.id, m.slot, m.rawName, m.dose, m.alts.map(a => [a.rawName, a.dose])];
+  const [, rxsc, opts, then, target, drop, hold] = pump.blocks;
+  // N1, printed by the model as six movements in M2: the SC line folds into the Rx line's alts.
+  assert.deepEqual(rxsc.movements.map(shape), [
+    ['m0', 'M1', 'ohs', { reps: 4 }, []],
+    ['m1', 'M2', 'kips', { reps: 2 }, [['kips', { reps: 2 }]]],
+    ['m2', 'M2', 'hip to bar', { reps: 2 }, [['knee to chest', { reps: 2 }]]],
+    ['m3', 'M2', 'bmu', { reps: 1 }, [['pull up', { reps: 1 }]]]]);
+  // N2 and N3, as the prompt asks: options are alts with their own dose; THEN is its own block, the penalty only raw.
+  assert.deepEqual(opts.movements.map(shape), [['m0', null, 'hang leg raises', { reps: 10 }, [['leg raises', { reps: 18 }]]], ['m1', null, 't2b', { reps: 15 }, []]]);
+  assert.match(opts.raw, /EVERY DROP\n7 Push press 135\/95$/);
+  assert.deepEqual([then.label, then.rounds, then.raw.split('\n')[0]], ['THEN', null, 'TC 12']);
+  assert.deepEqual(then.movements.map(shape), [['m0', null, 'sushy rolls', { reps: 15 }, [['bmu', { reps: 15 }], ['c2b', { reps: 15 }]]]]);
+  // N4, read as 70 a minute: the safety net makes it 70 in total.
+  assert.deepEqual(target.movements.map(m => [m.slot, m.dose]), [['M1', { reps: 40 }], ['M2', { reps: 15 }], ['M3', { total: 70 }]]);
+  // N5: one movement, the max an empty step, the note in raw.
+  assert.deepEqual([drop.movements.length, drop.movements[0].steps, drop.raw.split('\n').at(-1)], [1, [{ reps: 15 }, { reps: 12 }, {}], '*Menos peso en cada Drop']);
+  // N6, read as a 20/20 kg load: 40 s with 20 each side.
+  assert.deepEqual([hold.movements[2].dose, hold.movements[2].perSide, hold.movements[2].rx], [{ sec: 40 }, true, null]);
+});
+
+test('validateWod: dose.total is a whole number from 1 to 2000, or null (T34)', () => {
+  const dose = total => validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM', format: 'emom', movements: [{ raw: 'x', rawName: 'hpu', dose: { total } }] }] }] });
+  assert.deepEqual(dose(70).proposal.program.tracks[0].blocks[0].movements[0].dose, { total: 70 });
+  assert.deepEqual(dose(null).proposal.program.tracks[0].blocks[0].movements[0].dose, {});
+  for (const v of [0, 2001, 7.5, '70']) assert.match(dose(v).errors.join(), /dose\.total must be a whole number from 1 to 2000/, String(v));
+});
+
+test('withTarget: a TARGET N line read as N reps is N in total; nothing else changes (T34)', () => {
+  const m = (raw, dose) => ({ raw, rawName: 'x', dose });
+  assert.deepEqual(withTarget(m('M3 TARGET 70 HPU', { reps: 70 })).dose, { total: 70 });
+  assert.deepEqual(withTarget(m('M3 Target 70 Push ups', { reps: 70, restSec: 10 })).dose, { restSec: 10, total: 70 });
+  for (const [raw, dose] of [['M3 TARGET 70 HPU', { reps: 7 }], ['M3 TARGET 70 HPU', { total: 70 }], ['M3 70 HPU', { reps: 70 }], ['TARGETS Elite 70', { reps: 70 }], ['M3 TARGET 7000 HPU', { reps: 7000 }]]) {
+    assert.deepEqual(withTarget(m(raw, dose)).dose, dose, raw);
+  }
+});
+
+test('withTimedSides: an equal pair with no unit on a timed dose is per side, never a load or a rep line (T34)', () => {
+  const kg = w => ({ male: { w, unit: 'kg' }, female: { w, unit: 'kg' } });
+  const m = (raw, dose, rx) => ({ raw, rawName: 'x', dose, rx, perSide: false });
+  assert.deepEqual(withTimedSides(m('M3 40 seg max DB OH Hold 20/20', { sec: 40 }, kg(20))), { ...m('M3 40 seg max DB OH Hold 20/20', { sec: 40 }, null), perSide: true });
+  for (const x of [
+    m('18 DB´s Gorilla Row 9/9', { reps: 18 }, kg(9)),            // reps per side, the model's business
+    m('40 seg Swings 24KG/16KG', { sec: 40 }, { male: { w: 24, unit: 'kg' }, female: { w: 16, unit: 'kg' } }),
+    m('40 seg Hold 20/20 kg', { sec: 40 }, kg(20)),
+    m('40 seg Hold 20KG/20KG', { sec: 40 }, kg(20)),
+    m('40 seg Hold 20/20', { sec: 40 }, kg(25)),
+    m('40 seg Hold 20/20', { sec: 40 }, null)
+  ]) assert.deepEqual(withTimedSides(x), x, x.raw);
+});
+
+test('withScaled: an SC line right after its RX line, same slot and length, folds into alts by position (T34)', () => {
+  const mv = (raw, rawName, reps, slot = 'M2') => ({ raw, rawName, slot, dose: { reps }, alts: [] });
+  const rx = ['kips', 'hip to bar', 'bmu'].map((n, i) => mv('RX 2 Kips + 2 Hip to Bar + 1 BMU', n, [2, 2, 1][i]));
+  const sc = ['kips', 'knee to chest', 'pull up'].map((n, i) => mv('SC 2 kips + 2 knee to chest + 1 pull up', n, [2, 2, 1][i]));
+  const before = mv('M1 4 OHS', 'ohs', 4, 'M1');
+  const out = withScaled([before, ...rx, ...sc]);
+  assert.deepEqual(out.map(m => [m.rawName, m.alts.map(a => [a.exId, a.rawName, a.dose])]),
+    [['ohs', []], ['kips', [[null, 'kips', { reps: 2 }]]], ['hip to bar', [[null, 'knee to chest', { reps: 2 }]]], ['bmu', [[null, 'pull up', { reps: 1 }]]]]);
+  // M2 printed on the Rx line, and Rx / Scaled spelled out, fold the same way.
+  assert.equal(withScaled([mv('M2 Rx 5 BMU', 'bmu', 5), mv('Scaled 5 Pull ups', 'pull ups', 5)]).length, 1);
+  // Different lengths, another slot, or no RX line: left as printed.
+  for (const moves of [[...rx, ...sc.slice(0, 2)], [...rx, ...sc.map(m => ({ ...m, slot: 'M3' }))], [...rx.map(m => ({ ...m, raw: '2 Kips + 2 Hip to Bar + 1 BMU' })), ...sc], [...sc, ...rx]]) {
+    assert.deepEqual(withScaled(moves), moves);
+  }
+});
+
+test('the parse prompt reads Rx/SC lines, options with their own counts, THEN, penalties, TARGET, drop sets and timed per side (T34)', () => {
+  const p = PROMPTS['parse-wod'];
+  assert.match(p, /\| `M2 RX 2 Kips \+ 2 Hip to Bar \+ 1 BMU` \/ `SC 2 kips \+ 2 knee to chest \+ 1 pull up` .*\| two versions of the same work.*`RX` \/ `SC` are never part of a name/);
+  assert.match(p, /\| `15 Sushy Rolls \/ 15 BMU \/ 15 C2B`.*\| options that each print their own count are a choice too.*`\+` and `&` join movements that are all done; `\/` offers a choice \|/);
+  assert.match(p, /- \*\*`THEN` starts a new block\*\*/);
+  assert.match(p, /- \*\*A penalty is not a movement\*\* \(`EVERY DROP`.*stays in the block's `raw`/);
+  assert.match(p, /\| `M3 TARGET 70 HPU` in an `EMOM 12` \| .*`dose: \{ "total": 70 \}`, never `reps: 70` \|/);
+  assert.match(p, /\| `15 \+ 12 \+ max DB´s Bicep curls`.*`steps: \[\{ "reps": 15 \}, \{ "reps": 12 \}, \{\}\]`/);
+  assert.match(p, /\| `M3 40 seg max DB OH Hold 20\/20` \| on a timed dose, an equal pair with no unit is per side.*`perSide: true`, `rx: null`/);
 });
 
 test('everyOf: the period and repeats of an EVERY heading', () => {

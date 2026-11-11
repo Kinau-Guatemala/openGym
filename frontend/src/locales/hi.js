@@ -1701,6 +1701,7 @@ export default {
   'Max reps': 'मैक्स रेप',
   'Most reps in a Max set per workout': 'हर वर्कआउट में मैक्स सेट के सबसे ज़्यादा रेप',
   'Per set': 'प्रति सेट',
+  'Total': 'कुल',
   'Estimated 1RM of each working set, one line per set number': 'हर वर्किंग सेट का अनुमानित 1RM, हर सेट नंबर की एक लाइन',
   'Reps in each working set, one line per set number': 'हर वर्किंग सेट के रेप, हर सेट नंबर की एक लाइन',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'आप सबसे ज़्यादा कहाँ पीछे रह जाते हैं: सेट {0} ({2} में से {1} वर्कआउट)',

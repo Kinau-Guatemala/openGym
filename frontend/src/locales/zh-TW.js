@@ -1674,6 +1674,7 @@ export default {
   'Max reps': '力竭次數',
   'Most reps in a Max set per workout': '每次訓練中力竭組的最多次數',
   'Per set': '每組',
+  'Total': '總數',
   'Estimated 1RM of each working set, one line per set number': '每個正式組的預估 1RM，每個組號一條線',
   'Reps in each working set, one line per set number': '每個正式組的次數，每個組號一條線',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': '最常掉的組：第 {0} 組（{2} 次訓練中 {1} 次）',

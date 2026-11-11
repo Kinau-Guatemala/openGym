@@ -119,7 +119,7 @@ const STR_OR_NULL = { type: ['string', 'null'] };
 const DOSE = {
   type: 'object',
   properties: { reps: { type: 'number' }, repsMax: { type: 'number' }, cal: { type: 'number' }, m: { type: 'number' }, sec: { type: 'number' },
-    sets: { type: 'integer' }, restSec: { type: 'integer' } }
+    sets: { type: 'integer' }, restSec: { type: 'integer' }, total: { type: 'integer' } }
 };
 const LOAD = { type: ['object', 'null'], properties: { w: { type: 'number' }, unit: { type: 'string', enum: ['lb', 'kg'] } } };
 const RX = { type: ['object', 'null'], properties: { male: LOAD, female: LOAD } };

@@ -1701,6 +1701,7 @@ export default {
   'Max reps': 'Reps Máx',
   'Most reps in a Max set per workout': 'Mais repetições numa série Máx por treino',
   'Per set': 'Por série',
+  'Total': 'Total',
   'Estimated 1RM of each working set, one line per set number': '1RM estimado de cada série de trabalho, uma linha por número de série',
   'Reps in each working set, one line per set number': 'Repetições de cada série de trabalho, uma linha por número de série',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Onde a quebra é mais frequente: série {0} ({1} de {2} treinos)',

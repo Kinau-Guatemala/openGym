@@ -117,6 +117,18 @@ describe('get_wods', () => {
     expect(other.steps).toBe(null)
   })
 
+  test('a TARGET carries its total, a drop set\'s empty step is max (T34)', async () => {
+    const p = structuredClone(program)
+    const [first, second] = p.tracks[0].blocks[1].movements
+    first.dose = { total: 70 }
+    Object.assign(second, { dose: { reps: 15 }, steps: [{ reps: 15 }, { reps: 12 }, {}] })
+    S.wods[TODAY] = p
+    const [target, drop] = (await call('get_wods')).programs[0].tracks[0].blocks[1].movements
+    expect([target.dose, target.total]).toEqual(['70 total', 70])
+    expect(drop.steps.map(s => [s.dose, s.max])).toEqual([['15', undefined], ['12', undefined], [null, true]])
+    expect(drop.total).toBe(null)
+  })
+
   test('a best guess for a misspelled name is flagged with its candidates, never passed as the exercise', async () => {
     const p = structuredClone(program)
     const emom = p.tracks[0].blocks[1]

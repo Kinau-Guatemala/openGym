@@ -1715,6 +1715,7 @@ export default {
   'Max reps': 'Maxreps',
   'Most reps in a Max set per workout': 'Flest reps i ett maxset per pass',
   'Per set': 'Per set',
+  'Total': 'Totalt',
   'Estimated 1RM of each working set, one line per set number': 'Uppskattat 1RM för varje arbetsset, en linje per setnummer',
   'Reps in each working set, one line per set number': 'Reps i varje arbetsset, en linje per setnummer',
   'Where you most often drop off: set {0} ({1} of {2} workouts)': 'Där du oftast tappar: set {0} ({1} av {2} pass)',
