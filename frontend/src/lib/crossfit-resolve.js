@@ -22,6 +22,7 @@
 // each word in the singular, so "DB´s Hang Cleans" and "db hang clean" are the same key.
 import { CATALOGUE, editDistance, scoredSearch, scoredSimilar } from './exercises.js'
 import { SHIPPED_ALIASES } from './crossfit-aliases.js'
+import { mergedInto } from './exercise-merge.js'
 
 // "crunches" → "crunch", "presses" → "press", "boxes" → "box"; "cleans" → "clean", "lunges" → "lunge".
 // The result never ends in a single s, so norm(norm(x)) === norm(x). ("zz", not "z": "sizes" is "size".)
@@ -73,7 +74,15 @@ const clearHit = (score, words) => score >= 100 * words + 40
 // `via: 'guess'` and its exId when one exercise clearly fits, else `exId: null, via: null`, which
 // the review screen shows as "choose", with the ranked candidates as suggestions either way.
 // userAliases is S.wodAliases: { [norm(rawName)]: { exId, _ts } }, a removed pick being { _ts }.
-export function resolveMovement({ rawName, name } = {}, userAliases = {}) {
+// S, when given, is read for upstream's Merge into… (S.exMerged): an exercise merged away resolves to
+// where it went (lib/exercise-merge.js mergedInto). Read here, never written back, so an Undo of
+// the merge brings the pick back.
+export function resolveMovement(m = {}, userAliases = {}, S) {
+  const r = resolveOf(m, userAliases)
+  return r.exId ? { ...r, exId: mergedInto(S, r.exId) } : r
+}
+
+function resolveOf({ rawName, name }, userAliases) {
   const key = norm(rawName)
   const user = key && userAliases?.[key]?.exId
   if (user) return { exId: user, via: 'user', candidates: [] }
@@ -107,12 +116,12 @@ const timedOnly = d => d?.sec != null && d.reps == null && d.m == null && d.cal 
  * `m` as the movements it joins, each with its exercise, or null to keep it as it is. The first
  * keeps `m.id` and the others take `<id>-2`, `<id>-3`, so a log can address each one.
  */
-export function splitMovement(m, userAliases = {}) {
+export function splitMovement(m, userAliases = {}, S) {
   const parts = String(m?.rawName || '').split(JOIN)
   // ponytail: a movement with alternatives or steps stays whole; split those too (a part's own count
   // over each step's reps) if a program prints one
   if (parts.length < 2 || parts.some(p => !p) || timedOnly(m.dose) || m.alts?.length || m.steps?.length) return null
-  if ((m.exId && m.via !== 'guess') || sure(resolveMovement(m, userAliases))) return null
+  if ((m.exId && m.via !== 'guess') || sure(resolveMovement(m, userAliases, S))) return null
   const head = parts[0].split(' ').slice(0, -1).join(' ')
   const equip = PRINTED_EQUIP[norm(parts[0]).split(' ')[0]] && parts[0].split(' ')[0]
   const out = []
@@ -120,14 +129,14 @@ export function splitMovement(m, userAliases = {}) {
     let s = part.replace(PAUSE, '')
     const count = COUNT.exec(s)
     s = rawNameOf(count ? s.slice(count[0].length) : s)
-    let r = resolveMovement({ rawName: s }, userAliases)
+    let r = resolveMovement({ rawName: s }, userAliases, S)
     if (out.length && equip && !PRINTED_EQUIP[norm(s).split(' ')[0]]) {
-      const r2 = resolveMovement({ rawName: `${equip} ${s}` }, userAliases)
+      const r2 = resolveMovement({ rawName: `${equip} ${s}` }, userAliases, S)
       if (sure(r) && sure(r2) && r.exId !== r2.exId) return null
       if (!sure(r) && sure(r2)) { s = `${equip} ${s}`; r = r2 }
     }
     if (!sure(r) && out.length && head) {
-      const r2 = resolveMovement({ rawName: `${head} ${s}` }, userAliases)
+      const r2 = resolveMovement({ rawName: `${head} ${s}` }, userAliases, S)
       if (sure(r2)) { s = `${head} ${s}`; r = r2 }
     }
     if (!s || !sure(r)) return null

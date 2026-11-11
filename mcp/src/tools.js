@@ -22,7 +22,7 @@ import { loadOfWorkouts, rankOf, levelsOf } from '../../frontend/src/lib/muscles
 import { policyFor, profileRule, POLICIES } from '../../frontend/src/lib/progression.js'
 import { buildSessionEntries, startsFromLast } from '../../frontend/src/lib/session-start.js'
 import { wodOf } from '../../frontend/src/lib/wods.js'
-import { includeOf } from '../../frontend/src/lib/wod-draft.js'
+import { includeOf, liveWod } from '../../frontend/src/lib/wod-draft.js'
 import { ladderOf } from '../../frontend/src/lib/wod-log.js'
 import { doseFor, emptyStep, fmtDose, rxPrinted, rxFor, stepRxFor, stepsOf } from '../../frontend/src/lib/rx.js'
 import { muscleGap } from '../../frontend/src/lib/muscle-gap.js'
@@ -750,7 +750,7 @@ export const getWods = {
     if (hi < lo || hi > addDays(lo, 62)) { const e = new Error('`to` must be on or after `from`, and at most 62 days after it'); e.code = 'EINVAL'; throw e }
     const programs = []
     for (let d = lo; d <= hi; d = addDays(d, 1)) {
-      const p = wodOf(S, d)
+      const p = liveWod(S, wodOf(S, d))
       if (!p) continue
       programs.push({
         date: d,

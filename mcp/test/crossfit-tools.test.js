@@ -81,6 +81,15 @@ describe('get_wods', () => {
     expect(female[2].dose).toBe('15 cal')
   })
 
+  test('an exercise merged away (Merge into…) shows as the one it went to; the saved program keeps its id (T35)', async () => {
+    S.exMerged = { '1161': { into: '3893', _ts: 3 } }
+    seed(S)
+    const row = (await call('get_wods')).programs[0].tracks[0].blocks[1].movements[2]
+    expect(row).toMatchObject({ exercise_id: '3893' })
+    expect(row.alternatives[0].exercise_id).toBe('2142')
+    expect(program.tracks[0].blocks[1].movements[2].exId).toBe('1161')
+  })
+
   test('repeats and sets show in the dose, the printed rest as rest_sec (T17)', async () => {
     const p = structuredClone(program)
     p.tracks[1].blocks[0].movements.push(

@@ -15,7 +15,7 @@ import { fmtDate, fmtNum } from '../lib/format.js'
 import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
-import { includeOf } from '../lib/wod-draft.js'
+import { includeOf, liveWod } from '../lib/wod-draft.js'
 import { SCORE_OF, doseOn, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
@@ -35,11 +35,12 @@ export default function CrossFitLog() {
   const nav = useNavigate()
   const { date } = useParams()
   const S = useStore(s => s.S)
-  const program = wodOf(S, date)
+  // Read through liveWod: an exercise merged away since the program was saved shows as its target.
+  const program = liveWod(S, wodOf(S, date))
   const before = list(S.workouts).find(w => w.id === 'wod-' + date && w.wod)
   const base = unitOf(S)
   const [state, setState] = useState(() => {
-    if (program && before) return { ...relogState(program, before, base), time: hhmm(before.start) }
+    if (program && before) return { ...relogState(program, before, base, S), time: hhmm(before.start) }
     const main = list(program?.tracks).find(tr => tr.kind !== 'extra') || list(program?.tracks)[0]
     return { tracks: main ? [main.id] : [], include: {}, logged: { moves: {}, blocks: {} }, time: hhmm(wodStart(date)), unit: base }
   })
