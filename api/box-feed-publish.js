@@ -103,7 +103,7 @@ export function createBoxFeed({
   };
 
   // firstAt: when the oldest save not yet published landed, for the debounce's maximum wait.
-  let wods = null, timer = null, running = false, tries = 0, firstAt = null;
+  let wods = null, merged = null, timer = null, running = false, tries = 0, firstAt = null;
   const arm = ms => {
     if (timer) clearTimer(timer);
     timer = setTimer(() => run().catch(e => log.error('box feed:', scrub(e?.message || e))), ms);
@@ -114,7 +114,7 @@ export function createBoxFeed({
     timer = null;
     if (running) return arm(debounceMs);           // saved again mid-push: once more after it
     firstAt = null;
-    const feed = buildFeed(wods, { name: cfg.name, today: new Date(now()).toISOString().slice(0, 10), days: cfg.days, now: now() });
+    const feed = buildFeed(wods, { name: cfg.name, today: new Date(now()).toISOString().slice(0, 10), days: cfg.days, now: now(), merged });
     const hash = crypto.createHash('sha256').update(JSON.stringify([feed.box, feed.programs])).digest('hex');
     if (hash === saved.hash) return;
     const dates = feed.programs.map(p => p.date);
@@ -139,6 +139,7 @@ export function createBoxFeed({
     noteWrite(uid, state) {
       if (uid !== cfg.uid) return;
       wods = state?.wods ?? null;
+      merged = state?.exMerged ?? null;
       tries = 0;
       if (firstAt == null) firstAt = now();
       arm(Math.max(0, Math.min(debounceMs, firstAt + maxWaitMs - now())));

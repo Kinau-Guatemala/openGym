@@ -11,7 +11,7 @@
 import { loadOf } from './muscles.js'
 import { isoOf } from './format.js'
 import { wodOf } from './wods.js'
-import { includeOf } from './wod-draft.js'
+import { includeOf, liveWod } from './wod-draft.js'
 
 const DAY = 86400000
 // Health Connect imports file runs under these catalogue ids (health-import.js EXERCISE_BY_TYPE).
@@ -68,7 +68,7 @@ export function liftDays(workouts, wods, now = Date.now(), S) {
   const runs = runDays(workouts, now)
   const day = i => {
     const d = dateAt(now, i)
-    const program = wodOf({ wods }, isoOf(d))
+    const program = liveWod(S, wodOf({ wods }, isoOf(d)))
     return { date: isoOf(d), run: runs.has(d.getDay()), ...(program ? wodLoad(program, S) : { legs: false, upper: false }) }
   }
   const days = Array.from({ length: 8 }, (_, i) => day(i))

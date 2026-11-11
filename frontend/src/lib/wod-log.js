@@ -20,7 +20,8 @@ import { buildCompletedWorkout } from './finish-workout.js'
 import { backfillEnd, backfillStart } from './backfill.js'
 import { isCardio } from './exercises.js'
 import { syncSideAggregate } from './workout-model.js'
-import { includeOf } from './wod-draft.js'
+import { includeOf, liveWod } from './wod-draft.js'
+import { mergedInto } from './exercise-merge.js'
 import { doseFor, emptyStep, rxFor, rxPrinted, stepRxFor, stepsOf } from './rx.js'
 import { convertMoves, convertWeight } from './units.js'
 import { t } from './i18n-core.js'
@@ -150,9 +151,11 @@ export const doseOn = (m, exId, S) => doseFor(optionOf(m, exId) || m, S)
 /**
  * The rows the chosen part of `program` logs as, before the finish: `{ entries, wod, capMin }`.
  * `entries` are active-session entries carrying `wodBlock` (and `rx`, `swappedFrom`), `wod` is the
- * workout's `{ tracks, blocks }` record, `capMin` the chosen blocks' caps added up.
+ * workout's `{ tracks, blocks }` record, `capMin` the chosen blocks' caps added up. An exercise
+ * merged away since the program was saved is logged as the one it went to (liveWod).
  */
-export function wodToSession(program, choice, logged, S) {
+export function wodToSession(program0, choice, logged, S) {
+  const program = liveWod(S, program0)
   const chosen = new Set(list(choice?.tracks))
   const entries = [], blocks = []
   let capMin = 0
@@ -291,9 +294,10 @@ export function loggedIn(logged, from, to) {
  * was logged rather than the program's printed doses: `{ tracks, include, logged, unit }`. A log
  * that kept what was typed (`w.wod.moves`) comes back as typed; an older one is read off its rows.
  * The weights come back in the unit the log was typed in (`w.wod.unit`, else `profileUnit`, the
- * one they are stored in), which is `unit`.
+ * one they are stored in), which is `unit`. A swap to an exercise merged away since comes back as
+ * the one it went to (S.exMerged; `program` is already read through liveWod).
  */
-export function relogState(program, w, profileUnit) {
+export function relogState(program, w, profileUnit, S) {
   const blocks = {}, include = {}
   // A block saved without a score opens on its format's default again, not on "none".
   for (const b of list(w?.wod?.blocks)) blocks[b.ref] = { ...(b.score?.type && b.score.type !== 'none' ? { score: b.score } : {}), rx: !!b.rx }
@@ -304,6 +308,7 @@ export function relogState(program, w, profileUnit) {
   }
   const saved = w?.wod?.moves
   const moves = saved && typeof saved === 'object' ? structuredClone(saved) : movesFromRows(program, w, tracks)
+  for (const lm of Object.values(moves)) if (lm?.exId) lm.exId = mergedInto(S, lm.exId)
   const unit = w?.wod?.unit || profileUnit
   return { tracks, include, logged: loggedIn({ moves, blocks }, profileUnit, unit), unit }
 }

@@ -27,6 +27,7 @@ import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps } from '../lib/rx.js'
 import { formatLabel, ladderOf } from '../lib/wod-log.js'
 import { fmtRest } from '../lib/duration.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
+import { mergedInto } from '../lib/exercise-merge.js'
 import { tappable, useSheetKeyboard } from '../lib/use-sheet-keyboard.js'
 import { exercisePicker, confirmSheet } from '../sheets.jsx'
 import { DEMO } from '../lib/demo.js'
@@ -172,8 +173,8 @@ function useBoxFeed(url) {
 // publisher's own exercise, or none picked) is resolved from its printed name and the member's
 // picks, as a parsed program is (lib/wod-draft.js resolveInto). The copy remembers which version
 // of the box's it came from (boxPrint), so "Box version available" waits for a different one.
-export const boxCopy = (program, aliases) => {
-  const fill = m => (m.exId ? m : resolveInto(m, aliases))
+export const boxCopy = (program, S) => {
+  const fill = m => (m.exId ? m : resolveInto(m, S.wodAliases, S))
   const p = { ...structuredClone(program), boxPrint: boxPrint(program) }
   for (const tr of p.tracks) for (const b of tr.blocks) b.movements = b.movements.map(m => ({ ...fill(m), alts: (m.alts || []).map(fill) }))
   return p
@@ -181,7 +182,7 @@ export const boxCopy = (program, aliases) => {
 function copyBoxProgram(nav, date, program, to, opts) {
   const go = () => {
     const st = useStore.getState()
-    st.setWod(date, boxCopy(program, st.S.wodAliases))
+    st.setWod(date, boxCopy(program, st.S))
     nav(`/crossfit/${to}/${date}`, opts)
   }
   if (wodOf(useStore.getState().S, date)) confirmSheet({
@@ -393,7 +394,7 @@ function Editor() {
   const store = useStore.getState
   const handed = loc.state?.draft || null
   const [date, setDate] = useState(() => editDate || loc.state?.date || new URLSearchParams(loc.search).get('date') || tomorrowISO())
-  const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.wodAliases))
+  const [draft, setDraft] = useState(() => prepareDraft(editDate ? wodOf(S, editDate) : (handed || emptyProgram()), S.wodAliases, S))
   const [tab, setTab] = useState(0)
   const [dirty, setDirty] = useState(!!handed)
   // Edited beyond the date: what an upload would throw away (the date goes along with it).
@@ -723,8 +724,8 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
     if (!text) { toast(t('Type the movement')); return }
     const changed = text !== (m0.raw || m0.rawName || '')
     // A new line is a new name to resolve: the parser's English name no longer describes it.
-    const base = !movement ? movementFromText(text, null, S.wodAliases)
-      : changed ? resolveInto({ ...m0, raw: text, rawName: rawNameOf(text), name: undefined }, S.wodAliases)
+    const base = !movement ? movementFromText(text, null, S.wodAliases, S)
+      : changed ? resolveInto({ ...m0, raw: text, rawName: rawNameOf(text), name: undefined }, S.wodAliases, S)
       : m0
     // The rest printed on the line (`x 1 De pausa`) is shown, not edited here: it rides along.
     const d = { ...(dose ? { [kind]: dose, ...(kind === 'reps' && doseMax > dose ? { repsMax: doseMax } : {}) } : {}),
@@ -741,7 +742,7 @@ function MovementSheet({ movement, onSave, onDelete, close }) {
   const addAlt = () => {
     const rawName = rawNameOf(altText.trim()) || altText.trim().toLowerCase()
     if (!rawName) return
-    setAlts(a => [...a, { ...resolveInto({ rawName }, S.wodAliases), dose: {} }])
+    setAlts(a => [...a, { ...resolveInto({ rawName }, S.wodAliases, S), dose: {} }])
     setAltText('')
   }
   const field = (label, value, onChange, unit, decimal = true) => <label className="measure-field"><span>{label}</span>
@@ -826,7 +827,7 @@ export function CrossFitSettings({ S, update }) {
     <Section title={t('Exercise picks')} footer={picks.length
       ? t('A movement printed under one of these names gets that exercise. Remove one to pick again next time.')
       : t('None yet. Picking an exercise for a movement in a program adds it here.')}>
-      {picks.map(([key, exId]) => <Row key={key} title={key} subtitle={exerciseNameFor(exOr(exId))}>
+      {picks.map(([key, exId]) => <Row key={key} title={key} subtitle={exerciseNameFor(exOr(mergedInto(S, exId)))}>
         <button className="iconbtn" aria-label={t('Remove {0}', key)} onClick={() => useStore.getState().clearAlias(key)}><Icon name="xmark" /></button>
       </Row>)}
     </Section>

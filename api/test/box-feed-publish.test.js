@@ -94,6 +94,20 @@ test('only the publishing account, debounced: several saves push once, with the 
   assert.ok(!JSON.stringify(s).includes(TOKEN));
 });
 
+test('T35: the owner\'s Merge into… reaches the feed: a merge alone pushes, with the target id', async () => {
+  const { feed, timers, gh } = setup();
+  const p = { title: 'x', tracks: [{ label: 'A', kind: 'main', blocks: [{ label: 'B', movements: [{ rawName: 'row', exId: '1161' }] }] }], _ts: 1 };
+  const exIdOf = () => gh.feed().programs[0].tracks[0].blocks[0].movements[0].exId;
+  feed.noteWrite('diego', { wods: { '2026-11-03': p } });
+  await timers.fire();
+  assert.equal(exIdOf(), '1161');
+  feed.noteWrite('diego', { wods: { '2026-11-03': p }, exMerged: { 1161: { into: '2142', _ts: 2 } } });
+  await timers.fire();
+  assert.equal(gh.puts().length, 2);
+  assert.equal(exIdOf(), '2142');
+  assert.equal(p.tracks[0].blocks[0].movements[0].exId, '1161');
+});
+
 test('no push when the published slice is unchanged, also after a restart; a delete pushes', async () => {
   const { feed, timers, gh, make } = setup();
   const two = { '2026-11-03': wod('a'), '2026-11-04': wod('b') };

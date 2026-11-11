@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFeed, feedProgram, feedPrograms, feedUrl } from '../box-feed.js';
+import { buildFeed, feedProgram, feedPrograms, feedUrl, mergedExId } from '../box-feed.js';
 
 const program = (title = 'Holy Conditioning') => ({
   title,
@@ -52,6 +52,21 @@ test('a TARGET total, a scaled alternative\'s dose and a drop set\'s empty max s
   Object.assign(m, { dose: { total: 70 }, steps: [{ reps: 15 }, { reps: 12 }, {}], alts: [{ rawName: 'pull up', dose: { reps: 1, total: 20 } }] });
   const out = feedProgram(p).tracks[0].blocks[0].movements[0];
   assert.deepEqual([out.dose, out.steps, out.alts[0].dose], [{ total: 70 }, [{ reps: 15 }, { reps: 12 }, {}], { reps: 1, total: 20 }]);
+});
+
+test('T35: an exercise the owner merged away goes out as the one it went to, a custom target as null', () => {
+  const p = program();
+  const m = p.tracks[0].blocks[0].movements[0];
+  m.alts = [{ rawName: 'ring rows', exId: 'ownRow' }, { rawName: 'strict pull up', exId: '0652' }];
+  // 0651 → 0650 → 0649 (a chain), the owner's custom row into the catalogue's, 0652 into a custom one
+  const merged = { '0651': { into: '0650', _ts: 1 }, '0650': { into: '0649', _ts: 2 }, ownRow: { into: '1161', _ts: 3 }, '0652': { into: 'mine', _ts: 4 } };
+  const out = buildFeed({ '2026-11-03': p }, { name: 'Box', today: '2026-11-03', now: 0, merged }).programs[0].tracks[0].blocks[0].movements[0];
+  assert.deepEqual([out.exId, out.alts.map(a => a.exId)], ['0649', ['1161', null]]);
+  // an undone merge (into: null) and no merges at all leave the id as saved
+  assert.equal(feedProgram(program(), { '0651': { into: null, _ts: 5 } }).tracks[0].blocks[0].movements[0].exId, '0651');
+  assert.equal(feedProgram(program()).tracks[0].blocks[0].movements[0].exId, '0651');
+  assert.equal(p.tracks[0].blocks[0].movements[0].exId, '0651', 'the saved program is not rewritten');
+  assert.equal(mergedExId({ a: { into: 'b' }, b: { into: 'a' } }, 'a'), 'b', 'a loop back to the start stops');
 });
 
 test('nothing outside the allowlist reaches the feed, at any depth', () => {
