@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn } from './wod-log.js'
+import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -168,9 +168,13 @@ describe('wodToSession: sets per block format', () => {
     expect(lr(side('20 DB Reverse Lunge 10/10', { reps: 20 }, { r: 8 }))).toEqual([[8, 8], [8, 8]])
     // T34's timed per side is unchanged: 20 s a side is 40 s.
     expect(side('M3 40 seg max DB OH Hold 20/20', { sec: 20 })[0]).toMatchObject({ mode: 'time', sec: 40 })
-    // A partial round's leftover is the total too: 7 of 20 is 4 a side.
+    // What every screen shows: each side's, the rest of the dose as printed.
+    expect(eachSide({ raw: '20 DB Reverse Lunge 10/10', dose: { reps: 20 }, perSide: true }, { reps: 20, restSec: 30 })).toEqual({ reps: 10, restSec: 30 })
+    expect(eachSide({ raw: '7 DB Hang Snatch R', dose: { reps: 7 }, perSide: true }, { reps: 7 })).toEqual({ reps: 7 })
+    expect(eachSide({ raw: '20 Lunges 10/10', dose: { reps: 20 }, perSide: false }, { reps: 20 })).toEqual({ reps: 20 })
+    // A partial round's leftover is the total too: 7 of 20 is 4 and 3.
     const p = program([block('b1', 'amrap', [mv('m0', SNATCH, { reps: 20 }, { raw: '20 DB Reverse Lunge 10/10', perSide: true })], { capMin: 10 })])
-    expect(lr(wodToSession(p, all, { blocks: { 'full/b1': { score: { type: 'rounds', rounds: 1, reps: 7 } } } }, S0()).entries[0].sets)).toEqual([[10, 10], [4, 4]])
+    expect(lr(wodToSession(p, all, { blocks: { 'full/b1': { score: { type: 'rounds', rounds: 1, reps: 7 } } } }, S0()).entries[0].sets)).toEqual([[10, 10], [4, 3]])
   })
 
   it('cardio movements: one row per movement, cal or m with minutes, explicit cardio mode', () => {

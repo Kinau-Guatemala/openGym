@@ -16,7 +16,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf, liveWod } from '../lib/wod-draft.js'
-import { SCORE_OF, doseOn, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, sideReps, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -184,7 +184,7 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
   const exId = lm.exId || m.exId
   const dose = doseOn(m, lm.exId, S)
   // `20 DB Reverse Lunge 10/10` prints the total: the line and the reps field show each side's.
-  const each = m.perSide && !optionOf(m, lm.exId) && dose.reps ? { ...dose, reps: sideReps(m, dose.reps) } : dose
+  const each = optionOf(m, lm.exId) ? dose : eachSide(m, dose)
   const ladder = ladderOf(block.scheme)
   const printed = [m.exId, ...list(m.alts).map(a => a.exId)].filter(Boolean)
   const swapped = lm.exId && !printed.includes(lm.exId)

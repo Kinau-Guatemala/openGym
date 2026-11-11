@@ -23,7 +23,7 @@ import { policyFor, profileRule, POLICIES } from '../../frontend/src/lib/progres
 import { buildSessionEntries, startsFromLast } from '../../frontend/src/lib/session-start.js'
 import { wodOf } from '../../frontend/src/lib/wods.js'
 import { includeOf, liveWod } from '../../frontend/src/lib/wod-draft.js'
-import { ladderOf } from '../../frontend/src/lib/wod-log.js'
+import { eachSide, ladderOf } from '../../frontend/src/lib/wod-log.js'
 import { doseFor, emptyStep, fmtDose, rxPrinted, rxFor, stepRxFor, stepsOf } from '../../frontend/src/lib/rx.js'
 import { muscleGap } from '../../frontend/src/lib/muscle-gap.js'
 import { profileBodyweightKg } from '../../frontend/src/lib/bodyweight.js'
@@ -766,7 +766,7 @@ export const getWods = {
             movements: (b.movements || []).map(m => ({
               id: m.id, slot: m.slot || null, raw_name: m.rawName || null, raw_untrusted: m.raw || null,
               ...exerciseFields(m, S),
-              dose: fmtDose(doseFor(m, S)) || null, rest_sec: doseFor(m, S).restSec ?? null, total: doseFor(m, S).total ?? null, per_side: !!m.perSide, drop: m.drop === true,
+              dose: fmtDose(eachSide(m, doseFor(m, S))) || null, rest_sec: doseFor(m, S).restSec ?? null, total: doseFor(m, S).total ?? null, per_side: !!m.perSide, drop: m.drop === true,
               rx_printed: rxPrinted(m, S), rx: rxFor(m, S),
               steps: stepsOf(m)?.map((st, i) => ({ dose: fmtDose(st) || null, ...(emptyStep(st) && !ladderOf(b.scheme)?.[i] ? { max: true } : {}), rx_printed: rxPrinted(st, S) || rxPrinted(m, S), rx: stepRxFor(st, m, S) })) ?? null,
               alternatives: (m.alts || []).map(a => ({ ...exerciseFields(a, S), raw_name: a.rawName || null, dose: fmtDose(a.dose) || null }))

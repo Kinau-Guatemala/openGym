@@ -24,7 +24,7 @@ import { fmtAgo, fmtDate, fmtNum, todayISO } from '../lib/format.js'
 import { wodOf, aliasesOf } from '../lib/wods.js'
 import { norm, rawNameOf } from '../lib/crossfit-resolve.js'
 import { rxFor, doseFor, fmtDose, fmtRounds, fmtSteps } from '../lib/rx.js'
-import { formatLabel, ladderOf } from '../lib/wod-log.js'
+import { eachSide, formatLabel, ladderOf } from '../lib/wod-log.js'
 import { fmtRest } from '../lib/duration.js'
 import { applyPick, includeOf, movementFromText, nextId, prepareDraft, resolveInto } from '../lib/wod-draft.js'
 import { mergedInto } from '../lib/exercise-merge.js'
@@ -625,7 +625,7 @@ function ExChoice({ item, onPick, onChoose }) {
 
 function MovementRow({ S, m, rungs, readOnly, onEdit, onPick, onChoose }) {
   const rx = rxFor(m, S)
-  const d = doseFor(m, S)
+  const d = eachSide(m, doseFor(m, S))
   const dose = fmtDose(d)
   const steps = fmtSteps(m, S, rungs)
   const line = (steps ? [steps] : [dose + (dose && m.perSide ? ' ' + t('each side') : ''), d.restSec > 0 ? t('{0} rest', fmtRest(d.restSec)) : null,

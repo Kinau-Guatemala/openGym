@@ -102,6 +102,16 @@ describe('get_wods', () => {
     expect([wb.dose, wb.rest_sec]).toEqual(['2 × Max', null])
   })
 
+  test('a per-side dose is each side\'s: 20 DB Reverse Lunge 10/10 is 10, an R / L line its own (T36)', async () => {
+    const p = structuredClone(program)
+    p.tracks[1].blocks[0].movements.push(
+      { id: 'm1', raw: '20 DB Reverse Lunge 10/10', rawName: 'db reverse lunge', exId: '0381', dose: { reps: 20 }, perSide: true },
+      { id: 'm2', raw: '7 DB Hang Snatch R', rawName: 'db hang snatch', exId: '3888', dose: { reps: 7 }, perSide: true })
+    S.wods[TODAY] = p
+    const [, lunge, snatch] = (await call('get_wods')).programs[0].tracks[1].blocks[0].movements
+    expect([lunge.dose, lunge.per_side, snatch.dose, snatch.per_side]).toEqual(['10', true, '7', true])
+  })
+
   test('an EVERY block carries every_sec, a printed round range rounds_max (T23)', async () => {
     const p = structuredClone(program)
     Object.assign(p.tracks[0].blocks[1], { format: 'interval', everySec: 180, rounds: 4, capMin: 12 })
