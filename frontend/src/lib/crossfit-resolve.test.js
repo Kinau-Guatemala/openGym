@@ -707,6 +707,7 @@ const NOV_IMAGES = [
   ['c2b', 'chest-to-bar pull-up', ['0652', 'shipped']],
   ['toe touches', 'toe touch', ['5275', 'shipped']],
   ['tricep kicks', 'dumbbell triceps kickback', ['0333', 'shipped']],
+  ['db´s kick backs', 'dumbbell kickback', ['0333', 'shipped']],
   ['back reverse lunges', 'barbell reverse lunge', ['0078', 'shipped']],
   ['db´s squat cleans', 'dumbbell squat clean', ['0295', 'shipped']],
   ['db snatch alt', 'dumbbell snatch', ['3888', 'shipped']],
@@ -736,10 +737,12 @@ describe('crossfit resolve: the 11 Nov images', () => {
     for (const s of ['bj 30"/24"', 'box jump 24"']) expect(norm(norm(s))).toBe(norm(s))
   })
 
-  it('drops a note after "*"', () => {
+  it('drops a note after "*", only where a note starts (after a space or at the start)', () => {
     expect(norm('wall balls  *goal 100 unbroken')).toBe('wall ball')
     expect(norm('wall balls *')).toBe('wall ball')
     expect(norm(norm('wall balls *goal 100'))).toBe('wall ball')
+    expect(norm('c*b')).toBe('c b')   // a "*" inside a word is not a note
+    expect(norm('3*5 back squat')).toBe('3 5 back squat')
   })
 })
 

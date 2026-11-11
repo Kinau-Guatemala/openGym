@@ -45,7 +45,7 @@ const UNIT_WORD = /^(?:mts?|cals?|segs?)$/
 const INCH = `\\s*(?:["”]|'')`
 const BOX_HEIGHT = new RegExp(`\\d+(?:${INCH})?\\s*/\\s*\\d+${INCH}|\\d+${INCH}`, 'g')
 export const norm = text => {
-  let words = plain(String(text || '').replace(/\*[\s\S]*/, '').replace(BOX_HEIGHT, ' ')).split(' ')
+  let words = plain(String(text || '').replace(/(?:^|\s)\*[\s\S]*/, '').replace(BOX_HEIGHT, ' ')).split(' ')
   if (words.some(w => w !== 'max')) words = words.filter(w => w !== 'max')
   while (words.length > 1 && UNIT_WORD.test(words[0])) words.shift()
   return words.map(singular).join(' ')

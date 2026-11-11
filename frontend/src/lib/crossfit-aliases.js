@@ -100,7 +100,7 @@ export const SHIPPED_ALIASES = {
   // the walk, as T22's DB farmer hold; a bench fly is the flat fly; an elevated hex press is the
   // incline squeeze press. The typos as printed: DI (DL) jump, poop (pop) jacks, estrcitos, land mind.
   'high h c': '1520', 'high hang clean': '1520', 'h p c': '5704', 'hpc': '5704', 'p c': '0648', 'pc': '0648',
-  'c2b': '0652', 'toe touch': '5275', 'tricep kick': '0333', 'back reverse lunge': '0078',
+  'c2b': '0652', 'toe touch': '5275', 'tricep kick': '0333', 'db kick back': '0333', 'back reverse lunge': '0078',
   'db gorilla row': '7230', 'db squat clean': '0295', 'db snatch alt': '3888',
   'kb farmer hold': '3576', 'db oh hold': '2913', 'db bench fly': '0308', 'elevated hex press': '5067',
   'commando pull up': '4726', 'comando pull up': '4726', 'close grip pull up': '5479',
