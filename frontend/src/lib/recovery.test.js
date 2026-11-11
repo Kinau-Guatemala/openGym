@@ -147,6 +147,34 @@ describe('fatigueOf and strengthOf', () => {
     expect(fatigueOf(highRep, NOW)[SINGLE_SLUG]).toBeLessThan(0.25)
   })
 
+  // The fork's model (cardioSetsOf, 'duration-weighted cardio' below): clamp(min / 10, 1, 6).
+  it('scales cardio fatigue by duration and preserves the one-row fallback for old logs', () => {
+    const run = min => ({
+      d: new Date(NOW).toISOString(),
+      start: NOW,
+      entries: [{ id: '0685', target: { mode: 'cardio' }, sets: [{ min, speed: 10, done: true }] }],
+    })
+    const muscles = musclesOf(EXDB.find(ex => ex.id === '0685'))
+    const halfHour = fatigueOf([run(30)], NOW)
+    const hour = fatigueOf([run(60)], NOW)
+    const legacy = fatigueOf([run(undefined)], NOW)
+
+    expect(halfHour.quadriceps).toBeCloseTo(expectedSets(3, muscles.quadriceps, 'quadriceps'), 10)
+    expect(hour.quadriceps).toBeCloseTo(expectedSets(6, muscles.quadriceps, 'quadriceps'), 10)
+    expect(hour.quadriceps).toBeGreaterThan(halfHour.quadriceps)
+    expect(legacy.quadriceps).toBeCloseTo(expectedSets(1, muscles.quadriceps, 'quadriceps'), 10)
+  })
+
+  it('uses imported cardio RPE to adjust the duration-weighted stimulus', () => {
+    const run = rpe => ({
+      d: new Date(NOW).toISOString(),
+      start: NOW,
+      entries: [{ id: '0685', target: { mode: 'cardio' }, sets: [{ min: 30, speed: 10, rpe, done: true }] }],
+    })
+
+    expect(fatigueOf([run(9)], NOW).quadriceps).toBeGreaterThan(fatigueOf([run(6)], NOW).quadriceps)
+  })
+
   it('uses a deleted exercise snapshot for the same bounded primary and secondary fatigue', () => {
     const resolved = doneWorkoutAt(WEIGHTED.id, NOW)
     const deleted = {
@@ -835,11 +863,13 @@ describe('duration-weighted cardio', () => {
   })
 
   it('keys on the row mode, not the catalogue: a WOD ski erg row is cardio, a rep row is not', () => {
-    // 2142 ski ergometer is catalogued under triceps, not cardio; the WOD row says cardio itself.
+    // The WOD row says its mode itself, and that is what counts: 2142 ski ergometer (triceps at
+    // its catalogue weight) logged as 30 cardio minutes is 3 sets, logged as reps one.
+    const w = musclesOf(EXDB.find(ex => ex.id === '2142')).triceps
     const ski = fatigueOf([workoutAt('2142', NOW, [{ done: true, mode: 'cardio', min: 30 }])], NOW)
-    expect(ski.triceps).toBeCloseTo(expectedSets(3, 1, 'triceps'), 10)
+    expect(ski.triceps).toBeCloseTo(expectedSets(3, w, 'triceps'), 10)
     const reps = fatigueOf([workoutAt('2142', NOW, [{ done: true, mode: 'reps', r: 20, min: 30 }])], NOW)
-    expect(reps.triceps).toBeCloseTo(expectedSets(1, 1, 'triceps'), 10)
+    expect(reps.triceps).toBeCloseTo(expectedSets(1, w, 'triceps'), 10)
   })
 
   it('scores the same run alike by hand, from a WOD or from Health Connect', () => {

@@ -8,6 +8,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { connect } from './remote.js'
 import { migrateWodAliases } from '../../frontend/src/lib/wods.js'
+import { applyExerciseMerges } from '../../frontend/src/lib/exercise-merge.js'
 
 const DATA_DIR = process.env.OPENGYM_DATA || path.join(process.cwd(), 'data')
 // Whether a data directory was asked for, as opposed to the ./data guess.
@@ -256,9 +257,18 @@ export function _useSourceForTests(source) { _source = source }
 // upstream's own now: moved to wodAliases on the copy read (frontend lib/wods.js).
 const withDefaults = S => {
   if (!S) return null
-  const out = Object.assign({}, defaultsShape(), S)
+  const out = shaped(S)
   migrateWodAliases(out)
   return out
+}
+
+// A stored profile as the tools read it: the app's defaults under it, and an exercise merged into
+// another in the app (#656, lib/exercise-merge.js) read as the one it went into wherever a copy
+// still names it, the way the app's own copies are brought in line when they meet.
+function shaped(stored) {
+  const st = Object.assign({}, defaultsShape(), stored)
+  try { applyExerciseMerges(st) } catch { /* the copy as stored, then */ }
+  return st
 }
 
 function defaultsShape() {

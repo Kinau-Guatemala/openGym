@@ -96,16 +96,20 @@ export default function CrossFit() {
   const box = boxRows(feed, d => !!wodOf(S, d), today, tomorrowISO())
   const row = (d, w = wodOf(S, d), fromBox = false) => {
     const open = () => nav((fromBox ? '/crossfit/box/' : '/crossfit/edit/') + d)
-    return <div key={d} className="item" {...tappable(open)}>
+    // The row is not a button: its name is, stretched over the row (.tap-main), with the box
+    // link and Log siblings above it (card dismiss pass).
+    return <div key={d} className="item tap-host">
       <span className="lrow-i" style={{ background: d === today ? 'var(--orange)' : 'var(--surface-3)' }}><Icon name="flame" /></span>
       <div className="grow" style={{ minWidth: 0 }}>
-        <div className="tt">{w.title || fmtDate(d, true)}</div>
-        <div className="ss">{[fromBox ? feed.box : null, w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</div>
-        {!fromBox && feed?.programs[d] && boxPrint(feed.programs[d]) !== w.boxPrint && <button className="small" style={LINK} onClick={e => { e.stopPropagation(); nav('/crossfit/box/' + d) }}>
+        <button type="button" className="item-open tap-main" style={{ width: '100%' }} onClick={open}>
+          <span className="tt">{w.title || fmtDate(d, true)}</span>
+          <span className="ss">{[fromBox ? feed.box : null, w.title ? fmtDate(d, true) : null, trackNames(w)].filter(Boolean).join(' · ')}</span>
+        </button>
+        {!fromBox && feed?.programs[d] && boxPrint(feed.programs[d]) !== w.boxPrint && <button className="small" style={LINK} onClick={() => nav('/crossfit/box/' + d)}>
           {t('Box version available')}</button>}
       </div>
       {d <= today && <Button size="sm" variant="tinted" style={{ width: 'auto', flex: 'none' }}
-        onClick={e => { e.stopPropagation(); if (fromBox) copyBoxProgram(nav, d, w, 'log'); else nav('/crossfit/log/' + d) }}>{t('Log')}</Button>}
+        onClick={() => { if (fromBox) copyBoxProgram(nav, d, w, 'log'); else nav('/crossfit/log/' + d) }}>{t('Log')}</Button>}
       <Icon name="chevronRight" className="chev" />
     </div>
   }

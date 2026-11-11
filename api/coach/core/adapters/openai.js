@@ -7,10 +7,13 @@
 import { httpAdapter } from './http.js';
 import { SYSTEM_PROMPT } from '../system-prompt.js';
 
-export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_tokens', temperature = null, versionlessFallback = false } = {}) {
-  return {
+// `maxTokensField` and `temperature` may be functions of { model, base }: a compatible endpoint
+// learns from the model and host which request shape it is likely to want (#869).
+export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_tokens', temperature = null, versionlessFallback = false, compatLadder = false } = {}) {
+  const spec = {
     id,
     versionlessFallback,
+    compatLadder,
     path: () => '/v1/chat/completions',
     modelsPath: '/v1/models',
     headers: key => (key ? { authorization: 'Bearer ' + key } : {}),
@@ -20,7 +23,7 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
     // the answer cannot leave the shape, which is most of what the repair round used to fix.
     // With `images` (a parse-wod job) the user turn becomes a content array with a data URL,
     // as Chat Completions documents it; without them it stays the plain string, byte for byte.
-    body: ({ model, prompt, system, schema, maxTokens, images }) => ({
+    body: ({ model, prompt, system, schema, maxTokens, base, images }) => ({
       model,
       messages: [
         { role: 'system', content: system ? SYSTEM_PROMPT + '\n\n' + system : SYSTEM_PROMPT },
@@ -31,11 +34,11 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
             : prompt
         }
       ],
-      ...(temperature != null ? { temperature } : {}),
+      ...withTemperature(typeof temperature === 'function' ? temperature({ model, base }) : temperature),
       response_format: schema
         ? { type: 'json_schema', json_schema: { name: 'coach_answer', schema } }
         : { type: 'json_object' },
-      [maxTokensField]: maxTokens
+      [typeof maxTokensField === 'function' ? maxTokensField({ model, base }) : maxTokensField]: maxTokens
     }),
     // The 400 that says the schema is not strict enough gets a strict-schema copy of the same
     // request once (see strictSchema below); a server that rejects even that, or rejects
@@ -49,6 +52,20 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
     withoutJsonMode: body => (body.response_format && body.response_format.type === 'json_schema'
       ? { ...body, response_format: { type: 'json_object' } }
       : (() => { const { response_format: _rf, ...rest } = body; return rest; })()),
+    // The rungs of the compatibility ladder in http.js (#804), each one change to the request.
+    // Every one is a no-op on a request that does not carry what it changes; http.js skips those.
+    compat: {
+      strict: body => spec.withStrictSchema(body),
+      json_object: body => (body.response_format && body.response_format.type === 'json_schema' ? { ...body, response_format: { type: 'json_object' } } : body),
+      tokens: body => {
+        const from = 'max_tokens' in body ? 'max_tokens' : 'max_completion_tokens' in body ? 'max_completion_tokens' : null;
+        if (!from) return body;
+        const { [from]: n, ...rest } = body;
+        return { ...rest, [from === 'max_tokens' ? 'max_completion_tokens' : 'max_tokens']: n };
+      },
+      temperature: body => { const { temperature: _t, ...rest } = body; return rest; },
+      plain: body => { const { response_format: _rf, ...rest } = body; return rest; }
+    },
     errorMessage: data => {
       const e = data && data.error;
       if (!e || typeof e === 'string') return e || null;
@@ -86,8 +103,10 @@ export function chatCompletionsSpec(id, { maxTokensField = 'max_completion_token
       return chat.length ? chat : ids;
     }
   };
+  return spec;
 }
 
+const withTemperature = t => (t != null ? { temperature: t } : {});
 const NOT_CHAT = /realtime|audio|tts|transcri|whisper|embedding|image|dall-e|moderation|search|instruct|codex|computer-use|deep-research|-pro(?:-|$)|davinci|babbage|curie|ada/i;
 /* A strict-schema copy of the flat schemas: every node that can be an object gains
  * `additionalProperties: false`. That is exactly what a hosted validator that enforces strict
@@ -113,6 +132,20 @@ export function strictSchema(node) {
   }
   return out;
 }
+
+/* OpenAI's reasoning models (o1, o3, o4-mini, the gpt-5 family) refuse `max_tokens` with
+ *   400 "Unsupported parameter: 'max_tokens' is not supported with this model. Use
+ *   'max_completion_tokens' instead." (#869)
+ * and take no temperature but their default. OpenAI's own API and Azure OpenAI serve them under
+ * any name (an Azure deployment is named by its owner), so those hosts get the newer field for
+ * every model; anywhere else a bare OpenAI reasoning model name does. A name with a vendor prefix
+ * (OpenRouter's openai/gpt-5) is a gateway's, which takes max_tokens and translates it. A guess
+ * that is wrong either way is a 400 naming the field, which the compatibility ladder in http.js
+ * answers with the other one, once, and remembers. */
+const OPENAI_HOST = /(^|\.)(api\.openai\.com|openai\.azure\.com|cognitiveservices\.azure\.com|services\.ai\.azure\.com)$/i;
+export const isReasoningModel = model => /^(o\d|gpt-5)/i.test(String(model || ''));
+const hostname = base => { try { return new URL(base).hostname; } catch { return ''; } };
+export const wantsCompletionTokens = ({ model, base } = {}) => OPENAI_HOST.test(hostname(base)) || isReasoningModel(model);
 
 export const isChatModel = id => /^(gpt-|o\d|chatgpt-)/.test(id) && !NOT_CHAT.test(id);
 

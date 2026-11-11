@@ -10,6 +10,7 @@ export function taskOf(kind, payload) {
     case 'review': return 'review';
     case 'debrief': return 'debrief';
     case 'ask': return 'ask';
+    case 'adapt': return 'adapt';
     case 'create': return payload && payload.refine ? 'refine' : 'create';
     case 'parse-wod': return 'parse-wod';
     default: throw new Error(`unknown Coach job kind "${kind}"`);
