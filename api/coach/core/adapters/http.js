@@ -130,11 +130,18 @@ export function rememberCompatProfile(id, cfg, model, steps) {
 }
 // What a 400 says about the request, matched on the provider's words. Order matters: a schema
 // complaint usually also says "response_format".
-// The words of an endpoint refusing an image, as pipeline.js classifies them (`novision`).
-const refusesImages = msg => {
-  const m = String(msg || '').toLowerCase();
+// A text-only model refusing the image (OpenAI "image_url is only supported by certain
+// models", OpenRouter "No endpoints found that support image input", a gateway's "text-only").
+// Words that name images and support, not ones about the image itself (too large, corrupt).
+// DeepSeek answers "unknown variant `image_url`", vLLM "At most 0 image(s) may be provided".
+// The model ids are cut out first: a gateway often prefixes one, and "…-vision-instruct:
+// temperature is not supported" is a vision model refusing something else. pipeline.js reads a
+// failed image job with this as `novision`; invoke() walks no compatibility rung for it.
+export function refusesImages(msg, ...models) {
+  let m = String(msg || '').toLowerCase();
+  for (const id of models) if (id) m = m.split(String(id).toLowerCase()).join('');
   return /text[- ]only|unknown variant `?image_url|at most 0 image/.test(m) || (/image|vision|multimodal/.test(m) && /support/.test(m));
-};
+}
 
 function namedRungs(msg) {
   if (/additionalProperties|must be explicitly set/i.test(msg)) return ['strict', 'json_object', 'plain'];
@@ -297,9 +304,9 @@ export function httpAdapter(spec) {
           // without JSON mode; a reasoning model's output-limit field or temperature) goes to the
           // rung for it. A rung that changes nothing (a complaint about a temperature this request
           // never sent) is no retry: asking again would be asking the same wrong thing.
-          // A model that cannot see refusing the image (pipeline.js reads it as `novision`): no
-          // rung sends anything but the same image, so none is tried.
-          const blind = !!(images && images.length) && refusesImages(msg);
+          // A model that cannot see refusing the image: no rung sends anything but the same
+          // image, so none is tried.
+          const blind = !!(images && images.length) && refusesImages(msg, chosen, asked);
           const named = res.status === 400 && !blind ? namedRungs(msg) : null;
           let rung = named ? nextRung(named, true) : null;
           // A 400 that names nothing walks the ladder, on an endpoint that opted in (#804).

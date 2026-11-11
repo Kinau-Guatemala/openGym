@@ -45,8 +45,9 @@ claim is disputed (https://www.globalperformanceinsights.com/post/has-the-acute-
   unit. Secondary movers count 0.4 (existing `musclesOf` weights). Warm-ups
   still count (mechanical work), rest-pause clusters don't (already covered by
   the row total), drop-set drops count as extra sets. Cardio rows scale by duration
-  (in this fork `cardioSetsOf`: clamp(min / 10, 1, 6), keyed on the row's own mode so a
-  WOD's ski erg row counts; a row of 10 minutes or less keeps the former one-row stimulus)
+  (30 minutes retains the former one-row stimulus as a continuity anchor; in this fork
+  `cardioSetsOf` floors it at one set, max(1, min / 30), keyed on the row's own mode, so a
+  WOD's short cardio pieces keep their one set)
   and imported RPE adjusts intensity; timed holds remain one set. This is a coarse fatigue-map
   proxy, not a validated conversion between cardio minutes and lifting sets.
 - **Session-local relative intensity per set**: `(load/entryBest)^1.5`, unit-free
