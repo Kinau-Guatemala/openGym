@@ -956,7 +956,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
               { value: 'light', icon: 'sun', label: t('Light') },
               { value: 'system', icon: 'gear', label: t('System') },
             ]}
-            value={S.theme || 'dark'}
+            value={PALETTES[paletteKey(S)].base || S.theme || 'dark'}
             onChange={v => update(s => { s.theme = v })}
           />
         </Row>

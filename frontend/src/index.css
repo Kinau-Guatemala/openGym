@@ -2318,8 +2318,9 @@ button.mchip{border:none;font:inherit;font-size:var(--fs-caption);cursor:pointer
   --green-ink:#1a7f37; --orange-ink:#a85200;
   --red-ink:#d70015;
 }
-/* On Sand's cream the green ink falls a hair under 4.5:1 (the palettes, above). */
-:root[data-palette="sand"][data-theme="light"]{--green-ink:#177334}
+/* On Sand's cream the green ink falls a hair under 4.5:1 (the palettes, above), and the streak
+   and win marks under 3:1 on the page and a nested fill: a step darker each. */
+:root[data-palette="sand"][data-theme="light"]{--green-ink:#177334; --streak-ink:#d06200; --win-ink:#1b9142}
 /* The flame: a warm gradient with a light core; three gentle flickers when it appears, then still. */
 .flame{display:inline-block;flex:none;overflow:visible;vertical-align:-.12em}
 .flame-s1{stop-color:#ff4d1a} .flame-s2{stop-color:#ff8a1f} .flame-s3{stop-color:#ffc23d}

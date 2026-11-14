@@ -296,6 +296,12 @@ describe('palettes: text inks on every palette', async () => {
           const fix = css.match(new RegExp(`:root\\[data-palette="${id}"\\]\\[data-theme="light"\\]\\[data-accent="${name}"\\]\\s*\\{\\s*--acc-ink:(#\\w+)`))?.[1]
           expect(on(fix || ink, ground), id + ' ' + name).toBeGreaterThanOrEqual(4.5)
         }
+        // The status inks as words: the light theme's, or the palette's own shade (every block it has).
+        const mine = [...css.matchAll(new RegExp(`:root\\[data-palette="${id}"\\]\\[data-theme="light"\\]\\s*\\{([^}]*)\\}`, 'g'))].map(m => m[1]).join(';')
+        for (const name of ['--green-ink', '--orange-ink', '--red-ink', '--gold-ink']) {
+          const ink = token(mine, name) || css.match(new RegExp(`:root\\[data-theme="light"\\]\\{[^}]*${name}:(#[0-9a-f]{6})`, 'i'))?.[1]
+          expect(on(ink, ground), id + ' ' + name).toBeGreaterThanOrEqual(4.5)
+        }
       }
     }
   })

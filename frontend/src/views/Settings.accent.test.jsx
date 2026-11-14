@@ -212,6 +212,9 @@ describe('Settings: palettes (T41)', () => {
     expect(mocks.S.accent).toBe('sky')
     act(() => chip('Sand').click())
     expect(mocks.S.accent).toBe('teal')
+    // the locked row shows the side the palette forces, not the saved choice under it
+    mount()
+    expect(themeButtons().find(b => b.getAttribute('aria-pressed') === 'true')?.textContent).toBe('Light')
     act(() => chip('Classic').click())
     expect(mocks.S.palette).toBe('classic')
     expect(mocks.S.accent).toBe('lime')
