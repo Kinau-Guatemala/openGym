@@ -184,11 +184,14 @@ export function createBoxFeed({
   //
   // S.wods keeps only the last WODS_KEEP_DAYS (pruneWods), so a day missing from it is deleted only
   // inside that window, or when its date holds a stamped clear. A day older than that stays in the
-  // archive as it was last pushed, from what the last push remembered of it (saved.days).
+  // archive as it was last pushed, from what the last push remembered of it (saved.days). The
+  // window here is 2 days shorter: a phone prunes by its own clock, and one a little ahead of this
+  // server, saving just after UTC midnight, has already dropped the day this server's window still
+  // holds; that day is aged out, not deleted.
   function plan() {
     const t = now();
     const today = new Date(t).toISOString().slice(0, 10);
-    const cutoff = new Date(Date.parse(today + 'T00:00:00Z') - WODS_KEEP_DAYS * 86400000).toISOString().slice(0, 10);
+    const cutoff = new Date(Date.parse(today + 'T00:00:00Z') - (WODS_KEEP_DAYS - 2) * 86400000).toISOString().slice(0, 10);
     const files = [];
     const feed = buildFeed(wods, { name: cfg.name, today, days: cfg.days, now: t, merged });
     files.push({ path: 'feed.json', hash: sha256(JSON.stringify([feed.box, feed.programs, feed.archive])), content: JSON.stringify(feed, null, 1) + '\n', dates: feed.programs.map(p => p.date) });

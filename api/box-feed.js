@@ -122,8 +122,8 @@ export function buildFeed(wods, { name = '', today, days = BOX_FEED_DAYS, now = 
 
 // T40: the archive, every day the box has published, next to feed.json in the same repo.
 //   archive/index.json   { v: 1, box, updatedAt, days: [{ date, title, tracks: [label], image }] }, newest first
-//   archive/<date>.json  a feed program ({ date, title, tracks }), plus `image: '<date>.<ext>'` with a photo
-//   archive/<date>.<ext> the photo the program was read from
+//   archive/<date>.json    a feed program ({ date, title, tracks }), plus `image: '<sha256>.<ext>'` with a photo
+//   archive/<sha256>.<ext> the photo the program was read from, named by its content
 // Paths in it are relative: `archive` from feed.json, `image` from the index.
 export const ARCHIVE_INDEX = 'archive/index.json'
 

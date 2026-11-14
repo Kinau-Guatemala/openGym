@@ -314,6 +314,18 @@ test('the archive: a day that ages out of S.wods (120 days) keeps its files and 
   assert.ok(!gh.writes().slice(end).some(c => c.file.includes('2026-07-05') || c.file.includes(sha)), 'nothing sent again for it');
 });
 
+test('the archive: a day a phone pruned by a clock a little ahead (just inside this server\'s 120 days) is aged out, not deleted', async () => {
+  const clock = { t: Date.UTC(2026, 6, 5, 12) };
+  const { feed, timers, gh } = setup({ clock });
+  feed.noteWrite('diego', { wods: { '2026-07-05': wod('july') } });
+  await timers.fire();
+  clock.t += 119 * 86400000;   // 119 days on: still in this server's window, gone from the phone's
+  feed.noteWrite('diego', { wods: { '2026-11-01': wod('nov') } });
+  await timers.fire();
+  assert.ok(gh.files['archive/2026-07-05.json']);
+  assert.deepEqual(gh.json('archive/index.json').days.map(d => d.date), ['2026-11-01', '2026-07-05']);
+});
+
 test('the archive: a lost box-feed.json does not wipe it: the repo\'s index is the record', async () => {
   const clock = { t: Date.UTC(2026, 10, 3, 12) };
   const { feed, timers, gh, dataDir, make } = setup({ clock });

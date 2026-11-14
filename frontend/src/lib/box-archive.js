@@ -2,7 +2,7 @@
 // to its feed.json in the same repo (api/box-feed.js, written by api/box-feed-publish.js).
 //
 //   archive/index.json   { v: 1, box, updatedAt, days: [{ date, title, tracks: [label], image }] }, newest first
-//   archive/<date>.json  a feed program, plus `image: '<date>.<ext>'` when it has a photo
+//   archive/<date>.json  a feed program, plus `image: '<sha256>.<ext>'` when it has a photo
 //
 // Read like the feed (lib/box-subscribe.js): untrusted, https only, size-capped, every program
 // through cleanProgram. The index is cached on this device (localStorage, never S) and fetched
