@@ -31,6 +31,16 @@ describe('rxHistory', () => {
     expect(rated({ w: 135, unit: 'lb' }, 65, 'kg').ratio).toBeCloseTo(65 / 60, 6)
   })
 
+  it('reads an entry merged from several blocks (T39) one block at a time, each against its own Rx', () => {
+    const OHS = '0069', rx = { w: 115, unit: 'lb' }
+    const merged = { id: OHS, noProg: true, wodBlock: 'full/b0', sets: [{ ...row(20), wodBlock: 'full/b0' }, ...[50, 52.5].map(w => ({ ...row(w), wodBlock: 'full/b1', rx }))] }
+    expect(rxHistory([day('2026-11-13', [merged])], OHS, 'kg')).toEqual([{ d: '2026-11-13', used: 52.5, rx: 52.5, ratio: 1, swapped: false }])
+    expect(furthestFromRx([day('2026-11-13', [{ ...merged, sets: merged.sets.map(s => ({ ...s, w: s.w / 2 })) }])], 8, 'kg', Date.parse('2026-11-14T12:00:00Z')).map(x => x.exId)).toEqual([OHS])
+    // the entry's Rx first, a block printed without one after it: only the first is rated
+    const first = { id: OHS, wodBlock: 'full/b1', rx, sets: [{ ...row(40), wodBlock: 'full/b1' }, { ...row(60), wodBlock: 'full/b2', rx: null }] }
+    expect(rxHistory([day('2026-11-13', [first])], OHS, 'kg').map(h => h.used)).toEqual([40])
+  })
+
   it('counts a swap on its own, never as a ratio', () => {
     const h = rxHistory([
       day('2026-10-01', [{ id: '1520', rx: { w: 135, unit: 'lb' }, sets: [row(60)] }]),

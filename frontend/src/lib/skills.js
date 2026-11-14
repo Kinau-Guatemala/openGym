@@ -44,11 +44,14 @@ export function skillStats(workouts, now = Date.now(), skills = SKILLS) {
       for (const e of list(w?.entries)) {
         if (!ids.has(e?.id)) continue
         let did = false
+        const blocks = new Set()
         for (const s of list(e.sets)) {
           if (isWarmupRow(s)) continue
           const n = completedRepsOf(s)
           if (!n) continue
           did = true
+          // A merged WOD entry's sets say their own block (wod-log.js mergeRepeats).
+          blocks.add(s.wodBlock ?? e.wodBlock)
           const top = isSideSet(s) ? Math.max(...['L', 'R'].map(k => (s.sides[k]?.done ? reps(s.sides[k]) : 0))) : n
           if (top > out.maxReps) { out.maxReps = top; out.perSide = isSideSet(s) }
           if (w.d >= from) out.volume += n
@@ -56,7 +59,7 @@ export function skillStats(workouts, now = Date.now(), skills = SKILLS) {
         if (!did) continue
         if (!out.first || w.d < out.first) out.first = w.d
         if (w.d >= last) { last = w.d; out.exId = e.id }
-        if (!e.swappedFrom && list(w.wod?.blocks).some(b => b.ref === e.wodBlock && b.rx)) rxBlocks.add((w.id ?? w.d) + '/' + e.wodBlock)
+        if (!e.swappedFrom) for (const ref of blocks) if (list(w.wod?.blocks).some(b => b.ref === ref && b.rx)) rxBlocks.add((w.id ?? w.d) + '/' + ref)
       }
     }
     out.rxDone = rxBlocks.size

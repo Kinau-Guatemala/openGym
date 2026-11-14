@@ -1,0 +1,1091 @@
+{
+ "program": {
+  "title": "WOD",
+  "tracks": [
+   {
+    "id": "pump",
+    "label": "Holy Pump",
+    "kind": "extra",
+    "blocks": [
+     {
+      "id": "b0",
+      "label": "HOLY PUMP FOR TIME",
+      "warmup": false,
+      "format": "fortime",
+      "capMin": null,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "HOLY PUMP\nFOR TIME\n100 Push ups",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "100 Push ups",
+        "rawName": "push ups",
+        "name": "push-up",
+        "slot": null,
+        "exId": "0662",
+        "dose": {
+         "reps": 100
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ],
+      "include": false
+     },
+     {
+      "id": "b1",
+      "label": "4 RONDAS REST 1 MIN CV",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": null,
+      "rounds": 4,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "4 RONDAS REST 1 MIN CV\n12-15 DB´s Bench Press\n20 Leg raises",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "12-15 DB´s Bench Press",
+        "rawName": "db´s bench press",
+        "name": "dumbbell bench press",
+        "slot": null,
+        "exId": "0289",
+        "dose": {
+         "reps": 12,
+         "repsMax": 15
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "20 Leg raises",
+        "rawName": "leg raises",
+        "name": "leg raise",
+        "slot": null,
+        "exId": "1163",
+        "dose": {
+         "reps": 20
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ],
+      "include": false
+     },
+     {
+      "id": "b2",
+      "label": "4 RONDAS REST 1 MIN CV",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": null,
+      "rounds": 4,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "4 RONDAS REST 1 MIN CV\n12-15 DB´s Elevated Bench press\n20 Tuck Crunches",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "12-15 DB´s Elevated Bench press",
+        "rawName": "db´s elevated bench press",
+        "name": "dumbbell incline bench press",
+        "slot": null,
+        "exId": "0314",
+        "dose": {
+         "reps": 12,
+         "repsMax": 15
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "20 Tuck Crunches",
+        "rawName": "tuck crunches",
+        "name": "tuck crunch",
+        "slot": null,
+        "exId": "0871",
+        "dose": {
+         "reps": 20
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ],
+      "include": false
+     },
+     {
+      "id": "b3",
+      "label": "4 RONDAS REST 1 MIN CV",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": null,
+      "rounds": 4,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "4 RONDAS REST 1 MIN CV\n12-15 DB´s Bench flys\n20 Sit ups",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "12-15 DB´s Bench flys",
+        "rawName": "db´s bench flys",
+        "name": "dumbbell bench fly",
+        "slot": null,
+        "exId": "0308",
+        "dose": {
+         "reps": 12,
+         "repsMax": 15
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "20 Sit ups",
+        "rawName": "sit ups",
+        "name": "sit-up",
+        "slot": null,
+        "exId": "0736",
+        "dose": {
+         "reps": 20
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ],
+      "include": false
+     },
+     {
+      "id": "b4",
+      "label": "4 RONDAS REST 1 MIN CV",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": null,
+      "rounds": 4,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "4 RONDAS REST 1 MIN CV\n12-15 Elevated Hex Press\n20 Side Bends",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "12-15 Elevated Hex Press",
+        "rawName": "elevated hex press",
+        "name": "dumbbell hex press",
+        "slot": null,
+        "exId": "5067",
+        "dose": {
+         "reps": 12,
+         "repsMax": 15
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "20 Side Bends",
+        "rawName": "side bends",
+        "name": "side bend",
+        "slot": null,
+        "exId": "2864",
+        "dose": {
+         "reps": 20
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ],
+      "include": false
+     }
+    ]
+   },
+   {
+    "id": "conditioning",
+    "label": "Holy Conditioning",
+    "kind": "extra",
+    "blocks": [
+     {
+      "id": "b0",
+      "label": "AMRAP 40",
+      "warmup": false,
+      "format": "amrap",
+      "capMin": 40,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "AMRAP 40\nEasy Run/Bike/Row/Ski",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "Easy Run/Bike/Row/Ski",
+        "rawName": "easy run",
+        "name": "run",
+        "slot": null,
+        "exId": "0685",
+        "dose": {},
+        "perSide": false,
+        "rx": null,
+        "alts": [
+         {
+          "exId": "3893",
+          "rawName": "bike",
+          "dose": {}
+         },
+         {
+          "exId": "1161",
+          "rawName": "row",
+          "dose": {}
+         },
+         {
+          "exId": "2142",
+          "rawName": "ski",
+          "dose": {}
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "full",
+    "label": "Full Equipment",
+    "kind": "main",
+    "blocks": [
+     {
+      "id": "b0",
+      "label": "AMRAP 5",
+      "warmup": true,
+      "format": "amrap",
+      "capMin": 5,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "WARM UP\nAMRAP 5\n20 seg machine\n3 kips + 3 knees to chest + 3 pull ups\n5 Muscle Snatch + 5 OHS\n10 Jump Squats",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "20 seg machine",
+        "rawName": "machine",
+        "name": "cardio machine",
+        "slot": null,
+        "exId": "2192",
+        "dose": {
+         "sec": 20
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "3 kips + 3 knees to chest + 3 pull ups",
+        "rawName": "kips",
+        "name": "kipping swing",
+        "slot": null,
+        "exId": "10948",
+        "dose": {
+         "reps": 3
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m2",
+        "raw": "3 kips + 3 knees to chest + 3 pull ups",
+        "rawName": "knees to chest",
+        "name": "knees to chest",
+        "slot": null,
+        "exId": "9819",
+        "dose": {
+         "reps": 3
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m3",
+        "raw": "3 kips + 3 knees to chest + 3 pull ups",
+        "rawName": "pull ups",
+        "name": "pull-up",
+        "slot": null,
+        "exId": "0652",
+        "dose": {
+         "reps": 3
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m4",
+        "raw": "5 Muscle Snatch + 5 OHS",
+        "rawName": "muscle snatch",
+        "name": "barbell muscle snatch",
+        "slot": null,
+        "exId": "1526",
+        "dose": {
+         "reps": 5
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m5",
+        "raw": "5 Muscle Snatch + 5 OHS",
+        "rawName": "ohs",
+        "name": "barbell overhead squat",
+        "slot": null,
+        "exId": "0069",
+        "dose": {
+         "reps": 5
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m6",
+        "raw": "10 Jump Squats",
+        "rawName": "jump squats",
+        "name": "jump squat",
+        "slot": null,
+        "exId": "0514",
+        "dose": {
+         "reps": 10
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ],
+      "include": true
+     },
+     {
+      "id": "b1",
+      "label": "TC 10 COLECTIVO",
+      "warmup": false,
+      "format": "fortime",
+      "capMin": 10,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 10\nCOLECTIVO\n1 Snatch pull + Snatch + 1 OHS",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "1 Snatch pull + Snatch + 1 OHS",
+        "rawName": "snatch pull",
+        "name": "barbell snatch pull",
+        "slot": null,
+        "exId": "0776",
+        "dose": {
+         "reps": 1
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": [],
+        "via": "guess",
+        "candidates": [
+         {
+          "exId": "0776",
+          "score": 1
+         },
+         {
+          "exId": "0074",
+          "score": 0.76
+         },
+         {
+          "exId": "1533",
+          "score": 0.76
+         }
+        ]
+       },
+       {
+        "id": "m1",
+        "raw": "1 Snatch pull + Snatch + 1 OHS",
+        "rawName": "snatch",
+        "name": "barbell snatch",
+        "slot": null,
+        "exId": "1533",
+        "dose": {
+         "reps": 1
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m2",
+        "raw": "1 Snatch pull + Snatch + 1 OHS",
+        "rawName": "ohs",
+        "name": "barbell overhead squat",
+        "slot": null,
+        "exId": "0069",
+        "dose": {
+         "reps": 1
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b2",
+      "label": "TC 12 3 RONDAS",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": 12,
+      "rounds": 3,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 12\n3 RONDAS\n5 Burpees\n10 OHS 115/75\n5 Burpees\n10 Hang Snatch 115/75",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "5 Burpees",
+        "rawName": "burpees",
+        "name": "burpee",
+        "slot": null,
+        "exId": "1160",
+        "dose": {
+         "reps": 5
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "10 OHS 115/75",
+        "rawName": "ohs",
+        "name": "barbell overhead squat",
+        "slot": null,
+        "exId": "0069",
+        "dose": {
+         "reps": 10
+        },
+        "perSide": false,
+        "rx": {
+         "male": {
+          "w": 115,
+          "unit": "lb"
+         },
+         "female": {
+          "w": 75,
+          "unit": "lb"
+         }
+        },
+        "alts": []
+       },
+       {
+        "id": "m2",
+        "raw": "5 Burpees",
+        "rawName": "burpees",
+        "name": "burpee",
+        "slot": null,
+        "exId": "1160",
+        "dose": {
+         "reps": 5
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m3",
+        "raw": "10 Hang Snatch 115/75",
+        "rawName": "hang snatch",
+        "name": "barbell hang snatch",
+        "slot": null,
+        "exId": "1522",
+        "dose": {
+         "reps": 10
+        },
+        "perSide": false,
+        "rx": {
+         "male": {
+          "w": 115,
+          "unit": "lb"
+         },
+         "female": {
+          "w": 75,
+          "unit": "lb"
+         }
+        },
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b3",
+      "label": "TC 12 BUY IN",
+      "warmup": false,
+      "format": "fortime",
+      "capMin": 12,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 12\nBUY IN Run 500 THEN",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "BUY IN Run 500",
+        "rawName": "run",
+        "name": "run",
+        "slot": null,
+        "exId": "0685",
+        "dose": {
+         "m": 500
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b4",
+      "label": "3 RONDAS",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": null,
+      "rounds": 3,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 12\n3 RONDAS\n12 DB´s Thrusters\n6 BMU",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "12 DB´s Thrusters",
+        "rawName": "db´s thrusters",
+        "name": "dumbbell thruster",
+        "slot": null,
+        "exId": "2968",
+        "dose": {
+         "reps": 12
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "6 BMU",
+        "rawName": "bmu",
+        "name": "bar muscle-up",
+        "slot": null,
+        "exId": "5194",
+        "dose": {
+         "reps": 6
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b5",
+      "label": "BUY OUT",
+      "warmup": false,
+      "format": "fortime",
+      "capMin": null,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 12\nBUY OUT Run 500",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "BUY OUT Run 500",
+        "rawName": "run",
+        "name": "run",
+        "slot": null,
+        "exId": "0685",
+        "dose": {
+         "m": 500
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "evo",
+    "label": "Evo Equipment",
+    "kind": "main",
+    "blocks": [
+     {
+      "id": "b0",
+      "label": "AMRAP 5",
+      "warmup": true,
+      "format": "amrap",
+      "capMin": 5,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "WARM UP\nAMRAP 5\n20 seg machine\n7 Russian Swings\n7 mts Sled Drag\n10 Jump Squats",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "20 seg machine",
+        "rawName": "machine",
+        "name": "cardio machine",
+        "slot": null,
+        "exId": "2192",
+        "dose": {
+         "sec": 20
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "7 Russian Swings",
+        "rawName": "russian swings",
+        "name": "kettlebell russian swing",
+        "slot": null,
+        "exId": "0549",
+        "dose": {
+         "reps": 7
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m2",
+        "raw": "7 mts Sled Drag",
+        "rawName": "sled drag",
+        "name": "sled drag",
+        "slot": null,
+        "exId": "5143",
+        "dose": {
+         "m": 7
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m3",
+        "raw": "10 Jump Squats",
+        "rawName": "jump squats",
+        "name": "jump squat",
+        "slot": null,
+        "exId": "0514",
+        "dose": {
+         "reps": 10
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b1",
+      "label": "EMOM 15",
+      "warmup": false,
+      "format": "emom",
+      "capMin": 15,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "WOD\nEMOM 15\nM1 18 Swings 24KG/16KG\nM2 18 Cal Ski / Row\nM3  Max Sled Pull + Sled Drag 75KG/25KG\nM6  Max Sled Pull + Sled Drag 100KG/50KG\nM9  Max Sled Pull + Sled Drag 100KG/50KG\nM12 Max Sled Pull + Sled Drag 125KG/75KG\nM15 Max sled pull + Sled DRag 125KG/75KG",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "M1 18 Swings 24KG/16KG",
+        "rawName": "swings",
+        "name": "kettlebell swing",
+        "slot": "M1",
+        "exId": "0549",
+        "dose": {
+         "reps": 18
+        },
+        "perSide": false,
+        "rx": {
+         "male": {
+          "w": 24,
+          "unit": "kg"
+         },
+         "female": {
+          "w": 16,
+          "unit": "kg"
+         }
+        },
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "M2 18 Cal Ski / Row",
+        "rawName": "ski",
+        "name": "ski erg",
+        "slot": "M2",
+        "exId": "2142",
+        "dose": {
+         "cal": 18
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": [
+         {
+          "exId": "1161",
+          "rawName": "row",
+          "dose": {
+           "cal": 18
+          }
+         }
+        ]
+       },
+       {
+        "id": "m2",
+        "raw": "M3  Max Sled Pull + Sled Drag 75KG/25KG",
+        "rawName": "sled pull",
+        "name": "sled pull",
+        "slot": "M3",
+        "exId": "9939",
+        "dose": {},
+        "perSide": false,
+        "rx": {
+         "male": {
+          "w": 75,
+          "unit": "kg"
+         },
+         "female": {
+          "w": 25,
+          "unit": "kg"
+         }
+        },
+        "steps": [
+         {
+          "rx": {
+           "male": {
+            "w": 75,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 25,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 100,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 50,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 100,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 50,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 125,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 75,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 125,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 75,
+            "unit": "kg"
+           }
+          }
+         }
+        ],
+        "alts": []
+       },
+       {
+        "id": "m3",
+        "raw": "M3  Max Sled Pull + Sled Drag 75KG/25KG",
+        "rawName": "sled drag",
+        "name": "sled drag",
+        "slot": "M3",
+        "exId": "5143",
+        "dose": {},
+        "perSide": false,
+        "rx": {
+         "male": {
+          "w": 75,
+          "unit": "kg"
+         },
+         "female": {
+          "w": 25,
+          "unit": "kg"
+         }
+        },
+        "steps": [
+         {
+          "rx": {
+           "male": {
+            "w": 75,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 25,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 100,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 50,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 100,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 50,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 125,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 75,
+            "unit": "kg"
+           }
+          }
+         },
+         {
+          "rx": {
+           "male": {
+            "w": 125,
+            "unit": "kg"
+           },
+           "female": {
+            "w": 75,
+            "unit": "kg"
+           }
+          }
+         }
+        ],
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b2",
+      "label": "TC 15 BUY IN",
+      "warmup": false,
+      "format": "fortime",
+      "capMin": 15,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 15\nBUY IN Run 500/ Bike 1000 THEN",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "BUY IN Run 500/ Bike 1000 THEN",
+        "rawName": "run",
+        "name": "run",
+        "slot": null,
+        "exId": "0685",
+        "dose": {
+         "m": 500
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": [
+         {
+          "exId": "3893",
+          "rawName": "bike",
+          "dose": {
+           "m": 1000
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "b3",
+      "label": "4 RONDAS",
+      "warmup": false,
+      "format": "rounds",
+      "capMin": null,
+      "rounds": 4,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 15\n4 RONDAS\n12 DB´s Thrusters\n6 Chin ups estrictos",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "12 DB´s Thrusters",
+        "rawName": "db´s thrusters",
+        "name": "dumbbell thruster",
+        "slot": null,
+        "exId": "2968",
+        "dose": {
+         "reps": 12
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       },
+       {
+        "id": "m1",
+        "raw": "6 Chin ups estrictos",
+        "rawName": "chin ups estrictos",
+        "name": "strict chin-up",
+        "slot": null,
+        "exId": "1326",
+        "dose": {
+         "reps": 6
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": []
+       }
+      ]
+     },
+     {
+      "id": "b4",
+      "label": "BUY OUT",
+      "warmup": false,
+      "format": "fortime",
+      "capMin": null,
+      "rounds": null,
+      "everySec": null,
+      "roundsMax": null,
+      "scheme": null,
+      "benchmark": null,
+      "raw": "TC 15\nBUY OUT Run 500 / Bike 1000",
+      "movements": [
+       {
+        "id": "m0",
+        "raw": "BUY OUT Run 500 / Bike 1000",
+        "rawName": "run",
+        "name": "run",
+        "slot": null,
+        "exId": "0685",
+        "dose": {
+         "m": 500
+        },
+        "perSide": false,
+        "rx": null,
+        "alts": [
+         {
+          "exId": "3893",
+          "rawName": "bike",
+          "dose": {
+           "m": 1000
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "choice": {
+  "tracks": [
+   "full"
+  ],
+  "include": {
+   "full/b0": true,
+   "full/b1": true,
+   "full/b2": true,
+   "full/b3": true,
+   "full/b4": true,
+   "full/b5": true
+  }
+ }
+}
