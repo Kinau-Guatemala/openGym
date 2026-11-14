@@ -2307,6 +2307,8 @@ export default {
   'Log workout': 'Zapisz trening',
   'Save log': 'Zapisz wpis',
   'Already logged. Saving replaces it.': 'Już zapisano. Zapisanie zastąpi wpis.',
+  'Weights in {0}': 'Ciężary w {0}',
+  'Switch to {0}': 'Przełącz na {0}',
   'Score': 'Wynik',
   'Extra reps': 'Dodatkowe powt.',
   'Weight': 'Ciężar',

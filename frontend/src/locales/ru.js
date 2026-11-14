@@ -2311,6 +2311,8 @@ export default {
   'Log workout': 'Записать тренировку',
   'Save log': 'Сохранить запись',
   'Already logged. Saving replaces it.': 'Уже записано. Сохранение заменит запись.',
+  'Weights in {0}': 'Вес в {0}',
+  'Switch to {0}': 'Переключить на {0}',
   'Score': 'Результат',
   'Extra reps': 'Доп. повторы',
   'Weight': 'Вес',

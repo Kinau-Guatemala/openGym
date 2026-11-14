@@ -2318,6 +2318,8 @@ export default {
   'Log workout': 'บันทึกการออกกำลังกาย',
   'Save log': 'บันทึกรายการ',
   'Already logged. Saving replaces it.': 'บันทึกไว้แล้ว การบันทึกจะแทนที่',
+  'Weights in {0}': 'น้ำหนักเป็น {0}',
+  'Switch to {0}': 'เปลี่ยนเป็น {0}',
   'Score': 'คะแนน',
   'Extra reps': 'ครั้งเพิ่มเติม',
   'Weight': 'น้ำหนัก',

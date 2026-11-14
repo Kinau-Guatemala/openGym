@@ -35,7 +35,9 @@ const click = async text => { await act(async () => { button(text).click() }) }
 // The weight fields in screen order: the strength row, the strength block's load score, the C&J.
 const weights = () => [...host.querySelectorAll('.measure-field')].filter(f => f.firstChild.textContent === 'Weight')
 const field = i => weights()[i].querySelector('input')
-const unitOf = i => weights()[i].querySelector('i').textContent
+const unitOf = i => weights()[i].querySelector('.unit-chip').textContent.replace(' ⇄', '')
+const chip = i => weights()[i].querySelector('.unit-chip')
+const tap = async el => { await act(async () => { el.click() }) }
 const type = async (el, value) => {
   await act(async () => {
     Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value').set.call(el, value)
@@ -120,6 +122,94 @@ describe('kg / lb while logging a WOD (T30)', () => {
       <Routes><Route path="/crossfit/log/:date" element={<CrossFitLog />} /><Route path="*" element={null} /></Routes>
     </MemoryRouter>))
     expect(pressed()).toBe('lb')
+  })
+})
+
+// T38: every Weight field's unit is a chip that flips the whole screen, as the switch at the top does.
+describe('kg / lb beside each weight (T38)', () => {
+  const values = () => [0, 1, 2].map(i => field(i).value)
+
+  it('the chip beside a movement\'s weight flips the screen and converts every typed value; again flips it back', async () => {
+    start('kg')
+    await mount()
+    await type(field(0), '100')
+    await type(field(1), '60')
+    expect(chip(2).getAttribute('aria-label')).toBe('Switch to lb')
+
+    await tap(chip(2))
+    expect(pressed()).toBe('lb')
+    expect([0, 1, 2].map(unitOf)).toEqual(['lb', 'lb', 'lb'])
+    expect(values()).toEqual(['220.5', '132.5', '135'])
+    expect(host.textContent).toContain('Rx 135 lb')
+    expect(chip(2).getAttribute('aria-label')).toBe('Switch to kg')
+    expect(useUI.getState().toastMsg).toBe('Weights in lb')
+
+    await tap(chip(2))
+    expect(pressed()).toBe('kg')
+    expect([0, 1, 2].map(unitOf)).toEqual(['kg', 'kg', 'kg'])
+    expect(values()).toEqual(['100', '60', '60'])
+    expect(useUI.getState().toastMsg).toBe('Weights in kg')
+  })
+
+  it('the score load chip and a strength set\'s chip do the same', async () => {
+    start('lb')
+    await mount()
+    await type(field(1), '225')
+    await tap(chip(1))
+    expect(pressed()).toBe('kg')
+    expect(field(1).value).toBe('102')
+    await tap(chip(0))
+    expect(pressed()).toBe('lb')
+    expect(field(1).value).toBe('225')
+  })
+
+  it('the switch already on does nothing: no toast, nothing converted', async () => {
+    start('kg')
+    useUI.setState({ toastMsg: '' })
+    await mount()
+    await type(field(0), '100')
+    await click('kg')
+    expect(useUI.getState().toastMsg).toBeFalsy()
+    expect(field(0).value).toBe('100')
+  })
+
+  it('a weight field keeps its own name; the chip does not lend it its label', async () => {
+    start('kg')
+    await mount()
+    expect(field(0).getAttribute('aria-label')).toBe('Weight (kg)')
+  })
+
+  it('a typed lb weight survives lb, kg, lb; one edited in kg between is converted', async () => {
+    start('lb')
+    await mount()
+    await type(field(0), '105')
+    await type(field(1), '78')
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['47.75', '35.5'])
+    await type(field(1), '40')
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['105', '88'])
+    await tap(chip(0))
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['105', '88'])
+  })
+
+  it('a typed lb weight saved while kg is shown is stored as typed', async () => {
+    start('lb')
+    await mount()
+    await type(field(0), '105')
+    await tap(chip(0))
+    await click('Log workout')
+    expect(logged().entries.find(e => e.id === DL).sets[0].w).toBe(105)
+  })
+
+  it('a reps field has no chip', async () => {
+    start('kg')
+    await mount()
+    const reps = [...host.querySelectorAll('.measure-field')].filter(f => f.firstChild.textContent === 'Reps')
+    expect(reps.length).toBeGreaterThan(0)
+    for (const f of reps) expect(f.querySelector('.unit-chip')).toBeNull()
+    expect(host.querySelectorAll('.unit-chip')).toHaveLength(3)
   })
 })
 

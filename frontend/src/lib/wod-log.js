@@ -301,6 +301,34 @@ export function loggedIn(logged, from, to) {
   return { ...logged, moves: convertMoves(logged.moves, from, to), blocks }
 }
 
+// Where `logged` holds a weight: each movement's, each of its rows', each load score's.
+const weightPaths = logged => [
+  ...Object.entries(logged?.moves || {}).flatMap(([k, lm]) => [
+    ...(lm?.w != null ? [['moves', k, 'w']] : []),
+    ...list(lm?.sets).flatMap((s, i) => (s?.w != null ? [['moves', k, 'sets', i, 'w']] : [])),
+  ]),
+  ...Object.entries(logged?.blocks || {}).flatMap(([k, lb]) => (lb?.score?.w != null ? [['blocks', k, 'score', 'w']] : [])),
+]
+const at = (o, path) => path.reduce((v, k) => v?.[k], o)
+
+/**
+ * The log screen's kg / lb switch: `st` (`{ logged, unit, back }`) moved to `to` by loggedIn,
+ * except that a weight still as the last switch showed it goes back to what it was before that
+ * switch. The plate grids don't round-trip (105 lb is 47.75 kg, which is 105.5 lb), so without
+ * this two taps would change what was typed. `back` is what the next switch needs.
+ */
+export function switchUnit(st, to) {
+  const logged = structuredClone(loggedIn(st.logged, st.unit, to))
+  const b = st.back
+  if (b?.unit === to) for (const p of weightPaths(logged)) {
+    const was = at(b.before, p)
+    if (was != null && at(st.logged, p) === at(b.after, p)) at(logged, p.slice(0, -1))[p.at(-1)] = was
+  }
+  // Its own copy: the screen edits `logged` in place in a clone of the whole state, which would
+  // carry a shared `after` along with it.
+  return { ...st, logged, unit: to, back: { unit: st.unit, before: st.logged, after: structuredClone(logged) } }
+}
+
 /**
  * The log screen's starting state for a day already logged as `w`, so saving again edits what
  * was logged rather than the program's printed doses: `{ tracks, include, logged, unit }`. A log

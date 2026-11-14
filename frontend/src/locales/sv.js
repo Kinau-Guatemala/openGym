@@ -2912,6 +2912,8 @@ export default {
   'Log workout': 'Logga pass',
   'Save log': 'Spara logg',
   'Already logged. Saving replaces it.': 'Redan loggat. Om du sparar ersätts det.',
+  'Weights in {0}': 'Vikter i {0}',
+  'Switch to {0}': 'Byt till {0}',
   'Score': 'Resultat',
   'Extra reps': 'Extra reps',
   'Whether this block counts when you log the program. You can change it again on the log screen.': 'Om blocket räknas när du loggar programmet. Du kan ändra det igen när du loggar.',

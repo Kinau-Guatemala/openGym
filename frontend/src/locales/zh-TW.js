@@ -2300,6 +2300,8 @@ export default {
   'Log workout': '記錄訓練',
   'Save log': '儲存記錄',
   'Already logged. Saving replaces it.': '已記錄。儲存會取代它。',
+  'Weights in {0}': '重量單位：{0}',
+  'Switch to {0}': '切換為 {0}',
   'Score': '成績',
   'Extra reps': '額外次數',
   'Weight': '重量',

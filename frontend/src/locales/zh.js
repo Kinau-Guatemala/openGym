@@ -2307,6 +2307,8 @@ export default {
   'Log workout': '记录训练',
   'Save log': '保存记录',
   'Already logged. Saving replaces it.': '已记录。保存将替换它。',
+  'Weights in {0}': '重量单位：{0}',
+  'Switch to {0}': '切换为 {0}',
   'Score': '成绩',
   'Extra reps': '额外次数',
   'Weight': '重量',

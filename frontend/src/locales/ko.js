@@ -2307,6 +2307,8 @@ export default {
   'Log workout': '운동 기록',
   'Save log': '기록 저장',
   'Already logged. Saving replaces it.': '이미 기록됨. 저장하면 바뀝니다.',
+  'Weights in {0}': '무게 단위: {0}',
+  'Switch to {0}': '{0}(으)로 전환',
   'Score': '점수',
   'Extra reps': '추가 반복',
   'Weight': '무게',

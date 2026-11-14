@@ -67,9 +67,9 @@ describe('the log screen', () => {
     useStore.setState({ S: { ...clone(DEF), unit: 'kg', wods: { '2026-10-27': { ...program, tracks: [{ ...program.tracks[0], blocks: [block('Warm', { warmup: true }), wod] }], _ts: 1 } } } })
     await mount('/crossfit/log/2026-10-27')
     const weight = () => [...card('WOD').querySelectorAll('.measure-field')].find(f => f.firstChild.textContent === 'Weight')
-    expect([weight().querySelector('input').value, weight().querySelector('i').textContent]).toEqual(['60', 'kg'])
+    expect([weight().querySelector('input').value, weight().querySelector('.unit-chip').textContent]).toEqual(['60', 'kg ⇄'])
     await act(async () => [...host.querySelectorAll('button')].find(b => b.textContent.trim() === 'lb').click())
-    expect([weight().querySelector('input').value, weight().querySelector('i').textContent]).toEqual(['135', 'lb'])
+    expect([weight().querySelector('input').value, weight().querySelector('.unit-chip').textContent]).toEqual(['135', 'lb ⇄'])
     expect(card('WOD').textContent).toContain(HELP.rx())
   })
 

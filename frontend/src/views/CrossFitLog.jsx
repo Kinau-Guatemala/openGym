@@ -2,8 +2,9 @@
 // (store logWod, lib/wod-log.js). Pick the tracks and blocks done, a weight or reps per movement,
 // a substitute where one was swapped in, and each block's score with its Rx flag. Logging the day
 // again opens on what was logged and edits it. A session in progress is never touched.
-// Weights are typed and shown in the unit picked beside the start time (the profile's to begin
-// with, or the one a re-opened log was typed in) and stored in the profile's (lib/wod-log.js).
+// Weights are typed and shown in the unit picked beside the start time or on any Weight field's
+// kg / lb chip (the profile's to begin with, or the one a re-opened log was typed in) and stored
+// in the profile's (lib/wod-log.js).
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
@@ -16,7 +17,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf, liveWod } from '../lib/wod-draft.js'
-import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, optionOf, relogState, setsOf, switchUnit, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -56,13 +57,20 @@ export default function CrossFitLog() {
   const firstOn = shown.findIndex(x => x.on)
   const toggleTrack = id => edit(n => { n.tracks = n.tracks.includes(id) ? n.tracks.filter(x => x !== id) : [...n.tracks, id] })
 
-  const setUnit = u => setState(st => ({ ...st, logged: loggedIn(st.logged, st.unit, u), unit: u }))
+  const setUnit = u => {
+    if (u === state.unit) return
+    setState(st => switchUnit(st, u))
+    ui().toast(t('Weights in {0}', u))
+  }
+  // A Weight field's chip flips the whole screen, as the switch at the top does.
+  const flipUnit = () => setUnit(state.unit === 'kg' ? 'lb' : 'kg')
 
   const save = () => {
-    // What was typed goes into the profile's unit. A weight left as shown (the Rx, or the last one
+    // What was typed goes into the profile's unit, through switchUnit, so a weight typed in it and
+    // only looked at in the other comes back as typed. A weight left as shown (the Rx, or the last one
     // used) is logged as the profile's, so a printed load is converted once, as the steps' are; one
     // left empty on a movement with a load per step logs each step's.
-    const logged = loggedIn(state.logged, state.unit, base)
+    const logged = switchUnit(state, base).logged
     const moves = structuredClone(logged.moves)
     for (const tr of program.tracks) for (const b of list(tr.blocks)) for (const m of list(b.movements)) {
       const key = `${tr.id}/${b.id}/${m.id}`
@@ -101,7 +109,7 @@ export default function CrossFitLog() {
         {state.tracks.includes(tr.id) && <Icon name="check" style={CHIP_ICON} />}{tr.label || t('Track {0}', i + 1)}</button>)}
     </div>
 
-    {shown.map(({ tr, b, ref, on }, i) => <LogBlock key={ref} S={S} unit={state.unit} track={tr} block={b} on={on} logged={state.logged}
+    {shown.map(({ tr, b, ref, on }, i) => <LogBlock key={ref} S={S} unit={state.unit} onUnit={flipUnit} track={tr} block={b} on={on} logged={state.logged}
       explainInclude={i === 0} explainRx={i === firstOn}
       onInclude={v => edit(n => { n.include[ref] = v })}
       onBlock={fn => edit(n => { fn(n.logged.blocks[ref] ||= {}) })}
@@ -130,7 +138,7 @@ function defaultW(S, m, exId, unit = unitOf(S)) {
   return convertWeight(w, unitOf(S), unit)
 }
 
-function LogBlock({ S, unit, track, block, on, logged, explainInclude, explainRx, onInclude, onBlock, onMove }) {
+function LogBlock({ S, unit, onUnit, track, block, on, logged, explainInclude, explainRx, onInclude, onBlock, onMove }) {
   const ref = `${track.id}/${block.id}`
   const lb = logged.blocks[ref] || {}
   const score = lb.score || { type: SCORE_OF[block.format] || 'none' }
@@ -148,7 +156,7 @@ function LogBlock({ S, unit, track, block, on, logged, explainInclude, explainRx
     </div>
     {explainInclude && helpLine(HELP.includeLog())}
     {on && <>
-      {list(block.movements).map(m => <LogMovement key={m.id} S={S} unit={unit} block={block} m={m} lm={logged.moves[`${ref}/${m.id}`] || {}} onChange={fn => onMove(m, fn)} />)}
+      {list(block.movements).map(m => <LogMovement key={m.id} S={S} unit={unit} onUnit={onUnit} block={block} m={m} lm={logged.moves[`${ref}/${m.id}`] || {}} onChange={fn => onMove(m, fn)} />)}
       <div style={{ borderTop: '0.5px solid var(--sep)', marginTop: 12, paddingTop: 12 }}>
         <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
           <span className="small muted">{t('Score')}</span>
@@ -164,7 +172,7 @@ function LogBlock({ S, unit, track, block, on, logged, explainInclude, explainRx
             {num(t('Rounds'), score.rounds ?? null, v => setScore({ rounds: v }), null, false)}
             {num(t('Extra reps'), score.reps ?? null, v => setScore({ reps: v }), null, false)}
           </>}
-          {score.type === 'load' && num(t('Weight'), score.w ?? null, v => setScore({ w: v, unit }), unit)}
+          {score.type === 'load' && num(t('Weight'), score.w ?? null, v => setScore({ w: v, unit }), unit, true, onUnit)}
         </div>}
         <div className="lrow" style={{ padding: '4px 0' }}>
           <span className="lrow-m"><span className="lrow-t">Rx</span>{explainRx && <span className="lrow-s">{HELP.rx()}</span>}</span>
@@ -175,10 +183,13 @@ function LogBlock({ S, unit, track, block, on, logged, explainInclude, explainRx
   </div>
 }
 
-const num = (label, value, onChange, unit, decimal = true) => <label className="measure-field" key={label}><span>{label}</span>
-  <span className="measure-input"><NumberField decimal={decimal} nullable value={value} onChange={onChange} />{unit && <i>{unit}</i>}</span></label>
+// A weight's unit is a chip that switches the screen (onUnit); any other unit is a plain suffix.
+// The field names itself, or it would read the chip's label inside its <label> as its own name.
+const num = (label, value, onChange, unit, decimal = true, onUnit) => <label className="measure-field" key={label}><span>{label}</span>
+  <span className="measure-input"><NumberField decimal={decimal} nullable value={value} onChange={onChange} aria-label={onUnit ? `${label} (${unit})` : undefined} />
+    {unit && (onUnit ? <button type="button" className="unit-chip" aria-label={t('Switch to {0}', unit === 'kg' ? 'lb' : 'kg')} onClick={e => { e.preventDefault(); onUnit() }}>{unit} ⇄</button> : <i>{unit}</i>)}</span></label>
 
-function LogMovement({ S, unit, block, m, lm, onChange }) {
+function LogMovement({ S, unit, onUnit, block, m, lm, onChange }) {
   // The printed loads in the unit shown: an Rx is converted onto the plate grid (lib/rx.js).
   const Su = { ...S, unit }
   const exId = lm.exId || m.exId
@@ -213,7 +224,7 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
     </div>
     {exId && (strength ? <>
       {rows.map((r, i) => <div key={i} className="measure-form" style={{ marginBottom: 8 }}>
-        {num(t('Weight'), r.w ?? null, v => onChange(x => { x.sets = rows.map((s, j) => (j === i ? { ...s, w: v } : s)) }), unit)}
+        {num(t('Weight'), r.w ?? null, v => onChange(x => { x.sets = rows.map((s, j) => (j === i ? { ...s, w: v } : s)) }), unit, true, onUnit)}
         {num(t('Reps'), r.r ?? null, v => onChange(x => { x.sets = rows.map((s, j) => (j === i ? { ...s, r: v } : s)) }), null, false)}
       </div>)}
       <Button size="sm" variant="ghost" icon="plus" onClick={() => onChange(x => { x.sets = [...rows, { ...rows[rows.length - 1] }] })}>{t('Add set')}</Button>
@@ -223,7 +234,7 @@ function LogMovement({ S, unit, block, m, lm, onChange }) {
           : pos(dose.m) ? num(t('Meters'), lm.m ?? dose.m, v => set('m', v), null) : null}
         {num(t('Minutes'), lm.min ?? null, v => set('min', v), null)}
       </> : <>
-        {num(t('Weight'), w, v => set('w', v), unit)}
+        {num(t('Weight'), w, v => set('w', v), unit, true, onUnit)}
         {ladder && !pos(dose.reps) ? <div className="measure-field"><span>{t('Reps')}</span><div className="small muted" style={{ padding: '14px 2px' }}>{ladder.join('-')}</div></div>
           : pos(dose.sec) && !pos(dose.reps) ? num(m.perSide ? t('Seconds each side') : t('Seconds'), lm.sec ?? dose.sec, v => set('sec', v), null, false)
             : pos(dose.total) && !pos(dose.reps) ? num(t('Total'), lm.total ?? dose.total, v => set('total', v), null, false)
