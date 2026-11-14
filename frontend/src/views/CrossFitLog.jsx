@@ -17,7 +17,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf, liveWod } from '../lib/wod-draft.js'
-import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, optionOf, relogState, setsOf, switchUnit, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, keptBlocks, ladderOf, optionOf, relogState, setsOf, switchUnit, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -71,7 +71,7 @@ export default function CrossFitLog() {
     // used) is logged as the profile's, so a printed load is converted once, as the steps' are; one
     // left empty on a movement with a load per step logs each step's, and one with its own rows
     // (a strength block's) needs none. What was typed is kept too, as shown (`typed`, the load
-    // scores with their unit), so a re-open shows it exactly.
+    // scores with their unit), so a re-open shows it exactly (lib/wod-log.js).
     const logged = switchUnit(state, base).logged
     const moves = structuredClone(logged.moves), typed = structuredClone(state.logged.moves)
     for (const tr of program.tracks) for (const b of list(tr.blocks)) for (const m of list(b.movements)) {
@@ -84,8 +84,11 @@ export default function CrossFitLog() {
         if (tw != null) tm.w = tw
       }
     }
+    // And in the other unit, as a switch would bring it back: the rows when that is the profile's.
+    const other = state.unit === 'kg' ? 'lb' : 'kg'
+    const typedBack = other === base ? moves : state.back ? switchUnit(state, other).logged.moves : null
     const choice = { tracks: state.tracks, include: state.include }
-    const out = useStore.getState().logWod(date, choice, { ...logged, moves, typed, blocks: state.logged.blocks, start: atTime(date, state.time), unit: state.unit })
+    const out = useStore.getState().logWod(date, choice, { ...logged, moves, typed, typedBack, blocks: keptBlocks(state), start: atTime(date, state.time), unit: state.unit })
     if (!out) { ui().toast(t('Nothing to log: pick a track and an exercise for each movement')); return }
     nav('/home', { replace: true })
     ui().openSheet(close => <FinishSummary w={out.w} prs={out.prs} close={close} />, { kind: 'center', locked: true })

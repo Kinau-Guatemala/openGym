@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn, switchUnit } from './wod-log.js'
+import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn, switchUnit, keptBlocks } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -11,7 +11,7 @@ import { sessionsFor } from './progression.js'
 import { backfillStart } from './backfill.js'
 import { prepareDraft } from './wod-draft.js'
 import { validateWod } from '../../../api/coach/core/validate.js'
-import { convertStateUnit } from './units.js'
+import { convertStateUnit, convertWeight } from './units.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -817,7 +817,11 @@ describe('a re-open keeps what was typed (T42)', () => {
   const p = program([block('b0', 'strength', [mv('m0', DL, { reps: 5 })]), block('b1', 'fortime', [mv('m0', CJ, { reps: 10 })], { rounds: 1 })])
   const NOW = Date.parse('2026-10-20T12:00:00Z')
   // The log screen's save (CrossFitLog.jsx): the rows in the profile's unit, what was typed as typed.
-  const save = (S, st) => buildWodWorkout(S, '2026-10-13', p, all, { ...switchUnit(st, S.unit).logged, typed: st.logged.moves, blocks: st.logged.blocks, unit: st.unit }, NOW).w
+  const save = (S, st) => {
+    const logged = switchUnit(st, S.unit).logged, other = st.unit === 'kg' ? 'lb' : 'kg'
+    const typedBack = other === S.unit ? logged.moves : st.back ? switchUnit(st, other).logged.moves : null
+    return buildWodWorkout(S, '2026-10-13', p, all, { ...logged, typed: st.logged.moves, typedBack, blocks: keptBlocks(st), unit: st.unit }, NOW).w
+  }
   const typedAt = (unit, v) => ({ tracks: ['full'], include: {}, unit, logged: {
     moves: { 'full/b0/m0': { sets: [{ w: v, r: 5 }] }, 'full/b1/m0': { w: v } },
     blocks: { 'full/b0': { score: { type: 'load', w: v, unit } } },
@@ -860,6 +864,34 @@ describe('a re-open keeps what was typed (T42)', () => {
       }
     }
     expect(moved).toEqual([])
+  })
+
+  it('typed in one unit and saved while the other is shown: the first save logs it as typed, and so does an untouched re-save', () => {
+    const moved = []
+    for (const [profile, unit, step, top] of [['lb', 'lb', 0.5, 600], ['kg', 'lb', 0.5, 600], ['kg', 'kg', 0.25, 300], ['lb', 'kg', 0.25, 300]]) {
+      const S = S0({ unit: profile }), flip = unit === 'kg' ? 'lb' : 'kg'
+      for (let v = 1; v <= top; v += step) {
+        const st0 = switchUnit(typedAt(unit, v), flip)
+        const w = save(S, st0)
+        const st = relogState(p, w, profile, S)
+        const again = save(S, st)
+        if (shown(st).some((x, i) => x !== shown(st0)[i]) || rows(again).some((x, i) => x !== rows(w)[i]) || JSON.stringify(again.wod) !== JSON.stringify(w.wod)
+          || (profile === unit && rows(w).some(x => x !== v)) || convertWeight(w.wod.blocks[0].score.w, w.wod.blocks[0].score.unit, unit) !== v) moved.push(`${v} ${unit} on ${profile}`)
+        // flipped back on the re-open, it shows what was typed
+        if (shown(switchUnit(st, unit)).some(x => x !== v)) moved.push(`${v} ${unit} on ${profile}, flipped back`)
+      }
+    }
+    expect(moved).toEqual([])
+  })
+
+  it('a weight edited on the re-open converts as usual', () => {
+    const S = S0({ unit: 'lb' })
+    const st = relogState(p, save(S, switchUnit(typedAt('lb', 105), 'kg')), 'lb', S)
+    st.logged.moves['full/b1/m0'].w = 40
+    st.logged.blocks['full/b0'].score.w = 40
+    const w = save(S, st)
+    expect(rows(w)).toEqual([105, 88])
+    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 40, unit: 'kg' })
   })
 
   it('a Settings switch leaves moves kept with their unit as they are', () => {

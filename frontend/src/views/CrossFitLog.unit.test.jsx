@@ -223,6 +223,29 @@ describe('kg / lb beside each weight (T38)', () => {
     expect(logged().wod).toEqual(wod)
   })
 
+  it('an lb profile: 105 lb saved while kg is shown re-opens in kg, and saves and flips back as typed (T42)', async () => {
+    start('lb')
+    await mount()
+    await type(field(0), '105')
+    await type(field(1), '105')
+    await tap(chip(0))
+    await click('Log workout')
+    const dl = () => logged().entries.find(e => e.id === DL).sets[0].w
+    expect(dl()).toBe(105)
+    expect(logged().wod.blocks[0].score).toEqual({ type: 'load', w: 105, unit: 'lb' })
+    const wod = clone(logged().wod)
+    unmount()
+    await mount()
+    expect([pressed(), field(0).value, field(1).value]).toEqual(['kg', '47.75', '47.75'])
+    await click('Save log')
+    expect(dl()).toBe(105)
+    expect(logged().wod).toEqual(wod)
+    unmount()
+    await mount()
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['105', '105'])
+  })
+
   it('a reps field has no chip', async () => {
     start('kg')
     await mount()
