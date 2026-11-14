@@ -737,6 +737,15 @@ describe('wodToSession: an exercise logged once per kind (T39)', () => {
     expect([rows['full/b3/m0'], rows['full/b5/m0']]).toEqual([{ min: 2.5 }, { min: 3 }])
   })
 
+  it('13 Nov: progression reads the 115/75 rounds, not the warm-up entry of the overhead squat before them', () => {
+    const logged = { unit: 'kg', moves: { 'full/b0/m5': { w: 20 }, 'full/b1/m2': { w: 35 }, 'full/b2/m1': { w: 52.5 } } }
+    const S = S0()
+    const { active, w } = buildWodWorkout(S, '2026-11-13', nov13, choice, logged, Date.parse('2026-11-14T12:00:00Z'))
+    fileBackfill(S, active, w)
+    expect(S.workouts[0].entries.filter(e => e.id === OHS).map(e => !!e.noProg)).toEqual([true, false])
+    expect(sessionsFor(S, OHS, null, null).map(x => [x.d, x.weight])).toEqual([['2026-11-13', 52.5]])
+  })
+
   it('an old session, one entry per block, still re-opens per block', () => {
     const w = { id: 'wod-2026-11-13', d: '2026-11-13', src: 'wod', wod: { tracks: ['full'], blocks: [{ ref: 'full/b3' }, { ref: 'full/b5' }, { ref: 'full/b1' }] },
       entries: [

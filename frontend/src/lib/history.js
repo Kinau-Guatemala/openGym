@@ -361,10 +361,14 @@ export function entryRoutineId(w, en) {
   return [].concat(w?.routineIds ?? [])[0] ?? w?.routineId ?? null
 }
 
-// The entry for one exercise in one saved workout. With a routine id it is that routine's own
-// entry — a combined A+B day can hold the same exercise twice, and the second one is not the
-// first one's history. Without, the first one, as it always was.
-const entryIn = (w, exId, rid) => (w.entries || []).find(e => e && e.id === exId && (!rid || entryRoutineId(w, e) === rid))
+// The first entry of one exercise in one saved workout that counts: not excluded (entryExcluded)
+// and with a done work set, so a noProg warm-up of the lift earlier in the day does not hide the
+// working sets after it. With a routine id, only that routine's own entries are candidates — a
+// combined A+B day can hold the same exercise twice, and the second one is not the first one's
+// history. Read by "last time" here and by the progression baseline (progression.js
+// sessionsIn), so the two never pick different entries.
+export const countingEntryIn = (w, exId, rid) => (w.entries || []).find(e => e && e.id === exId && (!rid || entryRoutineId(w, e) === rid) &&
+  !entryExcluded(w, e) && (e.sets || []).some(s => s.done && !isWarmupRow(s)))
 
 /**
  * Whether "last time" is the exercise's last session in any workout rather than in the routine
@@ -396,12 +400,11 @@ function lastEntryIn(S, exId, rid) {
   const workouts = S.workouts || []
   for (let i = workouts.length - 1; i >= 0; i--) {
     const w = workouts[i]
-    const en = entryIn(w, exId, rid)
-    if (!en) continue
     // A session that does not count — a planned deload, or a rehab block merged into a real
     // session — is not "last time" for the next regular prescription: its reps and durations
     // must not seed the rows any more than its weight seeds the progression.
-    if (entryExcluded(w, en)) continue
+    const en = countingEntryIn(w, exId, rid)
+    if (!en) continue
     // Work sets only. Every caller asks the same question — "what did you actually lift last
     // time" — to seed the next session's rows, to size a freestyle config, and to print "Last
     // time" on the card. A warm-up answers none of them: seeding position 0 from a 50% ramp row

@@ -902,6 +902,40 @@ describe('per-entry noProg (combine routines)', () => {
     expect(nextPrescription(S, { id: LIFT, ...tgt(50), prog: 'linear' }).kind).toBe('first')
   })
 
+  it('a noProg entry before a counting one of the same exercise does not hide it', () => {
+    const S = {
+      unit: 'kg',
+      workouts: [{ d: '2026-02-01', entries: [entry(LIFT, 20, [5, 1], { noProg: true }), entry(PRESS, 40, [5]), entry(LIFT, 60, [5, 5, 5])] }],
+    }
+    expect(sessionsFor(S, LIFT).map(s => s.weight)).toEqual([60])
+    expect(nextPrescription(S, { id: LIFT, ...tgt(60), prog: 'linear' }).weight).toBe(62.5)
+  })
+
+  it('a merged rehab block before the strength routine\'s entry of the same exercise: the strength one counts', () => {
+    const S = {
+      unit: 'kg',
+      workouts: [{
+        d: '2026-02-01',
+        routineIds: ['rehab', 'strength'],
+        entries: [entry(LIFT, 30, [8, 8], { rid: 'rehab', noProg: true }), entry(LIFT, 60, [5, 5, 5], { rid: 'strength' })],
+      }],
+    }
+    expect(sessionsFor(S, LIFT).map(s => [s.rid, s.weight])).toEqual([['strength', 60]])
+    expect(sessionsFor(S, LIFT, null, 'strength').map(s => s.weight)).toEqual([60])
+  })
+
+  it('a workout where every entry of the exercise is excluded is still skipped', () => {
+    const S = {
+      unit: 'kg',
+      workouts: [
+        { d: '2026-02-01', entries: [entry(LIFT, 60, [5, 5, 5])] },
+        { d: '2026-02-03', entries: [entry(LIFT, 20, [5], { noProg: true }), entry(LIFT, 30, [8, 8], { noProg: true })] },
+        { d: '2026-02-05', excludeFromProgression: true, entries: [entry(LIFT, 20, [5]), entry(LIFT, 30, [8, 8])] },
+      ],
+    }
+    expect(sessionsFor(S, LIFT).map(s => s.d)).toEqual(['2026-02-01'])
+  })
+
   it('entryExcluded truth table', () => {
     expect(entryExcluded({}, {})).toBe(false)
     expect(entryExcluded({ excludeFromProgression: true }, {})).toBe(true)

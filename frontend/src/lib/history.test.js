@@ -1445,6 +1445,10 @@ describe('lastEntryFor / buildSets skip a noProg entry', () => {
     const S = { workouts: [wk('2026-01-01', 60, 8), wk('2026-01-05', 30, 12, { noProg: true })] }
     expect(lastEntryFor(S, LIFT2).d).toBe('2026-01-01')
   })
+  it('lastEntryFor reads the counting entry of a workout that logged a noProg one of the lift first', () => {
+    const S = { workouts: [{ d: '2026-01-05', entries: [{ ...wk('', 20, 5).entries[0], noProg: true }, wk('', 60, 8).entries[0]] }] }
+    expect(lastEntryFor(S, LIFT2).sets).toEqual([{ w: 60, r: 8, done: true }])
+  })
   it('lastEntryFor skips a legacy whole-workout excludeFromProgression session', () => {
     const S = { workouts: [wk('2026-01-01', 60, 8), { d: '2026-01-05', excludeFromProgression: true, entries: [{ id: LIFT2, target: { sets: 1, reps: 12, weight: 30 }, sets: [{ w: 30, r: 12, done: true }] }] }] }
     expect(lastEntryFor(S, LIFT2).d).toBe('2026-01-01')
