@@ -194,6 +194,15 @@ describe('kg / lb beside each weight (T38)', () => {
     expect([field(0).value, field(1).value]).toEqual(['105', '88'])
   })
 
+  it('a typed lb weight saved while kg is shown is stored as typed', async () => {
+    start('lb')
+    await mount()
+    await type(field(0), '105')
+    await tap(chip(0))
+    await click('Log workout')
+    expect(logged().entries.find(e => e.id === DL).sets[0].w).toBe(105)
+  })
+
   it('a reps field has no chip', async () => {
     start('kg')
     await mount()

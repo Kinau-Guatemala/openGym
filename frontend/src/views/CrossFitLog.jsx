@@ -17,7 +17,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf, liveWod } from '../lib/wod-draft.js'
-import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, switchUnit, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, optionOf, relogState, setsOf, switchUnit, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -66,10 +66,11 @@ export default function CrossFitLog() {
   const flipUnit = () => setUnit(state.unit === 'kg' ? 'lb' : 'kg')
 
   const save = () => {
-    // What was typed goes into the profile's unit. A weight left as shown (the Rx, or the last one
+    // What was typed goes into the profile's unit, through switchUnit, so a weight typed in it and
+    // only looked at in the other comes back as typed. A weight left as shown (the Rx, or the last one
     // used) is logged as the profile's, so a printed load is converted once, as the steps' are; one
     // left empty on a movement with a load per step logs each step's.
-    const logged = loggedIn(state.logged, state.unit, base)
+    const logged = switchUnit(state, base).logged
     const moves = structuredClone(logged.moves)
     for (const tr of program.tracks) for (const b of list(tr.blocks)) for (const m of list(b.movements)) {
       const key = `${tr.id}/${b.id}/${m.id}`
