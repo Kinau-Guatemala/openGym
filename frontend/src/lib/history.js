@@ -361,12 +361,12 @@ export function entryRoutineId(w, en) {
   return [].concat(w?.routineIds ?? [])[0] ?? w?.routineId ?? null
 }
 
-// The entry for one exercise in one saved workout that counts: not excluded (entryExcluded) and
-// with a done work set. With a routine id it is that routine's own entry — a combined A+B day can
-// hold the same exercise twice, and the second one is not the first one's history. Without, the
-// first one that counts: a noProg warm-up of the lift earlier in the day does not hide the
-// working sets after it. Read by "last time" here and by the progression baseline
-// (progression.js sessionsIn), so the two never pick different entries.
+// The first entry of one exercise in one saved workout that counts: not excluded (entryExcluded)
+// and with a done work set, so a noProg warm-up of the lift earlier in the day does not hide the
+// working sets after it. With a routine id, only that routine's own entries are candidates — a
+// combined A+B day can hold the same exercise twice, and the second one is not the first one's
+// history. Read by "last time" here and by the progression baseline (progression.js
+// sessionsIn), so the two never pick different entries.
 export const countingEntryIn = (w, exId, rid) => (w.entries || []).find(e => e && e.id === exId && (!rid || entryRoutineId(w, e) === rid) &&
   !entryExcluded(w, e) && (e.sets || []).some(s => s.done && !isWarmupRow(s)))
 
