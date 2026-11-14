@@ -21,7 +21,7 @@ function fakeGitHub(script = () => null) {
     const method = init.method || 'GET';
     const body = init.body ? JSON.parse(init.body) : null;
     const file = decodeURI(new URL(url).pathname.split('/contents/')[1]);
-    calls.push({ url, file, method, body, auth: init.headers?.authorization });
+    calls.push({ url, file, method, body, auth: init.headers?.authorization, accept: init.headers?.accept });
     const staged = script(calls.length, method, body, file);
     if (staged instanceof Error) throw staged;
     if (staged) return staged;
@@ -93,6 +93,8 @@ test('only the publishing account, debounced: several saves push once, with the 
   assert.equal(put.body.branch, 'main');
   assert.equal(put.body.message, 'feed: 2026-11-03..2026-11-03');
   assert.equal(put.auth, 'Bearer ' + TOKEN);
+  // A contents GET asks for the object form, which always carries the sha.
+  assert.ok(gh.calls.filter(c => c.method === 'GET').every(c => c.accept === 'application/vnd.github.object+json'));
   const s = feed.status();
   assert.equal(s.pushedAt, NOW);
   assert.equal(s.error, null);

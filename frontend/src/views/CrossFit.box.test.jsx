@@ -316,11 +316,13 @@ describe('T40: the box history', () => {
     expect(host.textContent).toContain('10 Burpees')
     const img = host.querySelector('img')
     expect(img.getAttribute('src')).toBe('https://raw.githubusercontent.com/box/wods/main/archive/' + OLD + '.jpg')
+    // A viewer sheet, so Escape and Android back close it like any sheet.
     await click(host.querySelector('[aria-label="Open the photo full-screen"]'))
-    const dialog = host.querySelector('[role="dialog"]')
+    expect(useUI.getState().sheets.at(-1).kind).toBe('viewer')
+    const dialog = (await sheet()).querySelector('[role="dialog"]')
     expect(dialog.querySelector('img').getAttribute('src')).toBe(img.getAttribute('src'))
     await click(dialog)
-    expect(host.querySelector('[role="dialog"]')).toBe(null)
+    expect(useUI.getState().sheets).toEqual([])
     await click(button(host, 'Log'))
     expect(at).toBe('/crossfit/log/' + OLD)
     const own = useStore.getState().S.wods[OLD]

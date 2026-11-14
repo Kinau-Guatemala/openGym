@@ -449,7 +449,7 @@ const SCREENS = {
     await mount('/crossfit/box/' + OLD)
     await settle()
     await click(host.querySelector(`[aria-label="${es['Open the photo full-screen']}"]`))
-    return host.querySelector('[role="dialog"]')
+    return sheet()
   },
   'box program, the member has their own that day': async () => {
     subscribed()

@@ -105,7 +105,7 @@ export async function pushFile({ repo, token, file, content, message, fetch, api
   const bytes = content == null ? null : Buffer.from(content);
   const mine = bytes && blobSha(bytes);
   for (let attempt = 0; ; attempt++) {
-    const g = await call('GET', { headers });
+    const g = await call('GET', { headers: ghHeaders(token, OBJECT) });
     let sha = null;
     if (g.ok) sha = (await g.json())?.sha || null;
     else if (g.status !== 404) throw await failed('GET', g);
@@ -121,17 +121,19 @@ export async function pushFile({ repo, token, file, content, message, fetch, api
   }
 }
 
-const ghHeaders = token => ({
-  authorization: `Bearer ${token}`, accept: 'application/vnd.github+json',
+// A GET asks for the object form, which carries the sha (and the content up to 1 MB) for any file.
+const ghHeaders = (token, accept = 'application/vnd.github+json') => ({
+  authorization: `Bearer ${token}`, accept,
   'x-github-api-version': '2022-11-28', 'user-agent': 'opengym-box-feed'
 });
+const OBJECT = 'application/vnd.github.object+json';
 
 /** The JSON of `file` on branch main of `repo`, or null when there is none. Throws as pushFile. */
 // ponytail: the contents API inlines files up to 1 MB; an index past that (some 10,000 days) reads as none.
 export async function readJson({ repo, token, file, fetch, api = 'https://api.github.com' }) {
   const scrub = scrubber(token);
   let r;
-  try { r = await fetch(`${api}/repos/${repo}/contents/${file}?ref=main`, { headers: ghHeaders(token) }); }
+  try { r = await fetch(`${api}/repos/${repo}/contents/${file}?ref=main`, { headers: ghHeaders(token, OBJECT) }); }
   catch (e) { throw new Error(scrub(`GitHub GET ${file}: ${e?.message || e}`)); }
   if (r.status === 404) return null;
   if (!r.ok) throw new Error(scrub(`GitHub GET ${file} ${r.status}`));

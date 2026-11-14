@@ -240,7 +240,6 @@ export function CrossFitBox() {
   const src = useArchiveSource(S, feed)
   const { day, retry } = useArchiveDay(src, date)
   const [tab, setTab] = useState(0)
-  const [zoom, setZoom] = useState(false)
   const program = feed?.programs[date] || day?.program
   const back = <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
   if (!program && day === undefined) return <div className="narrow"><div className="hdr">{back}</div><div className="empty">{t('Loading…')}</div></div>
@@ -262,15 +261,10 @@ export function CrossFitBox() {
         <div className="sub">{[feed?.box || cachedIndex(src)?.box, program.title ? fmtDate(date, true) : null].filter(Boolean).join(' · ')}</div>
       </div>
     </div>
-    {image && <button type="button" aria-label={t('Open the photo full-screen')} onClick={() => setZoom(true)}
+    {image && <button type="button" aria-label={t('Open the photo full-screen')} onClick={() => photoViewer(image)}
       style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'none', marginBottom: 12, cursor: 'zoom-in' }}>
       <img src={image} alt={t('Posted image')} style={{ display: 'block', width: '100%', borderRadius: 10 }} />
     </button>}
-    {zoom && <div role="dialog" aria-label={t('Posted image')} onClick={() => setZoom(false)}
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <img src={image} alt={t('Posted image')} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-      <button className="iconbtn" aria-label={t('Close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', insetInlineEnd: 12 }}><Icon name="xmark" /></button>
-    </div>}
     {wodOf(S, date) && <div className="small muted" style={{ marginBottom: 12 }}>{t('You have your own program for this day. Logging or editing the box version replaces it.')}</div>}
     {program.tracks.length > 1 && <div className="chips" style={{ margin: '0 0 10px' }}>
       {program.tracks.map((tr, i) => <button key={tr.id} className={'chip nocap' + (i === ti ? ' on' : '')} onClick={() => setTab(i)}>{tr.label || t('Track {0}', i + 1)}</button>)}
@@ -283,6 +277,13 @@ export function CrossFitBox() {
     <div style={{ height: 24 }} />
   </div>
 }
+
+// The box photo full-screen, as a viewer sheet like the workout's photos (WorkoutMedia.jsx): back
+// and Escape close it, as does a tap.
+const photoViewer = src => ui().openSheet(close => <div className="mviewer" role="dialog" aria-modal="true" aria-label={t('Posted image')} onClick={close}>
+  <div className="mviewer-bar"><button type="button" className="iconbtn" aria-label={t('Close')} onClick={close}><Icon name="xmark" /></button></div>
+  <div className="mviewer-stage"><img src={src} alt={t('Posted image')} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', margin: 'auto' }} /></div>
+</div>, { kind: 'viewer' })
 
 // #/crossfit/history (T40): every day the box has published, newest first by month, from the
 // archive's index (cached on the device, fetched again at most every 10 minutes). A day opens in
