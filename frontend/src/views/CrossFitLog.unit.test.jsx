@@ -246,6 +246,23 @@ describe('kg / lb beside each weight (T38)', () => {
     expect([field(0).value, field(1).value]).toEqual(['105', '105'])
   })
 
+  it('a weight left at its Rx while the other unit is shown logs the profile\'s Rx, and so does an untouched re-save (T42)', async () => {
+    for (const [profile, other, rx] of [['kg', 'lb', 60], ['lb', 'kg', 135]]) {
+      start(profile)
+      await mount()
+      await click(other)
+      await type(field(0), '100')
+      await click('Log workout')
+      const cj = () => logged().entries.find(e => e.id === CJ).sets[0].w
+      expect(cj()).toBe(rx)
+      unmount()
+      await mount()
+      await click('Save log')
+      expect(cj()).toBe(rx)
+      unmount()
+    }
+  })
+
   it('a reps field has no chip', async () => {
     start('kg')
     await mount()
