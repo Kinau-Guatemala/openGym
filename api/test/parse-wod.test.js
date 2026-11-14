@@ -4,6 +4,7 @@
    exact request that would have left can be read back. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
@@ -103,25 +104,27 @@ test('fixture: an answer the validator rejects gets the one repair round', async
   } finally { delete process.env.FIXTURE_MODE; }
 });
 
-test('T40: the box feed\'s publishing account keeps its photo for the archive; nobody else does, nor it with publishing off', async () => {
+test('T40: the box feed\'s publishing account keeps its photo and gets the program tagged with it; nobody else does, nor it with publishing off', async () => {
   cfg.save({ enabled: true, provider: 'fixture' });
   const BOX = { BOX_FEED_UID: 'u-box', BOX_FEED_REPO: 'o/r', BOX_FEED_TOKEN: 'github_pat_X', BOX_FEED_NAME: 'Box' };
-  const kept = path.join(DIR, 'box-images', DATE + '.jpg');
+  const bytes = Buffer.from(IMAGE, 'base64');
+  const sha = crypto.createHash('sha256').update(bytes).digest('hex');
+  const kept = path.join(DIR, 'box-images', sha + '.jpg');
   const run = async uid => {
     writeState(DIR, uid, consented());
     jobs.enqueue(uid, { kind: 'parse-wod', date: DATE, image: { mime: 'image/jpeg', data: IMAGE } });
-    await settle(uid);
+    return (await settle(uid)).parsed.program;
   };
   try {
     Object.assign(process.env, BOX);
-    await run('u-member');
+    assert.equal((await run('u-member')).photo, undefined);
     assert.ok(!fs.existsSync(kept), 'another account\'s image is kept');
     process.env.BOX_FEED_TOKEN = '';
-    await run('u-box');
+    assert.equal((await run('u-box')).photo, undefined);
     assert.ok(!fs.existsSync(kept), 'kept with publishing off');
     process.env.BOX_FEED_TOKEN = BOX.BOX_FEED_TOKEN;
-    await run('u-box');
-    assert.ok(fs.readFileSync(kept).equals(Buffer.from(IMAGE, 'base64')));
+    assert.equal((await run('u-box')).photo, sha);
+    assert.ok(fs.readFileSync(kept).equals(bytes));
   } finally {
     for (const k of Object.keys(BOX)) delete process.env[k];
     fs.rmSync(path.join(DIR, 'box-images'), { recursive: true, force: true });

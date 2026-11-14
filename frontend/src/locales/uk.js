@@ -2943,6 +2943,7 @@ export default {
   "No days in the box history yet.": "В історії залу поки немає днів.",
   "With a photo": "З фото",
   "Open the photo full-screen": "Відкрити фото на весь екран",
+  "This day could not be loaded. Check your connection.": "Не вдалося завантажити цей день. Перевір з’єднання.",
   '{0} already has your own program. The box version replaces it.': 'На {0} вже є ваша програма. Версія залу замінить її.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'У вас своя програма на цей день. Запис або редагування версії залу замінить її.',
   'Only https addresses can be used.': 'Можна використовувати лише адреси https.',

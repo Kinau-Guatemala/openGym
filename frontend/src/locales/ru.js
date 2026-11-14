@@ -2950,6 +2950,7 @@ export default {
   "No days in the box history yet.": "В истории зала пока нет дней.",
   "With a photo": "С фото",
   "Open the photo full-screen": "Открыть фото на весь экран",
+  "This day could not be loaded. Check your connection.": "Не удалось загрузить этот день. Проверь подключение.",
   '{0} already has your own program. The box version replaces it.': 'На {0} уже есть ваша программа. Версия зала заменит её.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'У вас своя программа на этот день. Запись или правка версии зала заменит её.',
   'Only https addresses can be used.': 'Можно использовать только адреса https.',

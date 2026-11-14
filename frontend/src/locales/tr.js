@@ -2946,6 +2946,7 @@ export default {
   "No days in the box history yet.": "Salon geçmişinde henüz gün yok.",
   "With a photo": "Fotoğraflı",
   "Open the photo full-screen": "Fotoğrafı tam ekran aç",
+  "This day could not be loaded. Check your connection.": "Bu gün yüklenemedi. Bağlantını kontrol et.",
   '{0} already has your own program. The box version replaces it.': '{0} için zaten kendi programın var. Salonun sürümü onun yerini alır.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Bu gün için kendi programın var. Salonun sürümünü kaydetmek ya da düzenlemek onun yerini alır.',
   'Only https addresses can be used.': 'Yalnızca https adresleri kullanılabilir.',

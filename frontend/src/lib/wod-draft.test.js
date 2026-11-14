@@ -38,6 +38,12 @@ describe('prepareDraft', () => {
     expect(prepareDraft({ _ts: 5, title: 'x', tracks: [] })).toEqual({ title: 'x', tracks: [] })
   })
 
+  it('T40: keeps the box photo tag, a sha256 and nothing else', () => {
+    const photo = 'ab'.repeat(32)
+    expect(prepareDraft({ title: 'x', tracks: [], photo }).photo).toBe(photo)
+    for (const bad of ['../../x', 'AB'.repeat(32), 'ab', { x: 1 }]) expect('photo' in prepareDraft({ tracks: [], photo: bad })).toBe(false)
+  })
+
   it('renumbers a duplicate id', () => {
     const d = prepareDraft({ tracks: [{ id: 'a', blocks: [] }, { id: 'a', blocks: [] }] })
     expect(d.tracks.map(t => t.id)).toEqual(['a', 't0'])

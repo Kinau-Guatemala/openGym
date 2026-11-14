@@ -2946,6 +2946,7 @@ export default {
   "No days in the box history yet.": "아직 박스 기록에 날짜가 없습니다.",
   "With a photo": "사진 있음",
   "Open the photo full-screen": "사진을 전체 화면으로 열기",
+  "This day could not be loaded. Check your connection.": "이 날을 불러오지 못했습니다. 연결을 확인하세요.",
   '{0} already has your own program. The box version replaces it.': '{0}에는 이미 내 프로그램이 있어요. 박스 버전으로 바뀌어요.',
   'You have your own program for this day. Logging or editing the box version replaces it.': '이날은 내 프로그램이 있어요. 박스 버전을 기록하거나 편집하면 바뀌어요.',
   'Only https addresses can be used.': 'https 주소만 쓸 수 있어요.',

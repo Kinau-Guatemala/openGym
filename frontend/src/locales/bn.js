@@ -3025,6 +3025,7 @@ export default {
   "No days in the box history yet.": "বক্সের ইতিহাসে এখনও কোনো দিন নেই।",
   "With a photo": "ছবিসহ",
   "Open the photo full-screen": "ছবিটি পূর্ণ স্ক্রিনে খুলুন",
+  "This day could not be loaded. Check your connection.": "এই দিনটি লোড করা যায়নি। আপনার সংযোগ দেখুন।",
   '{0} already has your own program. The box version replaces it.': '{0}-এ আপনার নিজের প্রোগ্রাম আগে থেকেই আছে। বক্সের সংস্করণ সেটির জায়গা নেবে।',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'এই দিনের জন্য আপনার নিজের প্রোগ্রাম আছে। বক্সের সংস্করণ লগ বা এডিট করলে সেটির জায়গা নেবে।',
   'Only https addresses can be used.': 'শুধু https ঠিকানা ব্যবহার করা যায়।',

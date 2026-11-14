@@ -53,9 +53,12 @@ const resolved = (m, aliases, S) => (m.exId && m.via !== 'guess' ? { ...m, exId:
  */
 export function prepareDraft(program, userAliases = {}, S) {
   const p = isMap(program) ? program : {}
-  const { _ts, ...rest } = p
+  const { _ts, photo, ...rest } = p
   return {
     ...rest,
+    // T40: the box photo a parse tagged the program with (api box-feed-publish.js), a sha256. It
+    // stays through review and save, under whatever date the program is saved.
+    ...(typeof photo === 'string' && /^[0-9a-f]{64}$/.test(photo) ? { photo } : {}),
     title: typeof p.title === 'string' ? p.title : '',
     tracks: withIds(p.tracks, 't').map(tr => ({
       ...tr,

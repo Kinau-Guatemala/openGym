@@ -2957,6 +2957,7 @@ export default {
   "No days in the box history yet.": "ยังไม่มีวันในประวัติของยิม",
   "With a photo": "มีรูป",
   "Open the photo full-screen": "เปิดรูปแบบเต็มจอ",
+  "This day could not be loaded. Check your connection.": "โหลดวันนี้ไม่ได้ ตรวจสอบการเชื่อมต่อ",
   '{0} already has your own program. The box version replaces it.': '{0} มีโปรแกรมของคุณเองอยู่แล้ว เวอร์ชันของยิมจะแทนที่',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'คุณมีโปรแกรมของตัวเองสำหรับวันนี้ การบันทึกหรือแก้ไขเวอร์ชันของยิมจะแทนที่',
   'Only https addresses can be used.': 'ใช้ได้เฉพาะที่อยู่ https',

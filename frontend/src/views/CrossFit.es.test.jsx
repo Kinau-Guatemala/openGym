@@ -437,6 +437,13 @@ const SCREENS = {
     await settle()
     expect(host.querySelector('img')).toBeTruthy()
   },
+  'box program from the archive, could not load': async () => {
+    archived()
+    fetch.mockImplementation(async () => { throw new TypeError('offline') })
+    await mount('/crossfit/box/' + OLD)
+    await settle()
+    shows(host, 'This day could not be loaded. Check your connection.')
+  },
   'box program from the archive, the photo full-screen': async () => {
     archived()
     await mount('/crossfit/box/' + OLD)

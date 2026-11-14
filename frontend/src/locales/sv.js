@@ -2984,6 +2984,7 @@ export default {
   "No days in the box history yet.": "Inga dagar i boxens historik än.",
   "With a photo": "Med foto",
   "Open the photo full-screen": "Öppna fotot i helskärm",
+  "This day could not be loaded. Check your connection.": "Dagen kunde inte laddas. Kontrollera din anslutning.",
   '{0} already has your own program. The box version replaces it.': '{0} har redan ditt eget program. Boxens version ersätter det.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Du har ett eget program för den här dagen. Loggar eller redigerar du boxens version ersätts det.',
   'Only https addresses can be used.': 'Bara https-adresser kan användas.',

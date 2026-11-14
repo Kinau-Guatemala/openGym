@@ -2946,6 +2946,7 @@ export default {
   "No days in the box history yet.": "馆的历史中还没有日期。",
   "With a photo": "有照片",
   "Open the photo full-screen": "全屏查看照片",
+  "This day could not be loaded. Check your connection.": "无法加载这一天。请检查网络连接。",
   '{0} already has your own program. The box version replaces it.': '{0} 已有你自己的计划。馆的版本会替换它。',
   'You have your own program for this day. Logging or editing the box version replaces it.': '这天你已有自己的计划。记录或编辑馆的版本会替换它。',
   'Only https addresses can be used.': '只能使用 https 地址。',

@@ -1963,6 +1963,7 @@ export const PT_BR_OVERRIDES = {
   "No days in the box history yet.": "Ainda não há dias no histórico do box.",
   "With a photo": "Com foto",
   "Open the photo full-screen": "Abrir a foto em tela cheia",
+  "This day could not be loaded. Check your connection.": "Não foi possível carregar este dia. Verifique sua conexão.",
   '{0} already has your own program. The box version replaces it.': '{0} já tem seu próprio programa. A versão do box substitui.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Você tem seu próprio programa para este dia. Registrar ou editar a versão do box substitui.',
   'Only https addresses can be used.': 'Só dá para usar endereços https.',

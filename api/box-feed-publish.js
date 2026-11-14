@@ -20,18 +20,22 @@
 // the next save.
 //
 // T40, the archive (box-feed.js): next to feed.json, archive/<date>.json for every program the
-// account has, whatever its date, and archive/<date>.<ext> for its photo. The parse image is held
-// in memory and dropped after the call (coach/jobs.js), for every account but this one: when
-// publishing is on, the BOX_FEED_UID account's is also written to DATA_DIR/box-images/<date>.<ext>
-// (keepBoxImage, a newer one for the date replacing it) and goes out with that date's program. Once
-// GitHub has it, the local copy is deleted; a photo over 2 MB is left out, and logged. One PUT per
-// changed file, feed.json first and archive/index.json last of the writes, so a reader never finds
-// an index entry before its file; then a date deleted since loses its files.
+// account has, whatever its date, and the photo it was read from. The parse image is held in
+// memory and dropped after the call (coach/jobs.js), for every account but this one: when
+// publishing is on, the BOX_FEED_UID account's is also written to DATA_DIR/box-images/<sha256>.<ext>
+// (keepBoxImage), and the program read from it comes back tagged `photo: <sha256>`. The tag stays
+// on the program through review and save, under whatever date it is saved, and a day's photo is
+// its program's `photo`: an untagged program has none. It goes out as archive/<sha256>.<ext>; once
+// GitHub has it, the local copy is deleted, and one no program names is deleted after 7 days. A
+// photo over 2 MB is left out, and logged. One PUT per changed file, feed.json first and
+// archive/index.json last of the writes, so a reader never finds an index entry before its file;
+// then a date deleted since loses its files, and a photo no day names any more goes too.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ARCHIVE_INDEX, archiveIndex, archivePrograms, buildFeed, feedUrl, BOX_FEED_DAYS } from './box-feed.js';
 import { atomicWrite } from './durable.js';
+import { WODS_KEEP_DAYS } from './sync-stamps.js';
 import { fetchFor } from './coach/node-fetch.js';
 
 const REPO = /^[\w.-]+\/[\w.-]+$/;
@@ -39,9 +43,12 @@ const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const DEBOUNCE_MS = 30000;
 const MAX_WAIT_MS = 300000;
 const RETRY_MS = [60000, 300000, 900000];
+const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v);
 const IMAGE_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-const IMAGE_FILE = /^(\d{4}-\d{2}-\d{2})\.(jpg|png|webp)$/;
+const PHOTO = /^[0-9a-f]{64}$/;
+const IMAGE_FILE = /^([0-9a-f]{64})\.(jpg|png|webp)$/;
 export const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const LOCAL_KEEP_MS = 7 * 86400000;
 
 /** The publishing settings from `env`, or null when any of them is missing (publishing off). */
 export function boxFeedConfig(env = process.env) {
@@ -54,19 +61,20 @@ export function boxFeedConfig(env = process.env) {
 }
 
 /**
- * A parse job's image (`{ mime, data: base64 }`) kept as DATA_DIR/box-images/<date>.<ext> for the
- * archive, replacing the date's photo in any format. Only for the publishing account, and only
- * while publishing is on; true when kept.
+ * A parse job's image (`{ mime, data: base64 }`) kept as DATA_DIR/box-images/<sha256>.<ext> for the
+ * archive, named by its content. Only for the publishing account, and only while publishing is
+ * on: the sha256 (the program's `photo`), or null when not kept.
  */
-export function keepBoxImage({ env = process.env, dataDir, uid, date, image }) {
+export function keepBoxImage({ env = process.env, dataDir, uid, image }) {
   const cfg = boxFeedConfig(env);
   const ext = IMAGE_EXT[image?.mime];
-  if (!cfg || uid !== cfg.uid || !ISO.test(String(date)) || !ext || typeof image.data !== 'string') return false;
+  if (!cfg || uid !== cfg.uid || !ext || typeof image.data !== 'string') return null;
+  const bytes = Buffer.from(image.data, 'base64');
+  const sha = crypto.createHash('sha256').update(bytes).digest('hex');
   const dir = path.join(dataDir, 'box-images');
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-  for (const e of Object.values(IMAGE_EXT)) if (e !== ext) fs.rmSync(path.join(dir, `${date}.${e}`), { force: true });
-  atomicWrite(path.join(dir, `${date}.${ext}`), Buffer.from(image.data, 'base64'), 0o600);
-  return true;
+  atomicWrite(path.join(dir, `${sha}.${ext}`), bytes, 0o600);
+  return sha;
 }
 
 const scrubber = token => msg => String(msg || '').split(token).join('***').slice(0, 300);
@@ -84,10 +92,7 @@ const sameBlob = (file, sha) => { try { return blobSha(fs.readFileSync(file)) ==
 export async function pushFile({ repo, token, file, content, message, fetch, api = 'https://api.github.com' }) {
   const scrub = scrubber(token);
   const url = `${api}/repos/${repo}/contents/${file}`;
-  const headers = {
-    authorization: `Bearer ${token}`, accept: 'application/vnd.github+json',
-    'x-github-api-version': '2022-11-28', 'user-agent': 'opengym-box-feed'
-  };
+  const headers = ghHeaders(token);
   const failed = async (step, r) => {
     let why = '';
     try { why = (await r.json())?.message || ''; } catch { /* not JSON */ }
@@ -114,6 +119,23 @@ export async function pushFile({ repo, token, file, content, message, fetch, api
     if ((p.status === 409 || p.status === 422) && attempt === 0) continue;
     throw await failed(step, p);
   }
+}
+
+const ghHeaders = token => ({
+  authorization: `Bearer ${token}`, accept: 'application/vnd.github+json',
+  'x-github-api-version': '2022-11-28', 'user-agent': 'opengym-box-feed'
+});
+
+/** The JSON of `file` on branch main of `repo`, or null when there is none. Throws as pushFile. */
+// ponytail: the contents API inlines files up to 1 MB; an index past that (some 10,000 days) reads as none.
+export async function readJson({ repo, token, file, fetch, api = 'https://api.github.com' }) {
+  const scrub = scrubber(token);
+  let r;
+  try { r = await fetch(`${api}/repos/${repo}/contents/${file}?ref=main`, { headers: ghHeaders(token) }); }
+  catch (e) { throw new Error(scrub(`GitHub GET ${file}: ${e?.message || e}`)); }
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(scrub(`GitHub GET ${file} ${r.status}`));
+  try { return JSON.parse(Buffer.from((await r.json())?.content || '', 'base64').toString('utf8')); } catch { return null; }
 }
 
 /** feed.json written (pushFile). */
@@ -145,7 +167,7 @@ export function createBoxFeed({
     try { atomicWrite(file, JSON.stringify(saved)); } catch (e) { log.error('box feed: cannot save its status:', e?.message); }
   };
 
-  // The photos waiting to go out, by date: { file, name } of DATA_DIR/box-images.
+  // The photos waiting to go out, by sha256: { file, name } of DATA_DIR/box-images.
   const localImages = () => {
     const out = {};
     let names = [];
@@ -154,38 +176,86 @@ export function createBoxFeed({
     return out;
   };
 
-  // Every file the repo should hold, in push order: [{ path, hash, content?, local? }]. A file
-  // without content is one pushed before whose hash stands (a photo whose local copy is gone).
+  // Every file the repo should hold, in push order: [{ path, hash, content?, local? }], and the
+  // index's days to remember (`days`). A file without content is one pushed before whose hash
+  // stands (a photo whose local copy is gone, a day that has aged out).
+  //
+  // S.wods keeps only the last WODS_KEEP_DAYS (pruneWods), so a day missing from it is deleted only
+  // inside that window, or when its date holds a stamped clear. A day older than that stays in the
+  // archive as it was last pushed, from what the last push remembered of it (saved.days).
   function plan() {
     const t = now();
+    const today = new Date(t).toISOString().slice(0, 10);
+    const cutoff = new Date(Date.parse(today + 'T00:00:00Z') - WODS_KEEP_DAYS * 86400000).toISOString().slice(0, 10);
     const files = [];
-    const feed = buildFeed(wods, { name: cfg.name, today: new Date(t).toISOString().slice(0, 10), days: cfg.days, now: t, merged });
+    const feed = buildFeed(wods, { name: cfg.name, today, days: cfg.days, now: t, merged });
     files.push({ path: 'feed.json', hash: sha256(JSON.stringify([feed.box, feed.programs, feed.archive])), content: JSON.stringify(feed, null, 1) + '\n', dates: feed.programs.map(p => p.date) });
     const programs = archivePrograms(wods, merged);
     const local = localImages();
     const pushed = saved.files || {};
-    const images = new Map();
+    // A day's photo is the one its program names (`photo`, a sha256 the parse tagged it with).
+    const photoOf = new Map(), images = new Map();
     for (const { date } of programs) {
-      const l = local[date];
+      const sha = wods[date].photo;
+      if (typeof sha !== 'string' || !PHOTO.test(sha)) continue;
+      const l = local[sha];
       const size = l ? fs.statSync(l.file).size : 0;
       if (l && size > MAX_IMAGE_BYTES) log.error(scrub(`box feed: the photo for ${date} is over 2 MB (${size} bytes), left out`));
+      let img = null;
       if (l && size <= MAX_IMAGE_BYTES) {
         const bytes = fs.readFileSync(l.file);
-        images.set(date, { path: 'archive/' + l.name, hash: blobSha(bytes), content: bytes, local: l.file });
+        img = { path: 'archive/' + l.name, hash: blobSha(bytes), content: bytes, local: l.file };
       } else {
-        const before = Object.keys(pushed).find(p => p.startsWith(`archive/${date}.`) && IMAGE_FILE.test(p.slice(8)));
-        if (before) images.set(date, { path: before, hash: pushed[before] });
+        const before = Object.keys(pushed).find(p => p.startsWith(`archive/${sha}.`) && IMAGE_FILE.test(p.slice(8)));
+        if (before) img = { path: before, hash: pushed[before] };
       }
+      if (!img) continue;
+      if (!images.has(img.path)) images.set(img.path, img);
+      photoOf.set(date, img.path);
     }
+    const live = new Set(programs.map(p => p.date));
+    const aged = Object.entries(saved.days || {})
+      .filter(([d]) => !live.has(d) && d < cutoff && !Object.hasOwn(isMap(wods) ? wods : {}, d));
+    for (const [, e] of aged) if (e.photo && !images.has(e.photo)) images.set(e.photo, { path: e.photo, hash: pushed[e.photo] });
     files.push(...images.values());
+    for (const [d] of aged) files.push({ path: `archive/${d}.json`, hash: pushed[`archive/${d}.json`] });
     for (const p of programs) {
-      const img = images.get(p.date);
+      const img = photoOf.has(p.date) ? images.get(photoOf.get(p.date)) : null;
       const content = JSON.stringify({ ...p, ...(img ? { image: img.path.slice(8) } : {}) }, null, 1) + '\n';
       files.push({ path: `archive/${p.date}.json`, hash: sha256(content), content });
     }
-    const index = archiveIndex(programs, { name: cfg.name, now: t, images: new Set(images.keys()) });
+    const index = archiveIndex(programs, { name: cfg.name, now: t, images: new Set(photoOf.keys()) });
+    index.days.push(...aged.map(([date, e]) => ({ date, title: e.title, tracks: e.tracks, image: e.image })));
+    index.days.sort((a, b) => (a.date < b.date ? 1 : -1));
     files.push({ path: ARCHIVE_INDEX, hash: sha256(JSON.stringify([index.box, index.days])), content: JSON.stringify(index, null, 1) + '\n' });
-    return files;
+    const days = Object.fromEntries([
+      ...index.days.filter(d => live.has(d.date)).map(d => [d.date, { title: d.title, tracks: d.tracks, image: d.image, photo: photoOf.get(d.date) || null }]),
+      ...aged
+    ]);
+    return { files, days };
+  }
+
+  // No record of the last index (box-feed.json lost, or one from before the archive): the repo's
+  // own archive/index.json is the record, so its old days are kept, not taken for deleted.
+  async function seed() {
+    const index = await readJson({ repo: cfg.repo, token: cfg.token, file: ARCHIVE_INDEX, fetch, api: cfg.api });
+    const days = {}, files = { ...(saved.files || {}) };
+    for (const d of Array.isArray(index?.days) ? index.days : []) {
+      if (!isMap(d) || !ISO.test(String(d.date))) continue;
+      days[d.date] = { title: String(d.title || ''), tracks: Array.isArray(d.tracks) ? d.tracks.filter(l => typeof l === 'string') : [], image: d.image === true, photo: null };
+      files[`archive/${d.date}.json`] ??= 'seeded';
+    }
+    saved = { ...saved, days, files };
+  }
+
+  // A kept photo no program names (read and never saved, or replaced by a newer read) is deleted
+  // once it is 7 days old.
+  function sweep(files) {
+    const named = new Set(files.filter(f => f.local).map(f => f.local));
+    for (const [sha, l] of Object.entries(localImages())) {
+      if (named.has(l.file) || Object.values(wods || {}).some(w => w?.photo === sha)) continue;
+      try { if (now() - fs.statSync(l.file).mtimeMs > LOCAL_KEEP_MS) fs.rmSync(l.file, { force: true }); } catch { /* gone already */ }
+    }
   }
 
   // firstAt: when the oldest save not yet published landed, for the debounce's maximum wait.
@@ -200,16 +270,19 @@ export function createBoxFeed({
     timer = null;
     if (running) return arm(debounceMs);           // saved again mid-push: once more after it
     firstAt = null;
-    const files = plan();
-    const hash = sha256(JSON.stringify(files.map(f => [f.path, f.hash])));
-    // A photo kept again, the same as the one GitHub has, is only deleted here.
-    if (hash === saved.hash && !files.some(f => f.local)) return;
-    const pushed = { ...(saved.files || {}) };
-    const wanted = new Set(files.map(f => f.path));
-    const push = (f, content, message) => pushFile({ repo: cfg.repo, token: cfg.token, file: f, content, message, fetch, api: cfg.api });
-    let count = 0;
     running = true;
+    let pushed = saved.files || {};
     try {
+      if (!saved.days) await seed();
+      const { files, days } = plan();
+      sweep(files);
+      const hash = sha256(JSON.stringify(files.map(f => [f.path, f.hash])));
+      // A photo kept again, the same as the one GitHub has, is only deleted here.
+      if (hash === saved.hash && !files.some(f => f.local)) return;
+      pushed = { ...(saved.files || {}) };
+      const wanted = new Set(files.map(f => f.path));
+      const push = (f, content, message) => pushFile({ repo: cfg.repo, token: cfg.token, file: f, content, message, fetch, api: cfg.api });
+      let count = 0;
       for (const f of files) {
         if (pushed[f.path] !== f.hash && f.content != null) {
           const dates = f.dates;
@@ -233,7 +306,7 @@ export function createBoxFeed({
       }
       tries = 0;
       if (!count && hash === saved.hash) return;
-      keep({ hash, files: pushed, pushedAt: now(), error: null, errorAt: null });
+      keep({ hash, files: pushed, days, pushedAt: now(), error: null, errorAt: null });
       log.log(`box feed: pushed ${count} files to ${cfg.repo}`);
     } catch (e) {
       const error = scrub(e?.message || e);

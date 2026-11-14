@@ -2949,6 +2949,7 @@ export default {
   "No days in the box history yet.": "A terem előzményeiben még nincs nap.",
   "With a photo": "Fotóval",
   "Open the photo full-screen": "Fotó megnyitása teljes képernyőn",
+  "This day could not be loaded. Check your connection.": "Ez a nap nem tölthető be. Ellenőrizd a kapcsolatot.",
   '{0} already has your own program. The box version replaces it.': '{0} napra már van saját programod. A terem változata lecseréli.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Erre a napra saját programod van. Ha a terem változatát rögzíted vagy szerkeszted, lecseréli.',
   'Only https addresses can be used.': 'Csak https-cím használható.',

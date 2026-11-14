@@ -2946,6 +2946,7 @@ export default {
   "No days in the box history yet.": "Ancora nessun giorno nello storico del box.",
   "With a photo": "Con foto",
   "Open the photo full-screen": "Apri la foto a schermo intero",
+  "This day could not be loaded. Check your connection.": "Impossibile caricare questo giorno. Controlla la connessione.",
   '{0} already has your own program. The box version replaces it.': '{0} ha già il tuo programma. La versione del box lo sostituisce.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Hai già un tuo programma per questo giorno. Registrare o modificare la versione del box lo sostituisce.',
   'Only https addresses can be used.': 'Si possono usare solo indirizzi https.',

@@ -188,18 +188,20 @@ function useArchiveSource(S, feed) {
   return archiveSource(S.boxFeed, feed, own)
 }
 
-// The archive's day `date`: undefined while it loads, null when there is none.
+// The archive's day `date`: `day` undefined while it loads, null when there is none or it could
+// not be fetched; `retry` fetches it again.
 function useArchiveDay(src, date) {
   const [got, setGot] = useState({})
-  const key = src && date ? src + '|' + date : null
+  const [tries, setTries] = useState(0)
+  const key = src && date ? `${src}|${date}|${tries}` : null
   useEffect(() => {
     if (!key) return
     let live = true
     fetchDay(src, date).then(r => { if (live) setGot({ key, value: r.value || null }) })
     return () => { live = false }
   }, [key])
-  if (!key) return null
-  return got.key === key ? got.value : undefined
+  const retry = () => setTries(n => n + 1)
+  return { day: !key ? null : got.key === key ? got.value : undefined, retry }
 }
 
 // "Log" or "Edit" on a box program: a copy goes into the member's own programs for its date, and
@@ -236,12 +238,18 @@ export function CrossFitBox() {
   const S = useStore(s => s.S)
   const feed = useBoxFeed(S.boxFeed)
   const src = useArchiveSource(S, feed)
-  const day = useArchiveDay(src, date)
+  const { day, retry } = useArchiveDay(src, date)
   const [tab, setTab] = useState(0)
   const [zoom, setZoom] = useState(false)
   const program = feed?.programs[date] || day?.program
   const back = <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
   if (!program && day === undefined) return <div className="narrow"><div className="hdr">{back}</div><div className="empty">{t('Loading…')}</div></div>
+  // Not fetched, and the cached index does not say the day is not there: offline, most likely.
+  const listed = cachedIndex(src)
+  if (!program && src && (!listed || listed.days.some(d => d.date === date))) return <div className="narrow"><div className="hdr">{back}</div>
+    <div className="empty">{t('This day could not be loaded. Check your connection.')}</div>
+    <Button icon="repeat" onClick={retry}>{t('Try again')}</Button>
+  </div>
   if (!program) return <Navigate to="/crossfit" replace />
   const ti = Math.min(tab, program.tracks.length - 1)
   const track = program.tracks[ti]

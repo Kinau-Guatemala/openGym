@@ -2946,6 +2946,7 @@ export default {
   "No days in the box history yet.": "बॉक्स के इतिहास में अभी कोई दिन नहीं है।",
   "With a photo": "फ़ोटो के साथ",
   "Open the photo full-screen": "फ़ोटो फ़ुल-स्क्रीन में खोलें",
+  "This day could not be loaded. Check your connection.": "यह दिन लोड नहीं हो सका। अपना कनेक्शन जाँचें।",
   '{0} already has your own program. The box version replaces it.': '{0} के लिए आपका अपना प्रोग्राम पहले से है। बॉक्स का वर्ज़न उसकी जगह ले लेगा।',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'इस दिन के लिए आपका अपना प्रोग्राम है। बॉक्स का वर्ज़न लॉग या एडिट करने पर वह उसकी जगह ले लेगा।',
   'Only https addresses can be used.': 'सिर्फ़ https पते इस्तेमाल हो सकते हैं।',

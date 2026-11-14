@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { _reset, cachedFeed, keepFeed, parseFeed } from '../lib/box-subscribe.js'
-import { _reset as resetArchive } from '../lib/box-archive.js'
+import { _reset as resetArchive, refreshArchive } from '../lib/box-archive.js'
 import CrossFit, { CrossFitBox, CrossFitHistory, CrossFitSettings } from './CrossFit.jsx'
 import { _setLangState } from '../lib/i18n-core.js'
 import es from '../locales/es.js'
@@ -258,7 +258,8 @@ describe('T40: the box history', () => {
     { date: OLD, title: 'Old one', tracks: ['Full', 'Evo'], image: true },
     { date: '2026-08-30', title: 'August day', tracks: [], image: false },
   ] }
-  const day = (image = OLD + '.jpg') => ({ date: OLD, ...published('Old one'), image })
+  // `photo` is the publisher's own tag: it never reaches a member's copy.
+  const day = (image = OLD + '.jpg') => ({ date: OLD, ...published('Old one'), image, photo: 'ab'.repeat(32) })
   // The feed names its archive; GitHub answers the index and the old day, and nothing else.
   const archived = (dayBody = day()) => {
     keepFeed(URL1, parseFeed({ ...FEED, archive: 'archive/index.json' }))
@@ -325,6 +326,19 @@ describe('T40: the box history', () => {
     const own = useStore.getState().S.wods[OLD]
     expect(own.title).toBe('Old one')
     expect(own.tracks[0].blocks[0].movements[0].exId).toBe('1160')
+    expect('photo' in own).toBe(false)
+  })
+
+  it('an archive day that cannot be fetched says so, and Try again fetches it again', async () => {
+    archived()
+    const answer = fetch.getMockImplementation()
+    fetch.mockImplementation(async () => { throw new TypeError('offline') })
+    await mount('/crossfit/box/' + OLD)
+    await flush()
+    expect(host.textContent).toContain('This day could not be loaded. Check your connection.')
+    fetch.mockImplementation(answer)
+    await click(button(host, 'Try again'))
+    expect(host.querySelector('h1').textContent).toBe('Old one')
   })
 
   it('a photo that is not https on the archive’s host is not shown', async () => {
@@ -335,8 +349,9 @@ describe('T40: the box history', () => {
     expect(host.querySelector('img')).toBe(null)
   })
 
-  it('a day in neither the feed nor the archive goes back to the list', async () => {
+  it('a day in neither the feed nor the archive’s index goes back to the list', async () => {
     archived()
+    await refreshArchive(INDEX_URL)
     await mount('/crossfit/box/2026-01-01')
     await flush()
     expect(at).toBe('/crossfit')

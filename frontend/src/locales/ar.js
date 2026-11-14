@@ -3001,6 +3001,7 @@ export default {
   "No days in the box history yet.": "لا توجد أيام في سجل النادي بعد.",
   "With a photo": "مع صورة",
   "Open the photo full-screen": "فتح الصورة بملء الشاشة",
+  "This day could not be loaded. Check your connection.": "تعذّر تحميل هذا اليوم. تحقّق من اتصالك.",
   '{0} already has your own program. The box version replaces it.': 'لدى {0} برنامجك الخاص بالفعل. نسخة النادي تحل محله.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'لديك برنامجك الخاص لهذا اليوم. تسجيل نسخة النادي أو تعديلها يحل محله.',
   'Only https addresses can be used.': 'يمكن استخدام عناوين https فقط.',
