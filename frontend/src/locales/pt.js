@@ -2307,6 +2307,8 @@ export default {
   'Log workout': 'Registar treino',
   'Save log': 'Guardar registo',
   'Already logged. Saving replaces it.': 'Já registado. Guardar substitui-o.',
+  'Weights in {0}': 'Pesos em {0}',
+  'Switch to {0}': 'Mudar para {0}',
   'Score': 'Pontuação',
   'Extra reps': 'Reps extra',
   'Weight': 'Peso',

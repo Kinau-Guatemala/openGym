@@ -2307,6 +2307,8 @@ export default {
   'Log workout': 'Antrenmanı kaydet',
   'Save log': 'Kaydı sakla',
   'Already logged. Saving replaces it.': 'Zaten kaydedildi. Kaydetmek onu değiştirir.',
+  'Weights in {0}': 'Ağırlıklar {0} cinsinden',
+  'Switch to {0}': '{0} birimine geç',
   'Score': 'Skor',
   'Extra reps': 'Ek tekrar',
   'Weight': 'Ağırlık',

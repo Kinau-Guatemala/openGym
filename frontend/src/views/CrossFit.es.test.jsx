@@ -345,6 +345,13 @@ const SCREENS = {
     expect(host.querySelector('.seg button.on').textContent).toBe('lb')
     expect(host.textContent).toContain('Rx 95 lb')
   },
+  // T38: a Weight field's kg / lb chip flips the screen, with a toast.
+  'log, weights switched by the chip beside a weight': async () => {
+    await mount('/crossfit/log/' + PAST)
+    await click(host.querySelector('.unit-chip'))
+    expect(host.querySelector('.seg button.on').textContent).toBe('lb')
+    expect(toasts).toContain(es['Weights in {0}'].replace('{0}', 'lb'))
+  },
   'log, a profile in lb': async () => {
     useStore.setState({ S: { ...useStore.getState().S, unit: 'lb' } })
     await mount('/crossfit/log/' + PAST)

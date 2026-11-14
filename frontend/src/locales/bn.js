@@ -2386,6 +2386,8 @@ export default {
   'Log workout': 'ওয়ার্কআউট লিখুন',
   'Save log': 'রেকর্ড সংরক্ষণ',
   'Already logged. Saving replaces it.': 'আগেই লেখা হয়েছে। সংরক্ষণ করলে এটি বদলে যাবে।',
+  'Weights in {0}': 'ওজন {0}-এ',
+  'Switch to {0}': '{0}-এ বদলান',
   'Score': 'স্কোর',
   'Extra reps': 'অতিরিক্ত রেপ',
   'Weight': 'ওজন',

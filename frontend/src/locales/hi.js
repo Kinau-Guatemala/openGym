@@ -2307,6 +2307,8 @@ export default {
   'Log workout': 'वर्कआउट दर्ज करें',
   'Save log': 'रिकॉर्ड सहेजें',
   'Already logged. Saving replaces it.': 'पहले से दर्ज है। सहेजने से यह बदल जाएगा।',
+  'Weights in {0}': 'वज़न {0} में',
+  'Switch to {0}': '{0} पर बदलें',
   'Score': 'स्कोर',
   'Extra reps': 'अतिरिक्त रेप्स',
   'Weight': 'वज़न',

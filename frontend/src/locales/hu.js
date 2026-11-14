@@ -2310,6 +2310,8 @@ export default {
   'Log workout': 'Edzés rögzítése',
   'Save log': 'Rögzítés mentése',
   'Already logged. Saving replaces it.': 'Már rögzítve. A mentés lecseréli.',
+  'Weights in {0}': 'Súlyok: {0}',
+  'Switch to {0}': 'Váltás erre: {0}',
   'Score': 'Eredmény',
   'Extra reps': 'Extra ismétlés',
   'Weight': 'Súly',

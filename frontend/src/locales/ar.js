@@ -2362,6 +2362,8 @@ export default {
   'Log workout': 'تسجيل التمرين',
   'Save log': 'حفظ السجل',
   'Already logged. Saving replaces it.': 'مسجّل بالفعل. الحفظ يستبدله.',
+  'Weights in {0}': 'الأوزان بـ{0}',
+  'Switch to {0}': 'التبديل إلى {0}',
   'Score': 'النتيجة',
   'Extra reps': 'تكرارات إضافية',
   'Weight': 'الوزن',
