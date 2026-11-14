@@ -3,8 +3,8 @@
 // a substitute where one was swapped in, and each block's score with its Rx flag. Logging the day
 // again opens on what was logged and edits it. A session in progress is never touched.
 // Weights are typed and shown in the unit picked beside the start time or on any Weight field's
-// kg / lb chip (the profile's to begin with, or the one a re-opened log was typed in) and stored
-// in the profile's (lib/wod-log.js).
+// kg / lb chip (the profile's to begin with, or the one a re-opened log was typed in), logged in the
+// profile's and kept as typed for a re-open (lib/wod-log.js).
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
@@ -69,16 +69,23 @@ export default function CrossFitLog() {
     // What was typed goes into the profile's unit, through switchUnit, so a weight typed in it and
     // only looked at in the other comes back as typed. A weight left as shown (the Rx, or the last one
     // used) is logged as the profile's, so a printed load is converted once, as the steps' are; one
-    // left empty on a movement with a load per step logs each step's.
+    // left empty on a movement with a load per step logs each step's, and one with its own rows
+    // (a strength block's) needs none. What was typed is kept too, as shown (`typed`, the load
+    // scores with their unit), so a re-open shows it exactly.
     const logged = switchUnit(state, base).logged
-    const moves = structuredClone(logged.moves)
+    const moves = structuredClone(logged.moves), typed = structuredClone(state.logged.moves)
     for (const tr of program.tracks) for (const b of list(tr.blocks)) for (const m of list(b.movements)) {
       const key = `${tr.id}/${b.id}/${m.id}`
-      const lm = moves[key] ||= {}
-      if (lm.w == null && !stepLoads(m, lm.exId || m.exId)) { const w = defaultW(S, m, lm.exId || m.exId); if (w != null) lm.w = w }
+      const lm = moves[key] ||= {}, tm = typed[key] ||= {}
+      const exId = lm.exId || m.exId
+      if (lm.w == null && !list(lm.sets).length && !stepLoads(m, exId)) {
+        const w = defaultW(S, m, exId), tw = defaultW(S, m, exId, state.unit)
+        if (w != null) lm.w = w
+        if (tw != null) tm.w = tw
+      }
     }
     const choice = { tracks: state.tracks, include: state.include }
-    const out = useStore.getState().logWod(date, choice, { ...logged, moves, start: atTime(date, state.time), unit: state.unit })
+    const out = useStore.getState().logWod(date, choice, { ...logged, moves, typed, blocks: state.logged.blocks, start: atTime(date, state.time), unit: state.unit })
     if (!out) { ui().toast(t('Nothing to log: pick a track and an exercise for each movement')); return }
     nav('/home', { replace: true })
     ui().openSheet(close => <FinishSummary w={out.w} prs={out.prs} close={close} />, { kind: 'center', locked: true })

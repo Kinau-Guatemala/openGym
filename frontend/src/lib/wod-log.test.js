@@ -810,3 +810,65 @@ describe('loggedIn: the log screen in kg or lb (T30)', () => {
     expect(back.blocks['full/b0'].score).toEqual({ type: 'load', w: 220.5, unit: 'lb' })
   })
 })
+
+// T42: a re-opened log shows what was typed, in the unit it was typed in, and saving it again moves
+// nothing. The rows are still in the profile's unit.
+describe('a re-open keeps what was typed (T42)', () => {
+  const p = program([block('b0', 'strength', [mv('m0', DL, { reps: 5 })]), block('b1', 'fortime', [mv('m0', CJ, { reps: 10 })], { rounds: 1 })])
+  const NOW = Date.parse('2026-10-20T12:00:00Z')
+  // The log screen's save (CrossFitLog.jsx): the rows in the profile's unit, what was typed as typed.
+  const save = (S, st) => buildWodWorkout(S, '2026-10-13', p, all, { ...switchUnit(st, S.unit).logged, typed: st.logged.moves, blocks: st.logged.blocks, unit: st.unit }, NOW).w
+  const typedAt = (unit, v) => ({ tracks: ['full'], include: {}, unit, logged: {
+    moves: { 'full/b0/m0': { sets: [{ w: v, r: 5 }] }, 'full/b1/m0': { w: v } },
+    blocks: { 'full/b0': { score: { type: 'load', w: v, unit } } },
+  } })
+  const shown = st => [st.logged.moves['full/b0/m0'].sets[0].w, st.logged.moves['full/b1/m0'].w, st.logged.blocks['full/b0'].score.w]
+  const rows = w => w.entries.map(e => e.sets[0].w)
+
+  it('a kg profile: 105 lb saves as kg rows, re-opens as 105 lb, and saves again the same', () => {
+    const S = S0()
+    const w = save(S, typedAt('lb', 105))
+    expect(rows(w)).toEqual([47.75, 47.75])
+    expect(w.wod).toMatchObject({ unit: 'lb', movesUnit: 'lb', moves: { 'full/b1/m0': { w: 105 } } })
+    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 105, unit: 'lb' })
+    const st = relogState(p, w, 'kg', S)
+    expect(st.unit).toBe('lb')
+    expect(shown(st)).toEqual([105, 105, 105])
+    const again = save(S, st)
+    expect(rows(again)).toEqual(rows(w))
+    expect(again.wod).toEqual(w.wod)
+  })
+
+  it('an lb profile: 47.5 kg the same in reverse', () => {
+    const S = S0({ unit: 'lb' })
+    const w = save(S, typedAt('kg', 47.5))
+    expect(rows(w)).toEqual([104.5, 104.5])
+    const st = relogState(p, w, 'lb', S)
+    expect([st.unit, ...shown(st)]).toEqual(['kg', 47.5, 47.5, 47.5])
+    expect(save(S, st).wod).toEqual(w.wod)
+  })
+
+  it('every half pound on a kg profile, and every quarter kilo on an lb profile: save, re-open, save moves nothing', () => {
+    const moved = []
+    for (const [profile, unit, step, top] of [['kg', 'lb', 0.5, 600], ['lb', 'kg', 0.25, 300]]) {
+      const S = S0({ unit: profile })
+      for (let v = 1; v <= top; v += step) {
+        const w = save(S, typedAt(unit, v))
+        const st = relogState(p, w, profile, S)
+        const again = save(S, st)
+        if (shown(st).some(x => x !== v) || rows(again).some((x, i) => x !== rows(w)[i]) || again.wod.blocks[0].score.w !== v) moved.push(`${v} ${unit}`)
+      }
+    }
+    expect(moved).toEqual([])
+  })
+
+  it('a Settings switch leaves moves kept with their unit as they are', () => {
+    const kg = S0()
+    const { active, w } = buildWodWorkout(kg, '2026-10-13', p, all, { ...switchUnit(typedAt('lb', 105), 'kg').logged, typed: typedAt('lb', 105).logged.moves, unit: 'lb' }, NOW)
+    fileBackfill(kg, active, w)
+    const lb = convertStateUnit(kg, 'lb')
+    expect(lb.workouts[0].wod.moves).toEqual(kg.workouts[0].wod.moves)
+    expect(lb.workouts[0].entries[0].sets[0].w).toBe(105.5)
+    expect(relogState(p, lb.workouts[0], 'lb', lb).logged.moves).toEqual(typedAt('lb', 105).logged.moves)
+  })
+})

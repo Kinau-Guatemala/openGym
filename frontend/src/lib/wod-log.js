@@ -7,10 +7,13 @@
 //
 //   choice = { tracks: ['full', 'pump'], include: { 'full/b0': true } }   include overrides includeOf
 //   logged = { start, unit, moves: { '<track>/<block>/<movement>': { exId, w, r, cal, m, sec, min, sets } },
-//              blocks: { '<track>/<block>': { score, rx } } }
+//              typed, blocks: { '<track>/<block>': { score, rx } } }
 //
-// Weights in `logged` are in S.unit, as everything stored is; `unit` is the one the log screen
-// showed them in (kg or lb, picked there), kept as `w.wod.unit` so a re-open shows that one again.
+// Weights in `logged.moves` are in S.unit, as the session's rows are; `unit` is the one the log
+// screen showed them in (kg or lb, picked there), kept as `w.wod.unit` so a re-open shows that one
+// again. `typed` is the same moves as typed, in `unit`, kept as `w.wod.moves` with `movesUnit`, so
+// a re-open shows them exactly: the plate grids don't round-trip (105 lb is 47.75 kg, which is
+// 105.5 lb). A load score carries its own unit and is kept as typed.
 //
 // Rows per movement follow the block's format (crossfit-module-plan, training logic §1): metcon
 // blocks (EMOM, AMRAP, For time, intervals, ladders) give `noProg` entries, so they never seed a
@@ -290,15 +293,16 @@ export function buildWodWorkout(S, date, program, choice, logged, now = Date.now
   // has done work, so none was dropped and the order holds).
   w.entries.forEach((e, i) => { for (const k of KEEP) if (entries[i][k] != null) e[k] = entries[i][k] })
   w.src = 'wod'
-  w.wod = { date, ...wod, moves: movesOf(logged), ...(logged?.unit ? { unit: logged.unit } : {}) }
+  w.wod = { date, ...wod, moves: movesOf(logged?.typed || logged?.moves), ...(logged?.unit ? { unit: logged.unit } : {}),
+    ...(logged?.typed && logged?.unit ? { movesUnit: logged.unit } : {}) }
   return { active, w }
 }
 
 // What was typed per movement, as sent, so re-opening the day restores it exactly (relogState).
 const MOVE_KEYS = ['exId', 'w', 'r', 'cal', 'm', 'sec', 'min', 'sets', 'total']
-function movesOf(logged) {
+function movesOf(moves) {
   const out = {}
-  for (const [key, lm] of Object.entries(logged?.moves || {})) {
+  for (const [key, lm] of Object.entries(moves || {})) {
     if (!lm || typeof lm !== 'object') continue
     const kept = Object.fromEntries(MOVE_KEYS.filter(k => lm[k] != null).map(k => [k, structuredClone(lm[k])]))
     if (Object.keys(kept).length) out[key] = kept
@@ -354,8 +358,9 @@ export function switchUnit(st, to) {
  * The log screen's starting state for a day already logged as `w`, so saving again edits what
  * was logged rather than the program's printed doses: `{ tracks, include, logged, unit }`. A log
  * that kept what was typed (`w.wod.moves`) comes back as typed; an older one is read off its rows.
- * The weights come back in the unit the log was typed in (`w.wod.unit`, else `profileUnit`, the
- * one they are stored in), which is `unit`. A swap to an exercise merged away since comes back as
+ * The weights come back in the unit the log was typed in (`w.wod.unit`, else `profileUnit`), which
+ * is `unit`: moves kept with their own unit (`w.wod.movesUnit`) are taken as they are, older ones
+ * are in `profileUnit` and converted. A swap to an exercise merged away since comes back as
  * the one it went to (S.exMerged; `program` is already read through liveWod).
  */
 export function relogState(program, w, profileUnit, S) {
@@ -371,7 +376,7 @@ export function relogState(program, w, profileUnit, S) {
   const moves = saved && typeof saved === 'object' ? structuredClone(saved) : movesFromRows(program, w, tracks)
   for (const lm of Object.values(moves)) if (lm?.exId) lm.exId = mergedInto(S, lm.exId)
   const unit = w?.wod?.unit || profileUnit
-  return { tracks, include, logged: loggedIn({ moves, blocks }, profileUnit, unit), unit }
+  return { tracks, include, logged: loggedIn({ moves, blocks }, w?.wod?.movesUnit || profileUnit, unit), unit }
 }
 
 // An older log, without the typed values: the exercise, weight, cardio minutes and strength rows
