@@ -173,6 +173,43 @@
 :root[data-theme="light"][data-accent="pink"],
 :root[data-theme="light"][data-accent="red"]   { --on-acc:#fff }
 
+/* Palettes (T41, lib/accent.js PALETTES): the page, cards, secondary text and hairlines in a
+   colour of their own. Only the backgrounds and the greys that sit on them change; the accent,
+   the status colours and the type stay the theme's. Each block names its base theme too, so the
+   timer flash (which flips data-theme) falls back on Classic's colours instead of black text on
+   navy. lib/accent.js THEMES keeps --bg and --surface of each for the own-colour check, and
+   design-review.test.js holds the secondary text and every preset to 4.5:1 on both. */
+:root[data-palette="navy"][data-theme="dark"]{
+  --bg:#0b1220; --bg-el:#0f1727; --surface:#131c2e; --surface-2:#1b2740; --surface-3:#24324f;
+  --surface-raised:#1b2740;
+  --label-2:rgba(226,234,250,.60); --label-3:rgba(226,234,250,.32); --label-4:rgba(226,234,250,.18);
+  --label-dim:rgba(226,234,250,.52);
+  --sep:rgba(72,92,128,.60); --sep-op:rgba(72,92,128,.34);
+}
+:root[data-palette="graphite"][data-theme="dark"]{
+  --bg:#141519; --bg-el:#191a1f; --surface:#1e1f24; --surface-2:#292a30; --surface-3:#34363d;
+  --surface-raised:#292a30;
+  --label-2:rgba(236,237,243,.62); --label-3:rgba(236,237,243,.32); --label-4:rgba(236,237,243,.18);
+  --label-dim:rgba(236,237,243,.52);
+  --sep:rgba(88,90,98,.60); --sep-op:rgba(88,90,98,.34);
+}
+:root[data-palette="plum"][data-theme="dark"]{
+  --bg:#150f1c; --bg-el:#1a1322; --surface:#211829; --surface-2:#2c2136; --surface-3:#382a44;
+  --surface-raised:#2c2136;
+  --label-2:rgba(242,232,250,.60); --label-3:rgba(242,232,250,.32); --label-4:rgba(242,232,250,.18);
+  --label-dim:rgba(242,232,250,.50);
+  --sep:rgba(100,80,116,.60); --sep-op:rgba(100,80,116,.34);
+}
+/* Sand is light, so the light theme's accent inks apply to it as they are; on its cream the green
+   one falls a hair under 4.5:1 and takes a darker shade. */
+:root[data-palette="sand"][data-theme="light"]{
+  --bg:#f3eee5; --bg-el:#f7f3ec; --surface:#fffaf2; --surface-2:#f0e9dd; --surface-3:#e6ddcc;
+  --surface-raised:#fffaf2; --raised-line:rgba(80,60,30,.10);
+  --label-2:rgba(64,54,40,.78); --label-3:rgba(64,54,40,.32); --label-4:rgba(64,54,40,.17);
+  --sep:rgba(90,72,44,.28); --sep-op:rgba(90,72,44,.20);
+}
+:root[data-palette="sand"][data-theme="light"][data-accent="lime"]{ --acc-ink:#177334 }
+
 /* Increase Contrast (iOS, macOS) and the other platforms' high-contrast settings. Apple's HIG
    asks custom colours to supply a "significantly more differentiated increased contrast option";
    the system colours below are the increased-contrast values from its colour table. Secondary
@@ -195,6 +232,16 @@
     --purple:#b02fc2; --mint:#008575; --brown:#956d51; --grey:#6c6c70;
     --label-2:rgba(60,60,67,.82); --label-3:rgba(60,60,67,.6); --label-4:rgba(60,60,67,.4);
     --label-dim:var(--label-2);
+    --sep:rgba(60,60,67,.6); --sep-op:rgba(60,60,67,.5);
+  }
+  /* A palette's own greys outrank the two blocks above; the firmer ones win again here. */
+  :root[data-palette][data-theme="dark"]{
+    --label-2:rgba(235,235,245,.78); --label-3:rgba(235,235,245,.55); --label-4:rgba(235,235,245,.36);
+    --label-dim:rgba(235,235,245,.66);
+    --sep:rgba(84,84,88,.95); --sep-op:rgba(84,84,88,.8);
+  }
+  :root[data-palette][data-theme="light"]{
+    --label-2:rgba(60,60,67,.82); --label-3:rgba(60,60,67,.6); --label-4:rgba(60,60,67,.4);
     --sep:rgba(60,60,67,.6); --sep-op:rgba(60,60,67,.5);
   }
 }
@@ -611,6 +658,7 @@ h4.sec{
   border-top:var(--hair) solid var(--sep-op);
 }
 :root[data-theme="light"] #tabbar{background:rgba(249,249,251,.94)}
+:root[data-palette="sand"] #tabbar{background:var(--bg-el);background:color-mix(in srgb,var(--bg-el) 94%,transparent)}
 #tabbar button{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   color:var(--label-2);font-size:10px;font-weight:500;letter-spacing:.005em;padding-top:3px;
@@ -667,6 +715,7 @@ h4.sec{
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
   #tabbar{background:var(--bg-el)}
   :root[data-theme="light"] #tabbar{background:#f9f9fb}
+  :root[data-palette="sand"] #tabbar{background:var(--bg-el)}
   #timer{background:var(--surface-raised)}
   #toast{background:var(--surface-2)}
 }
@@ -677,6 +726,7 @@ h4.sec{
   #tabbar,#timer,#toast,.conn-bar,.whdr.stick,.stats-index{-webkit-backdrop-filter:none;backdrop-filter:none}
   #tabbar{background:var(--bg-el)}
   :root[data-theme="light"] #tabbar{background:#f9f9fb}
+  :root[data-palette="sand"] #tabbar{background:var(--bg-el)}
   #timer{background:var(--surface-raised)}
   #toast{background:var(--surface-2)}
   .conn-bar,.whdr.stick,.stats-index{background:var(--bg)}
@@ -2268,6 +2318,8 @@ button.mchip{border:none;font:inherit;font-size:var(--fs-caption);cursor:pointer
   --green-ink:#1a7f37; --orange-ink:#a85200;
   --red-ink:#d70015;
 }
+/* On Sand's cream the green ink falls a hair under 4.5:1 (the palettes, above). */
+:root[data-palette="sand"][data-theme="light"]{--green-ink:#177334}
 /* The flame: a warm gradient with a light core; three gentle flickers when it appears, then still. */
 .flame{display:inline-block;flex:none;overflow:visible;vertical-align:-.12em}
 .flame-s1{stop-color:#ff4d1a} .flame-s2{stop-color:#ff8a1f} .flame-s3{stop-color:#ffc23d}
@@ -2547,6 +2599,14 @@ body.totop-on.resting #app{padding-bottom:calc(232px + var(--sab))}
 }
 .swatch-input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;border-radius:50%;cursor:pointer;-webkit-appearance:none;appearance:none}
 .swatch-note{margin-top:-4px}
+/* Settings → Palette: a split circle (the palette's page and its accent) over its name. The
+   hairline keeps a page colour that matches the card from vanishing into it. */
+.palettes{display:flex;flex-wrap:wrap;gap:8px 2px;flex-basis:100%;padding-inline-start:41px}
+.palette-chip{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:52px;padding:4px 0;font-size:var(--fs-caption);color:var(--label-2)}
+.palette-chip.on{color:var(--label);font-weight:600}
+.palette-chip .swatch{box-shadow:inset 0 0 0 var(--hair) var(--sep)}
+.palette-chip:active .swatch{transform:scale(var(--press-scale-sm))}
+.seg-off{opacity:.45}
 /* Settings → App icon: the previews in the shape of a home-screen icon, the chosen one ringed like a swatch. */
 .app-icons{flex-basis:100%;padding-inline-start:41px;display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:12px}
 .app-icon{position:relative;aspect-ratio:1;max-width:60px;border-radius:23%;padding:0;transition:transform var(--fast)}

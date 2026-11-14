@@ -3880,4 +3880,12 @@ export default {
   "Your webhooks stop sending while Integrations is off. They stay set up.": "Dina webhooks skickar inget medan ”Integrationer” är av. De förblir inställda.",
   "{0} of {1} modules on.": "{0} av {1} moduler på.",
   "{0} stops syncing while Health is off. Nothing is disconnected, and it catches up once Health is back.": "{0} slutar synka medan ”Hälsa” är av. Inget kopplas bort, och allt kommer ikapp när ”Hälsa” är tillbaka.",
+  // --- Settings → Look: palettes (T41) ---
+  "Palette": "Palett",
+  "Classic": "Klassisk",
+  "Navy": "Marin",
+  "Graphite": "Grafit",
+  "Plum": "Plommon",
+  "Sand": "Sand",
+  "The palette sets dark or light. Pick Classic to choose.": "Paletten bestämmer mörkt eller ljust. Välj Klassisk för att välja själv.",
 }

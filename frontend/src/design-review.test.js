@@ -269,3 +269,34 @@ describe('Stats redesign', () => {
     expect(rule('.mchip.miss')).toBe('background:var(--surface-2);color:var(--label)')
   })
 })
+
+// Palettes (T41): each one's own page, cards and greys (index.css :root[data-palette=…]). Its
+// secondary text reads at 4.5:1 on the page and a card, every preset accent as text does too
+// (the dark ones are their own --acc, Sand takes the light inks), and lib/accent.js THEMES, which
+// the own colour is checked against, carries the same backgrounds.
+describe('palettes: text inks on every palette', async () => {
+  const { THEMES, PALETTES } = await import('./lib/accent.js')
+  const darkAcc = ['--green', '--blue', '--orange', '--purple', '--pink', '--red', '--teal', '--yellow'].map(k => token(dark, k))
+  const lightInks = Object.fromEntries([...css.matchAll(/:root\[data-theme="light"\]\[data-accent="(\w+)"\]\s*\{\s*--acc-ink:(#\w+)/g)].map(m => [m[1], m[2]]))
+  const palettes = Object.entries(PALETTES).filter(([, p]) => p.base)
+  it.each(palettes)('%s', (id, p) => {
+    const own = rule(`:root[data-palette="${id}"][data-theme="${p.base}"]`)
+    expect(own, id).not.toBe('')
+    const decls = (p.base === 'light' ? light : dark) + ';' + own
+    const last = name => [...decls.matchAll(new RegExp(`${name}:\\s*([^;}]+)`, 'g'))].pop()?.[1]?.trim()
+    const g = [hex(last('--bg')), hex(last('--surface'))]
+    expect(THEMES[id].bgs).toEqual([last('--bg'), last('--surface')])
+    for (const ground of g) {
+      expect(on(last('--label-2'), ground), id + ' label-2').toBeGreaterThanOrEqual(4.5)
+      if (p.base === 'dark') {
+        expect(on(last('--label-dim'), ground), id + ' label-dim').toBeGreaterThanOrEqual(4.5)
+        for (const acc of darkAcc) expect(on(acc, ground), id + ' ' + acc).toBeGreaterThanOrEqual(4.5)
+      } else {
+        for (const [name, ink] of Object.entries(lightInks)) {
+          const fix = css.match(new RegExp(`:root\\[data-palette="${id}"\\]\\[data-theme="light"\\]\\[data-accent="${name}"\\]\\s*\\{\\s*--acc-ink:(#\\w+)`))?.[1]
+          expect(on(fix || ink, ground), id + ' ' + name).toBeGreaterThanOrEqual(4.5)
+        }
+      }
+    }
+  })
+})

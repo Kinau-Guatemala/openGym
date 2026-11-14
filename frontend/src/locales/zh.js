@@ -3842,4 +3842,12 @@ export default {
   "Your webhooks stop sending while Integrations is off. They stay set up.": "“集成”关闭期间，你的 Webhook 不会发送。设置仍然保留。",
   "{0} of {1} modules on.": "已开启 {0}/{1} 个模块。",
   "{0} stops syncing while Health is off. Nothing is disconnected, and it catches up once Health is back.": "“健康”关闭期间，{0} 会停止同步。不会断开任何连接，“健康”重新开启后会自动补上。",
+  // --- Settings → Look: palettes (T41) ---
+  "Palette": "配色",
+  "Classic": "经典",
+  "Navy": "海军蓝",
+  "Graphite": "石墨",
+  "Plum": "梅紫",
+  "Sand": "沙色",
+  "The palette sets dark or light. Pick Classic to choose.": "配色会决定深色或浅色。选择“经典”即可自行选择。",
 }

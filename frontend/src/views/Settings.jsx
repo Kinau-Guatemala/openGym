@@ -39,7 +39,7 @@ import { syncMedia, fetchToStore } from '../lib/media-sync.js'
 import { getMediaStatus, subscribeMediaStatus, pendingRefCount, localOnlyRefCount } from '../lib/media-owed.js'
 import { limitsFrom, fmtMB, MB } from '../lib/media-limits.js'
 import { setRestAccent } from '../lib/rest-alert.js'
-import { CUSTOM, accentKey, adjustedIn, applyAccent, cleanHex, inkOn, isGrey } from '../lib/accent.js'
+import { CUSTOM, DEFAULT_PALETTE, PALETTES, THEMES as LOOKS, accentKey, adjustedIn, applyAccent, cleanHex, inkOn, isGrey, lookKey, paletteKey } from '../lib/accent.js'
 import { checkForUpdate, downloadAndInstall, fetchChecksum, forgetDownloadedUpdate, RELEASES_PAGE } from '../lib/update.js'
 import { APK_VARIANT, VARIANT_NAMES } from '../lib/apk-variant.js'
 import { BUILTIN_PX } from '../lib/anim-quality.js'
@@ -490,7 +490,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     units: () => (S.unit || 'kg') + ' · ' + (LANGS[lang] || lang),
     equipment: () => (S.equipFilterOn && activeProfile ? activeProfile.name : ownsNoDumbbells(S) ? t('Everything but dumbbells') : t('Everything')),
     crossfit: () => '',
-    look: () => themeLabel + ' · ' + accentLabel(S),
+    look: () => lookLabel(S, themeLabel),
     modules: () => { const p = presetOf(S); return p === 'custom' ? t('Custom') : presetCopy()[p][0] },
     coach: () => (coachLocal?.mode === 'server' ? t('Your server') : coachLocal?.mode === 'byok' ? t('Your API key') : t('Off')),
     data: () => '',
@@ -944,10 +944,13 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     crossfit: () => <CrossFitSettings S={S} update={update} />,
 
     look: () => <>
-      <Section footer={DEMO || MOBILE || !user ? undefined : t('synced with your profile')}>
+      {/* A palette other than Classic sets dark or light itself (lib/accent.js PALETTES). */}
+      <Section footer={paletteKey(S) !== DEFAULT_PALETTE ? t('The palette sets dark or light. Pick Classic to choose.') : undefined}>
+        <PaletteSwatches S={S} update={update} />
         <Row icon="moon" iconTint="var(--indigo)" title={t('Theme')}>
           <Segmented
             className="seg-inline"
+            disabled={paletteKey(S) !== DEFAULT_PALETTE}
             options={[
               { value: 'dark', icon: 'moon', label: t('Dark') },
               { value: 'light', icon: 'sun', label: t('Light') },
@@ -957,6 +960,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
             onChange={v => update(s => { s.theme = v })}
           />
         </Row>
+      </Section>
+      <Section footer={DEMO || MOBILE || !user ? undefined : t('synced with your profile')}>
         <div className="lrow" style={{ flexWrap: 'wrap', rowGap: 12, paddingBottom: 14 }}>
           <span className="lrow-i" style={{ '--tint': 'var(--purple)' }}><Icon name="palette" /></span>
           <span className="lrow-m"><span className="lrow-t">{t('Accent color')}</span></span>
@@ -1600,6 +1605,42 @@ function accentLabel(S) {
   return k === CUSTOM ? t('Your own color') : t(ACCENT_NAMES[k] || 'Green')
 }
 
+/** The Look & Home summary: the theme, or the palette that sets it, then the accent. */
+export function lookLabel(S, themeLabel) {
+  const p = paletteKey(S)
+  return (p === DEFAULT_PALETTE ? themeLabel : t(PALETTES[p].name)) + ' · ' + accentLabel(S)
+}
+
+/**
+ * The palettes (lib/accent.js PALETTES): each a circle split between its page colour and its
+ * accent, its name below. Picking one picks its accent too; the Accent row changes it after.
+ * Classic shows the page of the theme the Theme row would give.
+ */
+function PaletteSwatches({ S, update }) {
+  const cur = paletteKey(S)
+  const pick = k => {
+    const acc = PALETTES[k].accent
+    update(s => { s.palette = k; s.accent = acc })
+    setRestAccent(acc)
+  }
+  const classicBg = LOOKS[lookKey(DEFAULT_PALETTE, S.theme === 'light' ? 'light' : 'dark')].bgs[0]
+  return <div className="lrow" style={{ flexWrap: 'wrap', rowGap: 12, paddingBottom: 14 }}>
+    <span className="lrow-i" style={{ '--tint': 'var(--orange)' }}><Icon name="palette" /></span>
+    <span className="lrow-m"><span className="lrow-t">{t('Palette')}</span></span>
+    <span className="lrow-v">{t(PALETTES[cur].name)}</span>
+    <div className="palettes" role="radiogroup" aria-label={t('Palette')}>
+      {Object.entries(PALETTES).map(([k, p]) => (
+        <button key={k} type="button" role="radio" aria-checked={k === cur}
+          className={'palette-chip' + (k === cur ? ' on' : '')} onClick={() => pick(k)}>
+          <span className={'swatch' + (k === cur ? ' on' : '')} aria-hidden="true"
+            style={{ background: `linear-gradient(135deg, ${k === DEFAULT_PALETTE ? classicBg : LOOKS[k].bgs[0]} 50%, ${ACCENTS[p.accent]} 50%)` }} />
+          <span>{t(p.name)}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+}
+
 /**
  * The presets, then one swatch for a colour of the user's own (lib/accent.js). With no colour
  * of their own yet it is a rainbow ring, and a tap opens the system colour picker straight away.
@@ -1641,7 +1682,7 @@ function AccentSwatches({ S, update }) {
     const c = cleanHex(hex)
     if (!c) return
     const de = document.documentElement
-    applyAccent(de, c, de.dataset.theme)
+    applyAccent(de, c, lookKey(de.dataset.palette, de.dataset.theme))
     pending.current = c
     clearTimeout(timer.current)
     timer.current = setTimeout(commit, OWN_COLOR_SETTLE_MS)
@@ -1662,9 +1703,13 @@ function AccentSwatches({ S, update }) {
   }, [own])
   const ownLabel = t('Your own color')
   const grey = own && isGrey(own)
+  // Classic is checked in both themes; a palette only in its own colours.
+  const pal = paletteKey(S)
+  const darkLook = pal === DEFAULT_PALETTE ? 'dark' : PALETTES[pal].base === 'dark' && pal
+  const lightLook = pal === DEFAULT_PALETTE ? 'light' : PALETTES[pal].base === 'light' && pal
   const notes = own && onCustom ? [
-    adjustedIn(own, 'dark') && (grey ? t('Greys show lighter in dark mode, so buttons don’t look switched off.') : t('A touch lighter in dark mode, so you can still read it.')),
-    adjustedIn(own, 'light') && (grey ? t('Greys show darker in light mode, so buttons don’t look switched off.') : t('A touch darker in light mode, so you can still read it.')),
+    darkLook && adjustedIn(own, darkLook) && (grey ? t('Greys show lighter in dark mode, so buttons don’t look switched off.') : t('A touch lighter in dark mode, so you can still read it.')),
+    lightLook && adjustedIn(own, lightLook) && (grey ? t('Greys show darker in light mode, so buttons don’t look switched off.') : t('A touch darker in light mode, so you can still read it.')),
   ].filter(Boolean) : []
   return <>
     <div className="swatches" style={{ flexBasis: '100%', paddingInlineStart: 41 }}>
