@@ -7,6 +7,7 @@ import { effortSummary, effortWeeks, effortHistogram } from './effort.js'
 import { musclesOf } from './muscles.js'
 import { EXIDX } from './exercises.js'
 import { entryExcluded } from './history.js'
+import { sessionsFor } from './progression.js'
 import { backfillStart } from './backfill.js'
 import { prepareDraft } from './wod-draft.js'
 import { validateWod } from '../../../api/coach/core/validate.js'
@@ -662,6 +663,18 @@ describe('wodToSession: an exercise logged once per kind (T39)', () => {
     const { entries } = wodToSession(p, all, {}, S0())
     expect(entries.map(e => [e.id, e.wodBlock, !!e.noProg])).toEqual([[OHS, 'full/b0', false], [OHS, 'full/b1', true]])
     expect(entries.flatMap(e => e.sets).some(s => s.wodBlock)).toBe(false)
+  })
+
+  it('a strength block\'s lift and a progressable block of it after stay two entries, so progression reads the strength sets', () => {
+    // 3 RONDAS is not a metcon (isMetcon), so its back squats are progressable too.
+    const BS = '0043'
+    const p = program([block('b0', 'strength', [mv('m0', BS, { reps: 5, sets: 5 })]), block('b1', 'rounds', [mv('m0', BS, { reps: 3 })], { rounds: 3 })])
+    const logged = { moves: { 'full/b0/m0': { w: 100 }, 'full/b1/m0': { w: 60 } } }
+    const S = S0()
+    const { active, w } = buildWodWorkout(S, '2026-11-13', p, all, logged, Date.parse('2026-11-14T12:00:00Z'))
+    fileBackfill(S, active, w)
+    expect(S.workouts[0].entries.map(e => [e.wodBlock, e.sets.length])).toEqual([['full/b0', 5], ['full/b1', 3]])
+    expect(sessionsFor(S, BS, { reps: 5, sets: 5 }, null).map(x => [x.weight, x.ok])).toEqual([[100, true]])
   })
 
   it('done as printed in one block and swapped in for another movement in the next, it stays two entries', () => {

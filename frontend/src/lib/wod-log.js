@@ -243,17 +243,18 @@ export function wodToSession(program0, choice, logged, S) {
   return { entries: mergeRepeats(entries), wod: { tracks: [...chosen].filter(id => list(program?.tracks).some(t => t.id === id)), blocks }, capMin }
 }
 
-// One entry per exercise and kind, where it first appears (T39): the OHS of a warm-up, a complex
-// and the rounds is one exercise logged once, not three times. Kind is metcon or progressable,
-// cardio or lifting, so a strength block's lift stays apart from a metcon of it and progression
-// still reads only its own sets; and as printed or swapped in for the same movement, so Rx against
-// lifted still rates the printed one (rx-history.js). A merged entry keeps its first block's `wodBlock` and `rx` for old
-// readers, and each set says its block (`s.wodBlock`) and, when it differs, its Rx (`s.rx`, null
-// for none). An entry that merged nothing is the shape it always was.
+// One entry per exercise and kind, where it first appears (T39): the OHS of a warm-up and a complex
+// is one exercise logged once, not twice. Metcon entries merge across blocks; a progressable one
+// only with its own block's (two printed lines of it), since progression reads one entry a day
+// (progression.js sessionsIn) and a strength block's 5 × 5 is not a rounds block's 3 × 10. Cardio
+// stays apart from lifting, and a swap from a movement printed as itself, so Rx against lifted
+// still rates the printed one (rx-history.js). A merged entry keeps its first block's `wodBlock`
+// and `rx` for old readers, and each set says its block (`s.wodBlock`) and, when it differs, its
+// Rx (`s.rx`, null for none). An entry that merged nothing is the shape it always was.
 function mergeRepeats(entries) {
   const out = [], at = new Map()
   for (const e of entries) {
-    const key = `${e.id}|${!!e.noProg}|${e.sets[0]?.mode === 'cardio'}|${e.swappedFrom || ''}`
+    const key = `${e.id}|${e.noProg ? '' : e.wodBlock}|${e.sets[0]?.mode === 'cardio'}|${e.swappedFrom || ''}`
     const first = at.get(key)
     if (!first) { at.set(key, e); out.push(e); continue }
     if (!first.sets[0].wodBlock) first.sets = first.sets.map(s => ({ ...s, wodBlock: first.wodBlock }))
