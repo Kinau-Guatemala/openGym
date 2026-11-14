@@ -974,7 +974,7 @@ body.chips-dragging *{cursor:inherit}
 .measure-input{height:47px;background:var(--surface-2);border-radius:var(--r);display:flex;align-items:center;padding:0 12px;gap:6px}
 .measure-input .num{width:100%;min-width:0;background:transparent;border:0;outline:none;font-size:18px;font-weight:500;color:var(--label);padding:0}
 .measure-input i{font-style:normal;color:var(--label-3);font-size:var(--fs-footnote)}
-.measure-input .unit-chip{flex:none;background:none;border:0;padding:8px 0 8px 4px;font:inherit;font-size:var(--fs-footnote);font-weight:600;color:var(--acc-ink);white-space:nowrap;cursor:pointer}
+.measure-input .unit-chip{flex:none;align-self:stretch;min-width:44px;margin-inline-end:-12px;background:none;border:0;padding:0;padding-inline:4px 12px;font:inherit;font-size:var(--fs-footnote);font-weight:600;color:var(--acc-ink);white-space:nowrap;cursor:pointer}
 .measure-options{margin:12px 0 16px}
 .measure-select{margin-bottom:10px;background:var(--surface-2)}
 .measure-preview{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:11px;padding-top:10px;border-top:1px solid var(--sep);font-size:var(--fs-caption);color:var(--label-2)}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn } from './wod-log.js'
+import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn, switchUnit } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -579,6 +579,52 @@ describe('wodToSession: the 11 Nov structure (T34)', () => {
   it('N6: the 20/20 hold is 20 s a side, logged as 40 s with no load, each of its 4 minutes', () => {
     const hold = only('b6')[2]
     expect(hold.sets).toEqual(Array(4).fill({ mode: 'time', sec: 40, w: 0, done: true, wodRir: 5 }))
+  })
+})
+
+describe('switchUnit: two taps on the kg / lb switch give back what was typed (T38)', () => {
+  const at = (u, w) => ({ unit: u, logged: { moves: { a: { w }, b: { sets: [{ w, r: 5 }, { r: 3 }] } }, blocks: { s: { score: { type: 'load', w, unit: u } } } } })
+  const weights = st => [st.logged.moves.a.w, st.logged.moves.b.sets[0].w, st.logged.blocks.s.score.w]
+  const sweep = (u, other, step, top) => {
+    const moved = []
+    for (let w = step; w <= top; w += step) {
+      let st = at(u, w)
+      for (let i = 0; i < 4; i++) st = switchUnit(st, i % 2 ? u : other)
+      if (weights(st).some(v => v !== w) || st.unit !== u) moved.push(w)
+    }
+    return moved
+  }
+
+  it('every half pound from 1 to 600 lb, and every half kilo, comes back unchanged', () => {
+    expect(sweep('lb', 'kg', 0.5, 600)).toEqual([])
+    expect(sweep('kg', 'lb', 0.5, 300)).toEqual([])
+  })
+
+  it('105 lb shows as 47.75 kg and comes back as 105, not 105.5', () => {
+    const kg = switchUnit(at('lb', 105), 'kg')
+    expect(weights(kg)).toEqual([47.75, 47.75, 47.75])
+    expect(kg.logged.blocks.s.score.unit).toBe('kg')
+    const lb = switchUnit(kg, 'lb')
+    expect(weights(lb)).toEqual([105, 105, 105])
+    expect(lb.logged.blocks.s.score.unit).toBe('lb')
+  })
+
+  it('a weight changed in between is converted; the others still come back as typed', () => {
+    const kg = switchUnit(at('lb', 105), 'kg')
+    kg.logged.moves.a.w = 50
+    delete kg.logged.blocks.s.score.w
+    const lb = switchUnit(kg, 'lb')
+    expect(lb.logged.moves.a.w).toBe(110)
+    expect(lb.logged.moves.b.sets[0].w).toBe(105)
+    expect(lb.logged.blocks.s.score.w).toBeUndefined()
+    expect(lb.logged.moves.b.sets[1]).toEqual({ r: 3 })
+  })
+
+  it('leaves the state it was given alone', () => {
+    const st = at('lb', 105)
+    const copy = structuredClone(st)
+    switchUnit(switchUnit(st, 'kg'), 'lb')
+    expect(st).toEqual(copy)
   })
 })
 

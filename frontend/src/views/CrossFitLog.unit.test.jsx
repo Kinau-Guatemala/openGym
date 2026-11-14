@@ -163,6 +163,37 @@ describe('kg / lb beside each weight (T38)', () => {
     expect(field(1).value).toBe('225')
   })
 
+  it('the switch already on does nothing: no toast, nothing converted', async () => {
+    start('kg')
+    useUI.setState({ toastMsg: '' })
+    await mount()
+    await type(field(0), '100')
+    await click('kg')
+    expect(useUI.getState().toastMsg).toBeFalsy()
+    expect(field(0).value).toBe('100')
+  })
+
+  it('a weight field keeps its own name; the chip does not lend it its label', async () => {
+    start('kg')
+    await mount()
+    expect(field(0).getAttribute('aria-label')).toBe('Weight (kg)')
+  })
+
+  it('a typed lb weight survives lb, kg, lb; one edited in kg between is converted', async () => {
+    start('lb')
+    await mount()
+    await type(field(0), '105')
+    await type(field(1), '78')
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['47.75', '35.5'])
+    await type(field(1), '40')
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['105', '88'])
+    await tap(chip(0))
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['105', '88'])
+  })
+
   it('a reps field has no chip', async () => {
     start('kg')
     await mount()

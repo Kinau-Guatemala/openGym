@@ -17,7 +17,7 @@ import { wodOf } from '../lib/wods.js'
 import { rxFor, emptyStep, fmtDose, fmtRounds, fmtSteps, stepRxFor, stepsOf } from '../lib/rx.js'
 import { fmtRest } from '../lib/duration.js'
 import { includeOf, liveWod } from '../lib/wod-draft.js'
-import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, wodStart } from '../lib/wod-log.js'
+import { SCORE_OF, doseOn, eachSide, formatLabel, isCardioRow, isMetcon, ladderOf, loggedIn, optionOf, relogState, setsOf, switchUnit, wodStart } from '../lib/wod-log.js'
 import { convertWeight } from '../lib/units.js'
 import { exercisePicker, FinishSummary } from '../sheets.jsx'
 import { HELP, HelpButton, helpLine } from './CrossFit.jsx'
@@ -59,7 +59,7 @@ export default function CrossFitLog() {
 
   const setUnit = u => {
     if (u === state.unit) return
-    setState(st => ({ ...st, logged: loggedIn(st.logged, st.unit, u), unit: u }))
+    setState(st => switchUnit(st, u))
     ui().toast(t('Weights in {0}', u))
   }
   // A Weight field's chip flips the whole screen, as the switch at the top does.
@@ -183,8 +183,9 @@ function LogBlock({ S, unit, onUnit, track, block, on, logged, explainInclude, e
 }
 
 // A weight's unit is a chip that switches the screen (onUnit); any other unit is a plain suffix.
+// The field names itself, or it would read the chip's label inside its <label> as its own name.
 const num = (label, value, onChange, unit, decimal = true, onUnit) => <label className="measure-field" key={label}><span>{label}</span>
-  <span className="measure-input"><NumberField decimal={decimal} nullable value={value} onChange={onChange} />
+  <span className="measure-input"><NumberField decimal={decimal} nullable value={value} onChange={onChange} aria-label={onUnit ? `${label} (${unit})` : undefined} />
     {unit && (onUnit ? <button type="button" className="unit-chip" aria-label={t('Switch to {0}', unit === 'kg' ? 'lb' : 'kg')} onClick={e => { e.preventDefault(); onUnit() }}>{unit} ⇄</button> : <i>{unit}</i>)}</span></label>
 
 function LogMovement({ S, unit, onUnit, block, m, lm, onChange }) {
