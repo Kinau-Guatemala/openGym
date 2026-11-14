@@ -73,6 +73,7 @@ const scrubber = token => msg => String(msg || '').split(token).join('***').slic
 const sha256 = text => crypto.createHash('sha256').update(text).digest('hex');
 /** The sha git (and the contents API's `sha`) gives a file of these bytes. */
 export const blobSha = bytes => crypto.createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+const sameBlob = (file, sha) => { try { return blobSha(fs.readFileSync(file)) === sha; } catch { return false; } };
 
 /**
  * `content` (a string or bytes) written to `file` on branch main of `repo`, or the file deleted
@@ -220,7 +221,8 @@ export function createBoxFeed({
           count++;
           keep({ ...saved, files: pushed });
         }
-        if (f.local) fs.rmSync(f.local, { force: true });   // GitHub has it now
+        // GitHub has it now, unless a newer parse replaced the file mid-push: that one waits.
+        if (f.local && sameBlob(f.local, f.hash)) fs.rmSync(f.local, { force: true });
       }
       for (const p of Object.keys(pushed)) {
         if (wanted.has(p)) continue;

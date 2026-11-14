@@ -48,10 +48,10 @@ describe('parseIndex', () => {
 })
 
 describe('the photo', () => {
-  it('is https on the archive’s own host only', () => {
+  it('is https in the archive’s own folder only', () => {
     expect(imageUrl(INDEX, '2026-09-01.jpg')).toBe('https://raw.githubusercontent.com/box/wods/main/archive/2026-09-01.jpg')
     for (const bad of ['http://raw.githubusercontent.com/box/wods/main/archive/x.jpg', 'https://evil.example/x.jpg', 'javascript:alert(1)',
-      'data:image/png;base64,AAAA', '//evil.example/x.jpg', '', null, 7]) expect(imageUrl(INDEX, bad)).toBe(null)
+      'data:image/png;base64,AAAA', '//evil.example/x.jpg', '../../../../other/repo/main/x.jpg', '/other/repo/main/x.jpg', '', null, 7]) expect(imageUrl(INDEX, bad)).toBe(null)
   })
 
   it('a day is read through cleanProgram, with its photo checked', () => {

@@ -302,6 +302,23 @@ test('the archive: a photo over 2 MB is left out and logged; the token is in no 
   for (const text of [...lines, JSON.stringify(feed.status()), fs.readFileSync(path.join(dataDir, 'box-feed.json'), 'utf8')]) assert.ok(!text.includes(TOKEN), text);
 });
 
+test('the archive: a photo read again while the first is being pushed is not lost', async () => {
+  let again = null;
+  const { feed, timers, gh, dataDir } = setup({ script: (n, method, body, file) => { if (method === 'PUT' && file.endsWith('.jpg')) again?.(); return null; } });
+  const photo = text => keepBoxImage({ env: ENV, dataDir, uid: 'diego', date: '2026-10-01', image: { mime: 'image/jpeg', data: Buffer.from(text).toString('base64') } });
+  photo('first');
+  again = () => { again = null; photo('the better shot'); };   // a re-parse lands mid-push
+  const wods = { '2026-10-01': wod('a') };
+  feed.noteWrite('diego', { wods });
+  await timers.fire();
+  assert.equal(gh.files['archive/2026-10-01.jpg'].bytes.toString(), 'first');
+  assert.ok(fs.existsSync(img(dataDir, '2026-10-01', 'jpg')), 'the newer photo is still waiting');
+  feed.noteWrite('diego', { wods });
+  await timers.fire();
+  assert.equal(gh.files['archive/2026-10-01.jpg'].bytes.toString(), 'the better shot');
+  assert.ok(!fs.existsSync(img(dataDir, '2026-10-01', 'jpg')));
+});
+
 test('blobSha is git\'s', () => {
   // `printf 'hello\n' | git hash-object --stdin`
   assert.equal(blobSha(Buffer.from('hello\n')), 'ce013625030ba8dba906f756967f9e9ca394464a');

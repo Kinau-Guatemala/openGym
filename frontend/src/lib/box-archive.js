@@ -44,13 +44,14 @@ export function parseIndex(json) {
 }
 
 /**
- * The photo `name` of an archive day as an address to show, or null: it must stay https and on
- * the archive's own host (a raw file of the same repo), whatever the file says.
+ * The photo `name` of an archive day as an address to show, or null: it must stay https and in
+ * the archive's own folder (raw.githubusercontent.com serves every repo from one host, so the
+ * host alone would let `../../other/repo/…` through), whatever the file says.
  */
 export function imageUrl(indexUrl, name) {
   if (typeof name !== 'string' || !name || name.length > 200) return null
   const href = resolve(name, indexUrl)
-  return href && new URL(href).origin === new URL(indexUrl).origin ? href : null
+  return href && href.startsWith(new URL('.', indexUrl).href) ? href : null
 }
 
 /** A fetched archive/<date>.json, checked: `{ program, image }` (image an address or null), or null. */
