@@ -664,6 +664,21 @@ describe('wodToSession: an exercise logged once per kind (T39)', () => {
     expect(entries.flatMap(e => e.sets).some(s => s.wodBlock)).toBe(false)
   })
 
+  it('done as printed in one block and swapped in for another movement in the next, it stays two entries', () => {
+    const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+    const p = program([
+      block('b0', 'amrap', [mv('m0', OHS, { reps: 5 }, { rx: lb(95, 65) })], { capMin: 5 }),
+      block('b1', 'amrap', [mv('m0', SNATCH, { reps: 5 })], { capMin: 5 }),
+      block('b2', 'amrap', [mv('m0', SNATCH, { reps: 3 })], { capMin: 5 }),
+    ])
+    const logged = { moves: { 'full/b1/m0': { exId: OHS }, 'full/b2/m0': { exId: OHS } } }
+    const { entries } = wodToSession(p, all, logged, S0({ unit: 'lb' }))
+    expect(entries.map(e => [e.id, e.swappedFrom, e.rx, blocksOf(e)])).toEqual([
+      [OHS, undefined, { w: 95, unit: 'lb' }, [undefined]],
+      [OHS, SNATCH, undefined, ['full/b1', 'full/b2']],
+    ])
+  })
+
   it('each block\'s Rx survives on its own sets: the printed load on the 115/75 ones, none on the warm-up', () => {
     const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
     const p = program([

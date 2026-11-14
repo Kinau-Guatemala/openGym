@@ -246,19 +246,19 @@ export function wodToSession(program0, choice, logged, S) {
 // One entry per exercise and kind, where it first appears (T39): the OHS of a warm-up, a complex
 // and the rounds is one exercise logged once, not three times. Kind is metcon or progressable,
 // cardio or lifting, so a strength block's lift stays apart from a metcon of it and progression
-// still reads only its own sets. A merged entry keeps its first block's `wodBlock` and `rx` for old
+// still reads only its own sets; and as printed or swapped in for the same movement, so Rx against
+// lifted still rates the printed one (rx-history.js). A merged entry keeps its first block's `wodBlock` and `rx` for old
 // readers, and each set says its block (`s.wodBlock`) and, when it differs, its Rx (`s.rx`, null
 // for none). An entry that merged nothing is the shape it always was.
 function mergeRepeats(entries) {
   const out = [], at = new Map()
   for (const e of entries) {
-    const key = `${e.id}|${!!e.noProg}|${e.sets[0]?.mode === 'cardio'}`
+    const key = `${e.id}|${!!e.noProg}|${e.sets[0]?.mode === 'cardio'}|${e.swappedFrom || ''}`
     const first = at.get(key)
     if (!first) { at.set(key, e); out.push(e); continue }
     if (!first.sets[0].wodBlock) first.sets = first.sets.map(s => ({ ...s, wodBlock: first.wodBlock }))
     const rx = JSON.stringify(e.rx ?? null) === JSON.stringify(first.rx ?? null) ? {} : { rx: e.rx ?? null }
     first.sets.push(...e.sets.map(s => ({ ...s, wodBlock: e.wodBlock, ...rx })))
-    if (!first.swappedFrom && e.swappedFrom) first.swappedFrom = e.swappedFrom
   }
   return out
 }

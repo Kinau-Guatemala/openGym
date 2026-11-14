@@ -18,14 +18,16 @@ import { isoOf } from './format.js'
 const list = v => (Array.isArray(v) ? v : [])
 const DAY = 86400000
 
-// A WOD entry merged from several blocks (wod-log.js mergeRepeats) is read as one entry per block,
-// each with its own Rx: a set's `rx` when it carries one (null for none), else the entry's.
+// A WOD entry merged from several lines (wod-log.js mergeRepeats) is read as one entry per block
+// and Rx, as it was logged before: a set's `rx` when it carries one (null for none), else the
+// entry's. An EMOM's M2 at 135 and M3 at 155 are two lines of one block, each rated on its own.
 function piecesOf(e) {
   if (!list(e?.sets).some(s => s?.wodBlock)) return [e]
   const by = new Map()
   for (const s of e.sets) {
-    const k = s?.wodBlock ?? e.wodBlock
-    if (!by.has(k)) by.set(k, { ...e, wodBlock: k, rx: s && 'rx' in s ? s.rx : e.rx, sets: [] })
+    const ref = s?.wodBlock ?? e.wodBlock, rx = s && 'rx' in s ? s.rx : e.rx
+    const k = ref + ' ' + JSON.stringify(rx ?? null)
+    if (!by.has(k)) by.set(k, { ...e, wodBlock: ref, rx, sets: [] })
     by.get(k).sets.push(s)
   }
   return [...by.values()]

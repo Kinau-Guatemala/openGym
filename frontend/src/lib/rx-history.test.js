@@ -41,6 +41,13 @@ describe('rxHistory', () => {
     expect(rxHistory([day('2026-11-13', [first])], OHS, 'kg').map(h => h.used)).toEqual([40])
   })
 
+  it('rates the two lines of one block printed at two loads each against its own (EMOM M2 at 135, M3 at 155)', () => {
+    const HC = '0632', rx135 = { w: 135, unit: 'lb' }, rx155 = { w: 155, unit: 'lb' }
+    const at = (w, extra = {}) => ({ ...row(w), wodBlock: 'full/b0', ...extra })
+    const merged = { id: HC, noProg: true, wodBlock: 'full/b0', rx: rx135, sets: [at(135), at(135), at(135, { rx: rx155 }), at(135, { rx: rx155 })] }
+    expect(rxHistory([day('2026-11-13', [merged])], HC, 'lb').map(h => [h.rx, h.ratio])).toEqual([[135, 1], [155, 135 / 155]])
+  })
+
   it('counts a swap on its own, never as a ratio', () => {
     const h = rxHistory([
       day('2026-10-01', [{ id: '1520', rx: { w: 135, unit: 'lb' }, sets: [row(60)] }]),
