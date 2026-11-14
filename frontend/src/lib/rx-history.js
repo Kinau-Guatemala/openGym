@@ -18,6 +18,22 @@ import { isoOf } from './format.js'
 const list = v => (Array.isArray(v) ? v : [])
 const DAY = 86400000
 
+// A WOD entry merged from several lines (wod-log.js mergeRepeats) is read as one entry per block
+// and Rx, as it was logged before: a set's `rx` when it carries one (null for none), else the
+// entry's. An EMOM's M2 at 135 and M3 at 155 are two lines of one block, each rated on its own.
+function piecesOf(e) {
+  if (!list(e?.sets).some(s => s?.wodBlock)) return [e]
+  const by = new Map()
+  for (const s of e.sets) {
+    const ref = s?.wodBlock ?? e.wodBlock, rx = s && 'rx' in s ? s.rx : e.rx
+    const k = ref + ' ' + JSON.stringify(rx ?? null)
+    if (!by.has(k)) by.set(k, { ...e, wodBlock: ref, rx, sets: [] })
+    by.get(k).sets.push(s)
+  }
+  return [...by.values()]
+}
+const entriesOf = w => list(w?.entries).flatMap(piecesOf)
+
 /**
  * Every logged WOD that programmed `exId` with a load: `[{ d, used, rx, ratio, swapped }]`,
  * oldest first. `used` is the entry's best working weight and `rx` the prescription, both in
@@ -27,7 +43,7 @@ const DAY = 86400000
 export function rxHistory(workouts, exId, unit = 'kg') {
   const out = []
   for (const w of list(workouts)) {
-    for (const e of list(w?.entries)) {
+    for (const e of entriesOf(w)) {
       if (e?.swappedFrom === exId) {
         out.push({ d: w.d, used: bestWeightForEntry(e) || 0, rx: null, ratio: null, swapped: true, as: e.id })
       } else if (e?.id === exId && !e.swappedFrom && Number(e.rx?.w) > 0) {
@@ -50,7 +66,7 @@ export function furthestFromRx(workouts, weeks = 8, unit = 'kg', now = Date.now(
   const from = isoOf(new Date(now - weeks * 7 * DAY))
   const recent = list(workouts).filter(w => w?.d >= from)
   const ids = new Set()
-  for (const w of recent) for (const e of list(w.entries)) {
+  for (const w of recent) for (const e of entriesOf(w)) {
     if (e?.swappedFrom) ids.add(e.swappedFrom)
     else if (Number(e?.rx?.w) > 0) ids.add(e.id)
   }

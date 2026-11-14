@@ -7,6 +7,7 @@ import { effortSummary, effortWeeks, effortHistogram } from './effort.js'
 import { musclesOf } from './muscles.js'
 import { EXIDX } from './exercises.js'
 import { entryExcluded } from './history.js'
+import { sessionsFor } from './progression.js'
 import { backfillStart } from './backfill.js'
 import { prepareDraft } from './wod-draft.js'
 import { validateWod } from '../../../api/coach/core/validate.js'
@@ -431,12 +432,13 @@ describe('wodToSession: repeats and sets (T17)', () => {
 
   it('the Running Club logs 8.4 km: 1 × 8000 m and 2 × 200 m, the minutes for the whole distance', () => {
     const out = wodToSession(fixture, { tracks: ['running'] }, {}, S0())
-    const runs = entryOf(out, 'running/b1')
-    expect(runs.map(e => e.id)).toEqual(['0685', '0685'])
-    expect(runs.map(e => e.sets)).toEqual([[{ mode: 'cardio', m: 8000, min: 40, done: true }], [{ mode: 'cardio', m: 400, min: 2, done: true }]])
-    expect(runs.reduce((km, e) => km + e.sets[0].m, 0) / 1000).toBe(8.4)
+    // One run entry with a row per line (T39), never added together.
+    const [run] = entryOf(out, 'running/b1')
+    expect(entryOf(out, 'running/b1')).toHaveLength(1)
+    expect(run.sets).toEqual([{ mode: 'cardio', m: 8000, min: 40, done: true, wodBlock: 'running/b1' }, { mode: 'cardio', m: 400, min: 2, done: true, wodBlock: 'running/b1' }])
+    expect(run.sets.reduce((km, s) => km + s.m, 0) / 1000).toBe(8.4)
     // a distance typed on the log screen is one repeat's, so it is multiplied too
-    expect(entryOf(wodToSession(fixture, { tracks: ['running'] }, { moves: { 'running/b1/m1': { m: 250 } } }, S0()), 'running/b1')[1].sets[0].m).toBe(500)
+    expect(entryOf(wodToSession(fixture, { tracks: ['running'] }, { moves: { 'running/b1/m1': { m: 250 } } }, S0()), 'running/b1')[0].sets[1].m).toBe(500)
   })
 
   it('2 Set de Max Wall Balls logs two rows of max reps for the user to fill in', () => {
@@ -516,12 +518,13 @@ describe('wodToSession: a movement with steps logs one set per step (T26)', () =
     const line = (slot, rawName, reps, rx) => ({ raw: rawName, rawName, slot, dose: { reps }, rx })
     const emom12 = ms => {
       const p = validateWod({ tracks: [{ id: 'full', label: 'Full', kind: 'main', blocks: [{ label: 'EMOM 12', format: 'emom', capMin: 12, movements: ms }] }] }).proposal.program
-      p.tracks[0].blocks[0].movements.forEach(m => { m.exId = PUSHUP })
+      p.tracks[0].blocks[0].movements.forEach(m => { m.exId = m.rawName === 'burpees' ? BURPEE : PUSHUP })
       return wodToSession(p, { tracks: ['full'] }, {}, S0({ unit: 'lb' })).entries.map(rows)
     }
+    // The hang cleans of M2 and M3 are one entry (T39), M2's minutes then M3's.
     const hc = [line('M2', 'hang cleans', 3, lb(135, 95)), line('M3', 'hang cleans', 3, lb(155, 105))]
-    expect(emom12([line('M1', 'burpees', 10, null), ...hc])).toEqual([Array(4).fill([10, 0]), Array(4).fill([3, 135]), Array(4).fill([3, 155])])
-    expect(emom12(hc)).toEqual([Array(6).fill([3, 135]), Array(6).fill([3, 155])])
+    expect(emom12([line('M1', 'burpees', 10, null), ...hc])).toEqual([Array(4).fill([10, 0]), [...Array(4).fill([3, 135]), ...Array(4).fill([3, 155])]])
+    expect(emom12(hc)).toEqual([[...Array(6).fill([3, 135]), ...Array(6).fill([3, 155])]])
   })
 
   it('a strength block: a set per step with its load, until sets are typed', () => {
@@ -534,11 +537,13 @@ describe('wodToSession: a movement with steps logs one set per step (T26)', () =
 
 describe('wodToSession: the 11 Nov structure (T34)', () => {
   // The fixture's pump blocks b1-b7 (N1-N6), checked by validateWod, every movement picked as a deadlift
-  // except the sprint machine (a row) and the scaled alternative (a push-up).
+  // except the sprint machine (a row) and the scaled alternative (a push-up). Each deadlift has an id
+  // of its own, so none of them merges with another (T39).
   const pump = () => {
     const p = validateWod(JSON.parse(readFileSync(resolve(__dirname, '../../../api/coach/fixture-wod.json'), 'utf8'))).proposal.program
     const tr = p.tracks.find(t => t.id === 'pump')
-    tr.blocks.forEach(b => b.movements.forEach(m => { m.exId = m.rawName === 'sprints machine' ? ROW : DL; m.alts.forEach(a => { a.exId = PUSHUP }) }))
+    let k = 0
+    tr.blocks.forEach(b => b.movements.forEach(m => { m.exId = m.rawName === 'sprints machine' ? ROW : `${DL}.${k++}`; m.alts.forEach(a => { a.exId = PUSHUP }) }))
     return { title: 'T', tracks: [tr] }
   }
   const only = (ref, logged = {}) => entryOf(wodToSession(pump(), { tracks: ['pump'] }, logged, S0()), 'pump/' + ref)
@@ -625,6 +630,122 @@ describe('switchUnit: two taps on the kg / lb switch give back what was typed (T
     const copy = structuredClone(st)
     switchUnit(switchUnit(st, 'kg'), 'lb')
     expect(st).toEqual(copy)
+  })
+})
+
+describe('wodToSession: an exercise logged once per kind (T39)', () => {
+  // The 13 Nov program as posted, and the tracks and blocks logged that day. Before the merge it
+  // logged 18 entries: the overhead squat three times, the burpees and the run twice each.
+  const { program: nov13, choice } = JSON.parse(readFileSync(resolve(__dirname, 'fixtures/wod-2026-11-13.json'), 'utf8'))
+  const OHS = '0069', RUN = '0685'
+  const blocksOf = e => e.sets.map(s => s.wodBlock)
+
+  it('13 Nov: 15 entries, in order of first appearance, the repeats merged with their sets in program order', () => {
+    const { entries } = wodToSession(nov13, choice, {}, S0())
+    expect(entries.map(e => e.id)).toEqual(['2192', '10948', '9819', '0652', '1526', OHS, '0514', '0776', '1533', BURPEE, OHS, '1522', RUN, '2968', '5194'])
+    // The OHS of the warm-up and the complex is one metcon entry; the 115/75 rounds, which feed
+    // progression, are the other.
+    const [warm, rounds] = entries.filter(e => e.id === OHS)
+    expect([warm.noProg, warm.wodBlock, warm.rx, blocksOf(warm)]).toEqual([true, 'full/b0', undefined, ['full/b0', 'full/b1']])
+    expect(warm.sets.map(s => s.r)).toEqual([5, 1])
+    expect([rounds.noProg, rounds.wodBlock, rounds.rx, rounds.sets.length]).toEqual([undefined, 'full/b2', { w: 115, unit: 'lb' }, 3])
+    expect(rounds.sets[0].wodBlock).toBeUndefined()
+    // Both burpee lines of the rounds: 3 sets each, the first line's then the second's.
+    const [bur] = entries.filter(e => e.id === BURPEE)
+    expect([bur.sets.length, new Set(blocksOf(bur))]).toEqual([6, new Set(['full/b2'])])
+    // The buy-in and the buy-out: one entry, a cardio row each, not added together.
+    const [run] = entries.filter(e => e.id === RUN)
+    expect(run.sets.map(s => [s.mode, s.m, s.wodBlock])).toEqual([['cardio', 500, 'full/b3'], ['cardio', 500, 'full/b5']])
+  })
+
+  it('a strength block\'s lift and a metcon of it stay two entries', () => {
+    const p = program([block('b0', 'strength', [mv('m0', OHS, { reps: 5 })]), block('b1', 'amrap', [mv('m0', OHS, { reps: 10 })], { capMin: 8 })])
+    const { entries } = wodToSession(p, all, {}, S0())
+    expect(entries.map(e => [e.id, e.wodBlock, !!e.noProg])).toEqual([[OHS, 'full/b0', false], [OHS, 'full/b1', true]])
+    expect(entries.flatMap(e => e.sets).some(s => s.wodBlock)).toBe(false)
+  })
+
+  it('a strength block\'s lift and a progressable block of it after stay two entries, so progression reads the strength sets', () => {
+    // 3 RONDAS is not a metcon (isMetcon), so its back squats are progressable too.
+    const BS = '0043'
+    const p = program([block('b0', 'strength', [mv('m0', BS, { reps: 5, sets: 5 })]), block('b1', 'rounds', [mv('m0', BS, { reps: 3 })], { rounds: 3 })])
+    const logged = { moves: { 'full/b0/m0': { w: 100 }, 'full/b1/m0': { w: 60 } } }
+    const S = S0()
+    const { active, w } = buildWodWorkout(S, '2026-11-13', p, all, logged, Date.parse('2026-11-14T12:00:00Z'))
+    fileBackfill(S, active, w)
+    expect(S.workouts[0].entries.map(e => [e.wodBlock, e.sets.length])).toEqual([['full/b0', 5], ['full/b1', 3]])
+    expect(sessionsFor(S, BS, { reps: 5, sets: 5 }, null).map(x => [x.weight, x.ok])).toEqual([[100, true]])
+  })
+
+  it('done as printed in one block and swapped in for another movement in the next, it stays two entries', () => {
+    const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+    const p = program([
+      block('b0', 'amrap', [mv('m0', OHS, { reps: 5 }, { rx: lb(95, 65) })], { capMin: 5 }),
+      block('b1', 'amrap', [mv('m0', SNATCH, { reps: 5 })], { capMin: 5 }),
+      block('b2', 'amrap', [mv('m0', SNATCH, { reps: 3 })], { capMin: 5 }),
+    ])
+    const logged = { moves: { 'full/b1/m0': { exId: OHS }, 'full/b2/m0': { exId: OHS } } }
+    const { entries } = wodToSession(p, all, logged, S0({ unit: 'lb' }))
+    expect(entries.map(e => [e.id, e.swappedFrom, e.rx, blocksOf(e)])).toEqual([
+      [OHS, undefined, { w: 95, unit: 'lb' }, [undefined]],
+      [OHS, SNATCH, undefined, ['full/b1', 'full/b2']],
+    ])
+  })
+
+  it('each block\'s Rx survives on its own sets: the printed load on the 115/75 ones, none on the warm-up', () => {
+    const lb = (male, female) => ({ male: { w: male, unit: 'lb' }, female: { w: female, unit: 'lb' } })
+    const p = program([
+      block('b0', 'amrap', [mv('m0', OHS, { reps: 5 })], { capMin: 5 }),
+      block('b1', 'fortime', [mv('m0', OHS, { reps: 10 }, { rx: lb(115, 75) })], { rounds: 3 }),
+    ])
+    const [e] = wodToSession(p, all, {}, S0({ unit: 'lb' })).entries
+    expect(e.rx).toBeUndefined()
+    expect(e.sets.map(s => [s.wodBlock, s.rx, s.w])).toEqual([['full/b0', undefined, 0], ...Array(3).fill(['full/b1', { w: 115, unit: 'lb' }, 115])])
+    // the other way round, the warm-up after: its sets say they have none
+    const q = program([p.tracks[0].blocks[1], p.tracks[0].blocks[0]])
+    const [f] = wodToSession(q, all, {}, S0({ unit: 'lb' })).entries
+    expect([f.rx, f.sets.map(s => s.rx)]).toEqual([{ w: 115, unit: 'lb' }, [undefined, undefined, undefined, null]])
+  })
+
+  it('13 Nov re-opens with every block\'s typed values, and saving again gives the same workout', () => {
+    const logged = { unit: 'kg', moves: {
+      'full/b0/m5': { w: 20 }, 'full/b1/m2': { w: 35 }, 'full/b2/m1': { w: 52.5 }, 'full/b2/m2': { r: 4 },
+      'full/b3/m0': { min: 2.5 }, 'full/b5/m0': { min: 3 },
+    }, blocks: { 'full/b2': { score: { type: 'rounds', rounds: 3, reps: 0 }, rx: true } } }
+    const S = S0()
+    const at = Date.parse('2026-11-14T12:00:00Z')
+    const first = buildWodWorkout(S, '2026-11-13', nov13, choice, logged, at)
+    fileBackfill(S, first.active, first.w)
+    const w = S.workouts[0]
+    expect(w.entries).toHaveLength(15)
+    const [warm] = w.entries.filter(e => e.id === OHS)
+    expect(warm.sets.map(s => [s.wodBlock, s.w])).toEqual([['full/b0', 20], ['full/b1', 35]])
+    const [bur] = w.entries.filter(e => e.id === BURPEE)
+    expect(bur.sets.map(s => s.r)).toEqual([5, 5, 5, 4, 4, 4])
+    const [run] = w.entries.filter(e => e.id === RUN)
+    expect(run.sets.map(s => s.min)).toEqual([2.5, 3])
+
+    const state = relogState(nov13, w, 'kg', S)
+    expect(state.logged.moves).toEqual(logged.moves)
+    const again = buildWodWorkout(S, '2026-11-13', nov13, { tracks: state.tracks, include: state.include }, state.logged, at)
+    expect(again.w.entries).toEqual(first.w.entries)
+
+    // A log without the typed values is read off its rows, each block from its own sets.
+    const { moves: _, ...wod } = w.wod
+    const rows = relogState(nov13, { ...w, wod }, 'kg', S).logged.moves
+    expect([rows['full/b0/m5'], rows['full/b1/m2'], rows['full/b2/m1']]).toEqual([{ w: 20 }, { w: 35 }, { w: 52.5 }])
+    expect([rows['full/b3/m0'], rows['full/b5/m0']]).toEqual([{ min: 2.5 }, { min: 3 }])
+  })
+
+  it('an old session, one entry per block, still re-opens per block', () => {
+    const w = { id: 'wod-2026-11-13', d: '2026-11-13', src: 'wod', wod: { tracks: ['full'], blocks: [{ ref: 'full/b3' }, { ref: 'full/b5' }, { ref: 'full/b1' }] },
+      entries: [
+        { id: OHS, wodBlock: 'full/b1', noProg: true, sets: [{ w: 30, r: 1, done: true }] },
+        { id: RUN, wodBlock: 'full/b3', noProg: true, sets: [{ mode: 'cardio', m: 500, min: 2, done: true }] },
+        { id: RUN, wodBlock: 'full/b5', noProg: true, sets: [{ mode: 'cardio', m: 500, min: 4, done: true }] },
+      ] }
+    const { moves } = relogState(nov13, w, 'kg', S0()).logged
+    expect([moves['full/b1/m2'], moves['full/b3/m0'], moves['full/b5/m0']]).toEqual([{ w: 30 }, { min: 2 }, { min: 4 }])
   })
 })
 

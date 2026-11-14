@@ -38,6 +38,17 @@ describe('skills', () => {
     expect(t2b).toMatchObject({ rxDone: 1, volume: 18 })
   })
 
+  it('counts each Rx block of an entry merged from several (T39), as it did one entry per block', () => {
+    const blocks = [{ ref: 'full/b0', rx: false }, { ref: 'full/b1', rx: true }, { ref: 'full/b2', rx: true }]
+    const t2b = SKILLS.find(s => s.key === 't2b')
+    const [merged] = skillStats([{ id: 'wod-2026-10-20', d: '2026-10-20', src: 'wod', wod: { blocks },
+      entries: [{ id: '3891', wodBlock: 'full/b0', sets: [{ ...reps(5), wodBlock: 'full/b0' }, { ...reps(8), wodBlock: 'full/b1' }, { ...reps(6), wodBlock: 'full/b2' }] }] }], NOW, [t2b])
+    expect(merged).toMatchObject({ rxDone: 2, volume: 19 })
+    const [old] = skillStats([{ id: 'wod-2026-10-20', d: '2026-10-20', src: 'wod', wod: { blocks },
+      entries: ['full/b0', 'full/b1', 'full/b2'].map((b, i) => ({ id: '3891', wodBlock: b, sets: [reps([5, 8, 6][i])] })) }], NOW, [t2b])
+    expect(old).toMatchObject({ rxDone: 2, volume: 19 })
+  })
+
   it('does not credit Rx to a swapped-in movement', () => {
     const [mu] = skillStats([{ d: '2026-10-20', src: 'wod', wod: { blocks: [{ ref: 'full/b1', rx: true }] },
       entries: [{ id: '0631', wodBlock: 'full/b1', swappedFrom: '5194', sets: [reps(2)] }] }], NOW, [SKILLS.find(s => s.key === 'rmu')])

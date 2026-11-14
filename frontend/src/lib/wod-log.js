@@ -240,7 +240,28 @@ export function wodToSession(program0, choice, logged, S) {
       blocks.push({ ref, format: block.format, score, rx: !!lb.rx, ...(block.benchmark ? { benchmark: block.benchmark } : {}) })
     }
   }
-  return { entries, wod: { tracks: [...chosen].filter(id => list(program?.tracks).some(t => t.id === id)), blocks }, capMin }
+  return { entries: mergeRepeats(entries), wod: { tracks: [...chosen].filter(id => list(program?.tracks).some(t => t.id === id)), blocks }, capMin }
+}
+
+// One entry per exercise and kind, where it first appears (T39): the OHS of a warm-up and a complex
+// is one exercise logged once, not twice. Metcon entries merge across blocks; a progressable one
+// only with its own block's (two printed lines of it), since progression reads one entry a day
+// (progression.js sessionsIn) and a strength block's 5 × 5 is not a rounds block's 3 × 10. Cardio
+// stays apart from lifting, and a swap from a movement printed as itself, so Rx against lifted
+// still rates the printed one (rx-history.js). A merged entry keeps its first block's `wodBlock`
+// and `rx` for old readers, and each set says its block (`s.wodBlock`) and, when it differs, its
+// Rx (`s.rx`, null for none). An entry that merged nothing is the shape it always was.
+function mergeRepeats(entries) {
+  const out = [], at = new Map()
+  for (const e of entries) {
+    const key = `${e.id}|${e.noProg ? '' : e.wodBlock}|${e.sets[0]?.mode === 'cardio'}|${e.swappedFrom || ''}`
+    const first = at.get(key)
+    if (!first) { at.set(key, e); out.push(e); continue }
+    if (!first.sets[0].wodBlock) first.sets = first.sets.map(s => ({ ...s, wodBlock: first.wodBlock }))
+    const rx = JSON.stringify(e.rx ?? null) === JSON.stringify(first.rx ?? null) ? {} : { rx: e.rx ?? null }
+    first.sets.push(...e.sets.map(s => ({ ...s, wodBlock: e.wodBlock, ...rx })))
+  }
+  return out
 }
 
 const isoAt = ms => { const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') }
@@ -354,19 +375,22 @@ export function relogState(program, w, profileUnit, S) {
 }
 
 // An older log, without the typed values: the exercise, weight, cardio minutes and strength rows
-// read back off its entries, matched to the movements by block and exercise.
+// read back off its entries, matched to the movements by block and exercise. A merged entry
+// answers for each of its blocks, from that block's sets.
+const setsIn = (e, ref) => list(e?.sets).filter(s => (s?.wodBlock ?? e.wodBlock) === ref)
 function movesFromRows(program, w, tracks) {
-  const moves = {}
+  const moves = {}, entries = list(w?.entries)
   const used = new Set()
   for (const tr of list(program?.tracks)) for (const b of list(tr.blocks)) {
     const ref = `${tr.id}/${b.id}`
     if (!tracks.includes(tr.id)) continue
     for (const m of list(b.movements)) {
       const ids = [m.exId, ...list(m.alts).map(a => a?.exId)]
-      const e = list(w?.entries).find(x => !used.has(x) && x.wodBlock === ref && (ids.includes(x.id) || x.swappedFrom === m.exId))
-      if (!e) continue
-      used.add(e)
-      const s0 = e.sets?.[0] || {}
+      const i = entries.findIndex((x, i) => !used.has(`${i} ${ref}`) && (ids.includes(x.id) || x.swappedFrom === m.exId) && setsIn(x, ref).length)
+      if (i < 0) continue
+      used.add(`${i} ${ref}`)
+      const e = { ...entries[i], sets: setsIn(entries[i], ref) }
+      const s0 = e.sets[0] || {}
       const lm = {}
       if (e.id !== m.exId) lm.exId = e.id
       const sw = s0.sides ? s0.sides.L?.w : s0.w
