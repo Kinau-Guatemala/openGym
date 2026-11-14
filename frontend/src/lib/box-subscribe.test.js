@@ -41,6 +41,14 @@ describe('httpsUrl', () => {
 })
 
 describe('parseFeed', () => {
+  it('T40: keeps where the archive is, and a feed without one stays as it was', () => {
+    expect(parseFeed(feedOf([], { archive: 'archive/index.json' })).archive).toBe('archive/index.json')
+    expect('archive' in parseFeed(feedOf([]))).toBe(false)
+    expect('archive' in parseFeed(feedOf([], { archive: { evil: 1 } }))).toBe(false)
+    // What the publisher builds names it.
+    expect(parseFeed(JSON.parse(JSON.stringify(buildFeed({}, { name: 'Box', today: '2026-10-28', now: 0 })))).archive).toBe('archive/index.json')
+  })
+
   it('reads a v1 feed: the box, when, and each program with ids filled in', () => {
     const f = parseFeed(feedOf([{ date: '2026-10-28', ...program() }]))
     expect(f.box).toBe('Holy Program')

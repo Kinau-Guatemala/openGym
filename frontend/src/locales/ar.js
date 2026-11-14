@@ -2994,6 +2994,13 @@ export default {
   'Box version available': 'نسخة النادي متاحة',
   'From {0}': 'من {0}',
   'Earlier from {0}': 'سابقًا من {0}',
+  // T40 · box history
+  "Box history": "سجل النادي",
+  "Every program your box has posted. Open one to see it or log it.": "كل البرامج التي نشرها ناديك. افتح أحدها لعرضه أو تسجيله.",
+  "The box history could not be loaded. Check your connection.": "تعذّر تحميل سجل النادي. تحقّق من اتصالك.",
+  "No days in the box history yet.": "لا توجد أيام في سجل النادي بعد.",
+  "With a photo": "مع صورة",
+  "Open the photo full-screen": "فتح الصورة بملء الشاشة",
   '{0} already has your own program. The box version replaces it.': 'لدى {0} برنامجك الخاص بالفعل. نسخة النادي تحل محله.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'لديك برنامجك الخاص لهذا اليوم. تسجيل نسخة النادي أو تعديلها يحل محله.',
   'Only https addresses can be used.': 'يمكن استخدام عناوين https فقط.',

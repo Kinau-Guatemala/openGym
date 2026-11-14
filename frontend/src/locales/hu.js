@@ -2942,6 +2942,13 @@ export default {
   'Box version available': 'Elérhető a terem változata',
   'From {0}': 'Innen: {0}',
   'Earlier from {0}': 'Korábban innen: {0}',
+  // T40 · box history
+  "Box history": "A terem előzményei",
+  "Every program your box has posted. Open one to see it or log it.": "A terem összes közzétett programja. Nyiss meg egyet, hogy megnézd vagy rögzítsd.",
+  "The box history could not be loaded. Check your connection.": "A terem előzményei nem tölthetők be. Ellenőrizd a kapcsolatot.",
+  "No days in the box history yet.": "A terem előzményeiben még nincs nap.",
+  "With a photo": "Fotóval",
+  "Open the photo full-screen": "Fotó megnyitása teljes képernyőn",
   '{0} already has your own program. The box version replaces it.': '{0} napra már van saját programod. A terem változata lecseréli.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Erre a napra saját programod van. Ha a terem változatát rögzíted vagy szerkeszted, lecseréli.',
   'Only https addresses can be used.': 'Csak https-cím használható.',

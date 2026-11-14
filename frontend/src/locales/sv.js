@@ -2977,6 +2977,13 @@ export default {
   'Box version available': 'Boxens version finns',
   'From {0}': 'Från {0}',
   'Earlier from {0}': 'Tidigare från {0}',
+  // T40 · box history
+  "Box history": "Boxens historik",
+  "Every program your box has posted. Open one to see it or log it.": "Alla program din box har lagt ut. Öppna ett för att se eller logga det.",
+  "The box history could not be loaded. Check your connection.": "Boxens historik kunde inte laddas. Kontrollera din anslutning.",
+  "No days in the box history yet.": "Inga dagar i boxens historik än.",
+  "With a photo": "Med foto",
+  "Open the photo full-screen": "Öppna fotot i helskärm",
   '{0} already has your own program. The box version replaces it.': '{0} har redan ditt eget program. Boxens version ersätter det.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Du har ett eget program för den här dagen. Loggar eller redigerar du boxens version ersätts det.',
   'Only https addresses can be used.': 'Bara https-adresser kan användas.',

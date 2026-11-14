@@ -22,7 +22,7 @@ const TIMEOUT_MS = 15000
 const CACHE_KEY = 'gym_box_feed_v1'
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 // A real day: 2026-02-31 matches the pattern, and Date.parse rolls it over to March.
-const isDay = d => {
+export const isDay = d => {
   const t = ISO.test(d) ? Date.parse(d + 'T00:00:00Z') : NaN
   return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === d
 }
@@ -97,7 +97,9 @@ export function parseFeed(json) {
     if (clean) programs[p.date] = clean
   }
   const at = typeof json.updatedAt === 'number' ? json.updatedAt : Date.parse(json.updatedAt)
-  return { box: json.box.trim().slice(0, 60), updatedAt: Number.isFinite(at) ? at : null, programs }
+  // T40: where the box's archive is, relative to the feed (lib/box-archive.js resolves it).
+  const archive = typeof json.archive === 'string' && json.archive.length <= 200 ? json.archive : null
+  return { box: json.box.trim().slice(0, 60), updatedAt: Number.isFinite(at) ? at : null, programs, ...(archive ? { archive } : {}) }
 }
 
 /**
@@ -105,6 +107,15 @@ export function parseFeed(json) {
  * address, or redirected off one), 'network' (unreachable, an HTTP error, too big) or 'invalid'.
  */
 export async function fetchFeed(url, fetchImpl = globalThis.fetch) {
+  const r = await fetchJson(url, parseFeed, fetchImpl)
+  return r.error ? r : { feed: r.value }
+}
+
+/**
+ * The JSON at `url` through `parse` (null for not what was asked for): `{ value }`, or `{ error }`
+ * as fetchFeed's. Every file of a box (its feed, its archive) is read this way.
+ */
+export async function fetchJson(url, parse, fetchImpl = globalThis.fetch) {
   const href = httpsUrl(url)
   if (!href) return { error: 'https' }
   const ctl = typeof AbortController === 'function' ? new AbortController() : null
@@ -119,8 +130,8 @@ export async function fetchFeed(url, fetchImpl = globalThis.fetch) {
     if (text == null) return { error: 'network' }
     let json
     try { json = JSON.parse(text) } catch { return { error: 'invalid' } }
-    const feed = parseFeed(json)
-    return feed ? { feed } : { error: 'invalid' }
+    const value = parse(json)
+    return value ? { value } : { error: 'invalid' }
   } catch {
     return { error: 'network' }
   } finally {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFeed, feedProgram, feedPrograms, feedUrl, mergedExId } from '../box-feed.js';
+import { archiveIndex, archivePrograms, buildFeed, feedProgram, feedPrograms, feedUrl, mergedExId } from '../box-feed.js';
 
 const program = (title = 'Holy Conditioning') => ({
   title,
@@ -89,11 +89,27 @@ test('the window: from today minus days on, future included, oldest first; clear
   const got = feedPrograms(wods, { today: '2026-11-03', days: 14 });
   assert.deepEqual(got.map(p => [p.date, p.title]), [['2026-10-20', 'first day in'], ['2026-11-03', 'today'], ['2026-11-10', 'future']]);
   assert.deepEqual(feedPrograms(wods, { today: '2026-11-03', days: 0 }).map(p => p.date), ['2026-11-03', '2026-11-10']);
+  // T40: the archive keeps every day, however old; still not a deleted one or junk.
+  assert.deepEqual(archivePrograms(wods).map(p => p.date), ['2026-10-19', '2026-10-20', '2026-11-03', '2026-11-10']);
+  assert.deepEqual(archivePrograms(null), []);
+});
+
+test('archiveIndex: newest first, track labels, which days have a photo', () => {
+  const programs = archivePrograms({
+    '2026-11-01': { title: 'Mon', tracks: [{ label: 'Full', blocks: [] }, { label: '', blocks: [] }, { label: 'Evo', blocks: [] }] },
+    '2026-11-02': { tracks: [] }
+  });
+  assert.deepEqual(archiveIndex(programs, { name: 'Box', now: 0, images: new Set(['2026-11-01']) }), {
+    v: 1, box: 'Box', updatedAt: '1970-01-01T00:00:00.000Z', days: [
+      { date: '2026-11-02', title: '', tracks: [], image: false },
+      { date: '2026-11-01', title: 'Mon', tracks: ['Full', 'Evo'], image: true }
+    ]
+  });
 });
 
 test('buildFeed: the document, and an empty one', () => {
   assert.deepEqual(buildFeed({}, { name: 'Holy Program', today: '2026-11-03', now: Date.UTC(2026, 10, 3, 12) }),
-    { v: 1, box: 'Holy Program', updatedAt: '2026-11-03T12:00:00.000Z', programs: [] });
+    { v: 1, box: 'Holy Program', updatedAt: '2026-11-03T12:00:00.000Z', programs: [], archive: 'archive/index.json' });
   assert.deepEqual(buildFeed(null, { today: '2026-11-03', now: 0 }).programs, []);
   assert.equal(feedUrl('Kinau-Guatemala/holy-wods'), 'https://raw.githubusercontent.com/Kinau-Guatemala/holy-wods/main/feed.json');
 });

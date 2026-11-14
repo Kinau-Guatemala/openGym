@@ -2939,6 +2939,13 @@ export default {
   'Box version available': 'Dostępna wersja boxa',
   'From {0}': 'Od {0}',
   'Earlier from {0}': 'Wcześniej od {0}',
+  // T40 · box history
+  "Box history": "Historia boxa",
+  "Every program your box has posted. Open one to see it or log it.": "Wszystkie programy opublikowane przez twój box. Otwórz jeden, aby go zobaczyć lub zapisać.",
+  "The box history could not be loaded. Check your connection.": "Nie udało się wczytać historii boxa. Sprawdź połączenie.",
+  "No days in the box history yet.": "W historii boxa nie ma jeszcze dni.",
+  "With a photo": "Ze zdjęciem",
+  "Open the photo full-screen": "Otwórz zdjęcie na pełnym ekranie",
   '{0} already has your own program. The box version replaces it.': '{0} ma już twój własny program. Wersja boxa go zastąpi.',
   'You have your own program for this day. Logging or editing the box version replaces it.': 'Masz własny program na ten dzień. Zapisanie lub edycja wersji boxa go zastąpi.',
   'Only https addresses can be used.': 'Można używać tylko adresów https.',

@@ -103,6 +103,31 @@ test('fixture: an answer the validator rejects gets the one repair round', async
   } finally { delete process.env.FIXTURE_MODE; }
 });
 
+test('T40: the box feed\'s publishing account keeps its photo for the archive; nobody else does, nor it with publishing off', async () => {
+  cfg.save({ enabled: true, provider: 'fixture' });
+  const BOX = { BOX_FEED_UID: 'u-box', BOX_FEED_REPO: 'o/r', BOX_FEED_TOKEN: 'github_pat_X', BOX_FEED_NAME: 'Box' };
+  const kept = path.join(DIR, 'box-images', DATE + '.jpg');
+  const run = async uid => {
+    writeState(DIR, uid, consented());
+    jobs.enqueue(uid, { kind: 'parse-wod', date: DATE, image: { mime: 'image/jpeg', data: IMAGE } });
+    await settle(uid);
+  };
+  try {
+    Object.assign(process.env, BOX);
+    await run('u-member');
+    assert.ok(!fs.existsSync(kept), 'another account\'s image is kept');
+    process.env.BOX_FEED_TOKEN = '';
+    await run('u-box');
+    assert.ok(!fs.existsSync(kept), 'kept with publishing off');
+    process.env.BOX_FEED_TOKEN = BOX.BOX_FEED_TOKEN;
+    await run('u-box');
+    assert.ok(fs.readFileSync(kept).equals(Buffer.from(IMAGE, 'base64')));
+  } finally {
+    for (const k of Object.keys(BOX)) delete process.env[k];
+    fs.rmSync(path.join(DIR, 'box-images'), { recursive: true, force: true });
+  }
+});
+
 /* ---------- the route's input checks ---------- */
 
 test('the route refuses a bad date, a mime outside the allowlist and anything that is not bounded base64', async () => {

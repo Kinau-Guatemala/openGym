@@ -2932,6 +2932,13 @@ export default {
   'Box version available': '有館的版本',
   'From {0}': '來自 {0}',
   'Earlier from {0}': '更早，來自 {0}',
+  // T40 · box history
+  "Box history": "館的歷史",
+  "Every program your box has posted. Open one to see it or log it.": "你的館發布過的所有課表。打開一個即可查看或記錄。",
+  "The box history could not be loaded. Check your connection.": "無法載入館的歷史。請檢查網路連線。",
+  "No days in the box history yet.": "館的歷史中還沒有日期。",
+  "With a photo": "有照片",
+  "Open the photo full-screen": "全螢幕查看照片",
   '{0} already has your own program. The box version replaces it.': '{0} 已有你自己的計畫。館的版本會取代它。',
   'You have your own program for this day. Logging or editing the box version replaces it.': '這天你已有自己的計畫。記錄或編輯館的版本會取代它。',
   'Only https addresses can be used.': '只能使用 https 網址。',

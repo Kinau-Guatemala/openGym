@@ -2939,6 +2939,13 @@ export default {
   'Box version available': '有馆的版本',
   'From {0}': '来自 {0}',
   'Earlier from {0}': '更早，来自 {0}',
+  // T40 · box history
+  "Box history": "馆的历史",
+  "Every program your box has posted. Open one to see it or log it.": "你的馆发布过的所有课表。打开一个即可查看或记录。",
+  "The box history could not be loaded. Check your connection.": "无法加载馆的历史。请检查网络连接。",
+  "No days in the box history yet.": "馆的历史中还没有日期。",
+  "With a photo": "有照片",
+  "Open the photo full-screen": "全屏查看照片",
   '{0} already has your own program. The box version replaces it.': '{0} 已有你自己的计划。馆的版本会替换它。',
   'You have your own program for this day. Logging or editing the box version replaces it.': '这天你已有自己的计划。记录或编辑馆的版本会替换它。',
   'Only https addresses can be used.': '只能使用 https 地址。',

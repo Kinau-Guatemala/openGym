@@ -7,7 +7,9 @@
 //                          could not read: typed by hand, the image beside it.
 //   #/crossfit/new?shared=1  an image being read (lib/wod-intake.js), on its way to the above
 //   #/crossfit/edit/<date> the program saved for that date
-//   #/crossfit/box/<date>  the box feed's program for that date, read-only (T32, lib/box-subscribe.js)
+//   #/crossfit/box/<date>  the box feed's program for that date, read-only (T32, lib/box-subscribe.js),
+//                          or the archive's when the feed no longer has it (T40, lib/box-archive.js)
+//   #/crossfit/history     the box history: every day the box has published (T40)
 //
 // The editor works on a draft (lib/wod-draft.js) and writes nothing until Save. A movement's
 // exercise chip opens the exercise picker; the pick is remembered for that printed name
@@ -37,6 +39,8 @@ import { profileBodyweightKg } from '../lib/bodyweight.js'
 import { hasConsent } from '../lib/coach.js'
 import { JOB_ERRORS, ackParsed, parseStatus, parseWod, quotaText } from '../lib/coach-api.js'
 import { boxPrint, boxRows, cachedAt, cachedFeed, clearBoxFeed, fetchFeed, forgetOtherFeeds, httpsUrl, keepFeed, refreshBoxFeed, subscribeBoxFeed } from '../lib/box-subscribe.js'
+import { archiveSource, cachedIndex, fetchDay, refreshArchive, subscribeArchive } from '../lib/box-archive.js'
+import { monthLabel } from '../lib/challenge-copy.js'
 import { MOBILE } from '../lib/mobile.js'
 import { INTAKE_ROUTE, beginIntake, currentIntake, defaultDayFor, downscale, failureOf, fromDataUrl, isoForChoice, readyIntake, setIntakeImage, subscribeIntake, takeIntake, tomorrowISO } from '../lib/wod-intake.js'
 import Icon from '../components/Icon.jsx'
@@ -95,6 +99,7 @@ export default function CrossFit() {
   // T32: the box feed's programs, where the member has none of their own for the day.
   const feed = useBoxFeed(S.boxFeed)
   const box = boxRows(feed, d => !!wodOf(S, d), today, tomorrowISO())
+  const archive = useArchiveSource(S, feed)
   const row = (d, w = wodOf(S, d), fromBox = false) => {
     const open = () => nav((fromBox ? '/crossfit/box/' : '/crossfit/edit/') + d)
     // The row is not a button: its name is, stretched over the row (.tap-main), with the box
@@ -140,7 +145,16 @@ export default function CrossFit() {
     {!dates.length && !box.next.length && <div className="empty">{t('No programs yet. Add one by hand, or upload the image your box posts.')}</div>}
     {upcoming.length > 0 && <><h4 className="sec">{t('Upcoming')}</h4><div className="list">{upcoming.map(d => row(d))}</div></>}
     {recent.length > 0 && <><h4 className="sec">{t('Recent')}</h4><div className="list">{recent.map(d => row(d))}</div></>}
-    {box.earlier.length > 0 && <details style={{ marginTop: 14 }}>
+    {archive ? <div className="list" style={{ marginTop: 14 }}>
+      <div className="item" {...tappable(() => nav('/crossfit/history'))}>
+        <span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="clock" /></span>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="tt">{t('Box history')}</div>
+          <div className="ss">{t('Every program your box has posted. Open one to see it or log it.')}</div>
+        </div>
+        <Icon name="chevronRight" className="chev" />
+      </div>
+    </div> : box.earlier.length > 0 && <details style={{ marginTop: 14 }}>
       <summary className="sec" style={{ cursor: 'pointer' }}>{t('Earlier from {0}', feed.box)}</summary>
       <div className="list">{box.earlier.map(boxRow)}</div>
     </details>}
@@ -165,6 +179,27 @@ function useBoxFeed(url) {
     return () => document.removeEventListener('visibilitychange', go)
   }, [url, ready])
   return feed
+}
+
+// T40: where the box history is read from (lib/box-archive.js): the subscribed feed's archive, or
+// for the account the server publishes, its own (the same public repo). null when there is none.
+function useArchiveSource(S, feed) {
+  const own = useStore(s => s.config?.boxFeed?.url)
+  return archiveSource(S.boxFeed, feed, own)
+}
+
+// The archive's day `date`: undefined while it loads, null when there is none.
+function useArchiveDay(src, date) {
+  const [got, setGot] = useState({})
+  const key = src && date ? src + '|' + date : null
+  useEffect(() => {
+    if (!key) return
+    let live = true
+    fetchDay(src, date).then(r => { if (live) setGot({ key, value: r.value || null }) })
+    return () => { live = false }
+  }, [key])
+  if (!key) return null
+  return got.key === key ? got.value : undefined
 }
 
 // "Log" or "Edit" on a box program: a copy goes into the member's own programs for its date, and
@@ -192,26 +227,42 @@ function copyBoxProgram(nav, date, program, to, opts) {
   else go()
 }
 
-// #/crossfit/box/<date>: the box's program for that day, as it was published. Log and Edit work
-// on the member's copy (copyBoxProgram).
+// #/crossfit/box/<date>: the box's program for that day, as it was published: the feed's, or the
+// archive's (T40) for a day the feed no longer has, with the photo it was read from when the
+// archive has one. Log and Edit work on the member's copy (copyBoxProgram).
 export function CrossFitBox() {
   const nav = useNavigate()
   const { date } = useParams()
   const S = useStore(s => s.S)
   const feed = useBoxFeed(S.boxFeed)
+  const src = useArchiveSource(S, feed)
+  const day = useArchiveDay(src, date)
   const [tab, setTab] = useState(0)
-  const program = feed?.programs[date]
+  const [zoom, setZoom] = useState(false)
+  const program = feed?.programs[date] || day?.program
+  const back = <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+  if (!program && day === undefined) return <div className="narrow"><div className="hdr">{back}</div><div className="empty">{t('Loading…')}</div></div>
   if (!program) return <Navigate to="/crossfit" replace />
   const ti = Math.min(tab, program.tracks.length - 1)
   const track = program.tracks[ti]
+  const image = day?.image
   return <div className="narrow">
     <div className="hdr">
-      <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      {back}
       <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}>
         <h1>{program.title || fmtDate(date, true)}</h1>
-        <div className="sub">{[feed.box, program.title ? fmtDate(date, true) : null].filter(Boolean).join(' · ')}</div>
+        <div className="sub">{[feed?.box || cachedIndex(src)?.box, program.title ? fmtDate(date, true) : null].filter(Boolean).join(' · ')}</div>
       </div>
     </div>
+    {image && <button type="button" aria-label={t('Open the photo full-screen')} onClick={() => setZoom(true)}
+      style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'none', marginBottom: 12, cursor: 'zoom-in' }}>
+      <img src={image} alt={t('Posted image')} style={{ display: 'block', width: '100%', borderRadius: 10 }} />
+    </button>}
+    {zoom && <div role="dialog" aria-label={t('Posted image')} onClick={() => setZoom(false)}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <img src={image} alt={t('Posted image')} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+      <button className="iconbtn" aria-label={t('Close')} style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 12px)', insetInlineEnd: 12 }}><Icon name="xmark" /></button>
+    </div>}
     {wodOf(S, date) && <div className="small muted" style={{ marginBottom: 12 }}>{t('You have your own program for this day. Logging or editing the box version replaces it.')}</div>}
     {program.tracks.length > 1 && <div className="chips" style={{ margin: '0 0 10px' }}>
       {program.tracks.map((tr, i) => <button key={tr.id} className={'chip nocap' + (i === ti ? ' on' : '')} onClick={() => setTab(i)}>{tr.label || t('Track {0}', i + 1)}</button>)}
@@ -222,6 +273,55 @@ export function CrossFitBox() {
       <div style={{ height: 8 }} /></>}
     <Button icon="pencil" onClick={() => copyBoxProgram(nav, date, program, 'edit', { replace: true })}>{t('Edit')}</Button>
     <div style={{ height: 24 }} />
+  </div>
+}
+
+// #/crossfit/history (T40): every day the box has published, newest first by month, from the
+// archive's index (cached on the device, fetched again at most every 10 minutes). A day opens in
+// the box view, where it can be logged.
+export function CrossFitHistory() {
+  const nav = useNavigate()
+  const S = useStore(s => s.S)
+  const feed = useBoxFeed(S.boxFeed)
+  const src = useArchiveSource(S, feed)
+  const index = useSyncExternalStore(subscribeArchive, () => cachedIndex(src))
+  const [state, setState] = useState(null)   // null, 'loading' or 'failed': the last fetch
+  const load = force => {
+    setState('loading')
+    // Skipped (tried a moment ago) with nothing cached is the same failure, seen again.
+    refreshArchive(src, { force }).then(r => setState(r?.error || (!r && !cachedIndex(src)) ? 'failed' : null))
+  }
+  useEffect(() => { if (src) load(false) }, [src])
+  const months = []
+  for (const d of index?.days || []) {
+    const key = d.date.slice(0, 7)
+    if (months.at(-1)?.key !== key) months.push({ key, days: [] })
+    months.at(-1).days.push(d)
+  }
+  return <div className="narrow">
+    <div className="hdr">
+      <button className="iconbtn" data-back="/crossfit" onClick={() => goBack(nav)} aria-label={t('Back')}><Icon name="chevronLeft" /></button>
+      <div style={{ flex: 1, marginInlineStart: 12, minWidth: 0 }}><h1>{t('Box history')}</h1>
+        {index?.box && <div className="sub">{index.box}</div>}</div>
+    </div>
+    {!index && state === 'failed' && <>
+      <div className="empty">{t('The box history could not be loaded. Check your connection.')}</div>
+      <Button icon="repeat" onClick={() => load(true)}>{t('Try again')}</Button>
+    </>}
+    {!index && state === 'loading' && <div className="empty">{t('Loading…')}</div>}
+    {(index ? !index.days.length : !src) && <div className="empty">{t('No days in the box history yet.')}</div>}
+    {months.map(m => <div key={m.key}>
+      <h4 className="sec">{monthLabel(m.key)}</h4>
+      <div className="list">{m.days.map(d => <div key={d.date} className="item" {...tappable(() => nav('/crossfit/box/' + d.date))}>
+        <span className="lrow-i" style={{ background: 'var(--surface-3)' }}><Icon name="flame" /></span>
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="tt">{d.title || fmtDate(d.date, true)}</div>
+          <div className="ss">{[d.title ? fmtDate(d.date, true) : null, d.tracks.join(' · ')].filter(Boolean).join(' · ')}</div>
+        </div>
+        {d.image && <span role="img" aria-label={t('With a photo')} title={t('With a photo')} className="muted"><Icon name="image" /></span>}
+        <Icon name="chevronRight" className="chev" />
+      </div>)}</div>
+    </div>)}
   </div>
 }
 
