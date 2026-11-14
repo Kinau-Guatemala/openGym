@@ -3842,4 +3842,12 @@ export default {
   "Your webhooks stop sending while Integrations is off. They stay set up.": "\"इंटीग्रेशन\" बंद रहने तक आपके Webhook कुछ नहीं भेजते। वे सेट रहते हैं।",
   "{0} of {1} modules on.": "{1} में से {0} मॉड्यूल चालू।",
   "{0} stops syncing while Health is off. Nothing is disconnected, and it catches up once Health is back.": "\"सेहत\" बंद रहने तक {0} सिंक नहीं करता। कुछ भी डिस्कनेक्ट नहीं होता, और \"सेहत\" लौटते ही सब पकड़ लेता है।",
+  // --- Settings → Look: palettes (T41) ---
+  "Palette": "पैलेट",
+  "Classic": "क्लासिक",
+  "Navy": "नेवी",
+  "Graphite": "ग्रेफ़ाइट",
+  "Plum": "प्लम",
+  "Sand": "रेत",
+  "The palette sets dark or light. Pick Classic to choose.": "पैलेट तय करता है कि थीम गहरी होगी या हल्की। खुद चुनने के लिए क्लासिक चुनें।",
 }

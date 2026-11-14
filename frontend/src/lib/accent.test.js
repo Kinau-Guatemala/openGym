@@ -4,6 +4,7 @@ import { ACCENTS } from './format.js'
 import {
   cleanHex, sanitizeAccent, accentKey, accentValue, contrast, inkOn, readableIn, adjustedIn,
   customAccentVars, inkIn, accentPair, applyAccent, applyTintFallback, THEMES, isGrey, inkOnBoth, mix, GREY_TEXT, GREY_GAP,
+  PALETTES, DEFAULT_PALETTE, paletteKey, lookKey, applyPalette,
 } from './accent.js'
 import { mergeStates, stampChange } from './sync-merge.js'
 
@@ -272,5 +273,95 @@ describe('an own colour and a preset picked on two devices', () => {
     const A = change(base, T + 1000, s => { s.accent = 'custom'; s.accentCustom = '#00aa00' })
     const B = change(base, T + 4000, s => { s.accent = 'sky' })
     for (const out of [mergeStates(A, B), mergeStates(B, A)]) expect(out.accent).toBe('sky')
+  })
+})
+
+describe('palettes (T41)', () => {
+  it('sanitises the palette: a known one stays, anything else is Classic, absent stays absent', () => {
+    for (const k of Object.keys(PALETTES)) expect(sanitizeAccent({ palette: k }).palette).toBe(k)
+    expect(sanitizeAccent({ palette: 'mauve' }).palette).toBe('classic')
+    expect(sanitizeAccent({ palette: 42 }).palette).toBe('classic')
+    expect(sanitizeAccent({ palette: '"><x' }).palette).toBe('classic')
+    expect('palette' in sanitizeAccent({ theme: 'dark' })).toBe(false)
+    expect(paletteKey({})).toBe(DEFAULT_PALETTE)
+    expect(paletteKey({ palette: 'toString' })).toBe(DEFAULT_PALETTE)
+    expect(paletteKey({ palette: 'plum' })).toBe('plum')
+  })
+
+  it('puts data-palette and data-theme on the root; Classic leaves the theme to the Theme row', () => {
+    const el = document.createElement('html')
+    for (const theme of ['dark', 'light']) {
+      expect(applyPalette(el, 'classic', theme)).toBe(theme)
+      expect(el.dataset.palette).toBe('classic')
+      expect(el.dataset.theme).toBe(theme)
+      expect(applyPalette(el, 'navy', theme)).toBe('navy')
+      expect(el.dataset.theme).toBe('dark')
+      expect(applyPalette(el, 'graphite', theme)).toBe('graphite')
+      expect(el.dataset.theme).toBe('dark')
+      expect(applyPalette(el, 'plum', theme)).toBe('plum')
+      expect(el.dataset.theme).toBe('dark')
+      expect(applyPalette(el, 'sand', theme)).toBe('sand')
+      expect(el.dataset.theme).toBe('light')
+      expect(applyPalette(el, 'mauve', theme)).toBe(theme)
+      expect(el.dataset.palette).toBe('classic')
+    }
+    expect(lookKey('classic', 'light')).toBe('light')
+    expect(lookKey(undefined, 'dark')).toBe('dark')
+  })
+
+  it('every palette has its own entry for the contrast check, on its base side', () => {
+    for (const [k, p] of Object.entries(PALETTES)) {
+      if (k === DEFAULT_PALETTE) continue
+      expect(THEMES[k].toward, k).toBe(p.base === 'light' ? '#000000' : '#ffffff')
+      expect(Object.hasOwn(ACCENTS, p.accent), k).toBe(true)
+    }
+  })
+
+  it('an own colour is lifted on navy and darkened on sand, where each needs it', () => {
+    // a deep blue vanishes into navy, a pale yellow into sand's cream
+    expect(readableIn('#1a237e', 'navy')).not.toBe('#1a237e')
+    expect(readableIn('#1a237e', 'sand')).toBe('#1a237e')
+    expect(readableIn('#fff59d', 'sand')).not.toBe('#fff59d')
+    expect(readableIn('#fff59d', 'navy')).toBe('#fff59d')
+    for (let i = 0; i < 300; i++) {
+      const hex = '#' + Math.floor((i * 2654435761) % 0xffffff).toString(16).padStart(6, '0')
+      for (const look of ['navy', 'graphite', 'plum', 'sand']) {
+        for (const bg of THEMES[look].bgs) expect(contrast(inkIn(hex, look), bg), hex + ' ' + look).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+    // the CSS the page gets follows the palette, not just dark or light
+    expect(customAccentVars('#1a237e', 'navy')['--acc']).not.toBe(customAccentVars('#1a237e', 'sand')['--acc'])
+  })
+
+  it('applyAccent on a palette draws the own colour for that palette', () => {
+    const el = document.createElement('html')
+    applyAccent(el, '#fff59d', applyPalette(el, 'sand', 'dark'))
+    expect(el.style.getPropertyValue('--acc')).toBe(readableIn('#fff59d', 'sand'))
+  })
+})
+
+describe('palette sync (T41)', () => {
+  const T = 1_800_000_000_000
+  const base = { _ts: T, unit: 'kg', workouts: [], routines: [], bodyweight: [], theme: 'dark', accent: 'lime' }
+  const change = (prev, wall, mut) => { const n = JSON.parse(JSON.stringify(prev)); mut(n); n._ts = stampChange(prev, n, wall); return n }
+  it('the newer pick wins, like the theme, in either merge order', () => {
+    const A = change(base, T + 1000, s => { s.palette = 'navy'; s.accent = 'orange' })
+    const B = change(base, T + 4000, s => { s.palette = 'sand'; s.accent = 'teal' })
+    for (const out of [mergeStates(A, B), mergeStates(B, A)]) {
+      expect(out.palette).toBe('sand')
+      expect(out.accent).toBe('teal')
+    }
+  })
+  it('a palette picked on one device survives a theme change on the other', () => {
+    const A = change(base, T + 1000, s => { s.palette = 'plum'; s.accent = 'pink' })
+    const B = change(base, T + 4000, s => { s.theme = 'light' })
+    for (const out of [mergeStates(A, B), mergeStates(B, A)]) {
+      expect(out.palette).toBe('plum')
+      expect(out.theme).toBe('light')
+    }
+  })
+  it('an unknown palette from another copy is Classic after the merge', () => {
+    const A = change(base, T + 4000, s => { s.palette = 'mauve' })
+    expect(mergeStates(base, A).palette).toBe('classic')
   })
 })

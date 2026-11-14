@@ -40,7 +40,39 @@ export function sanitizeAccent(s) {
     if (hex) s.accentCustom = hex; else delete s.accentCustom
   }
   if ('accent' in s && !(typeof s.accent === 'string' && KEY.test(s.accent))) s.accent = DEFAULT_ACCENT
+  if ('palette' in s && !(typeof s.palette === 'string' && Object.hasOwn(PALETTES, s.palette))) s.palette = DEFAULT_PALETTE
   return s
+}
+
+// Palettes (T41): a whole set of page and card colours with an accent to match. Classic is the
+// app as it always was, with the Theme row in charge; every other palette is dark or light by
+// itself (`base`) and draws its own backgrounds (index.css :root[data-palette=…]). Picking one in
+// Settings also picks its accent, which the Accent row can change afterwards. Stored as the
+// synced `palette` key; one this version does not know is Classic (sanitizeAccent).
+export const DEFAULT_PALETTE = 'classic'
+export const PALETTES = {
+  classic: { name: 'Classic', base: null, accent: 'lime' },
+  navy: { name: 'Navy', base: 'dark', accent: 'orange' },
+  graphite: { name: 'Graphite', base: 'dark', accent: 'sky' },
+  plum: { name: 'Plum', base: 'dark', accent: 'pink' },
+  sand: { name: 'Sand', base: 'light', accent: 'teal' },
+}
+
+/** The palette to draw: a known key, or Classic. */
+export const paletteKey = S => (typeof S?.palette === 'string' && Object.hasOwn(PALETTES, S.palette) ? S.palette : DEFAULT_PALETTE)
+
+/** What colours are checked against (THEMES below): the palette's own, or Classic's dark or light. */
+export const lookKey = (palette, theme) => (Object.hasOwn(PALETTES, palette) && palette !== DEFAULT_PALETTE ? palette : theme === 'light' ? 'light' : 'dark')
+
+/**
+ * Puts the palette on the page root and the theme it forces (Classic keeps `theme`, the resolved
+ * Theme row). Returns the lookKey the accent is drawn for.
+ */
+export function applyPalette(el, palette, theme) {
+  const p = Object.hasOwn(PALETTES, palette) ? palette : DEFAULT_PALETTE
+  el.dataset.palette = p
+  el.dataset.theme = PALETTES[p].base || (theme === 'light' ? 'light' : 'dark')
+  return lookKey(p, el.dataset.theme)
 }
 
 /** The choice to draw: a known preset key, 'custom' with a usable colour, or the default. */
@@ -100,6 +132,11 @@ export function inkOn(hex) {
 export const THEMES = {
   dark: { bgs: ['#000000', '#1c1c1e'], min: 3, toward: '#ffffff', label2: ['#8d8d93', '#98989f'] },
   light: { bgs: ['#f2f2f7', '#ffffff'], min: 3, toward: '#000000', label2: ['#85858b', '#8a8a8e'] },
+  // The palettes (PALETTES above), from their index.css blocks (design-review.test.js compares).
+  navy: { bgs: ['#0b1220', '#131c2e'], min: 3, toward: '#ffffff', label2: ['#8c94a3', '#8f98a8'] },
+  graphite: { bgs: ['#141519', '#1e1f24'], min: 3, toward: '#ffffff', label2: ['#9a9ba0', '#9e9fa4'] },
+  plum: { bgs: ['#150f1c', '#211829'], min: 3, toward: '#ffffff', label2: ['#9a91a1', '#9e95a6'] },
+  sand: { bgs: ['#f3eee5', '#fffaf2'], min: 3, toward: '#000000', label2: ['#675e52', '#6a6154'] },
 }
 // Below this HSL saturation a colour counts as a grey (white, black, #808080, near-whites).
 export const GREY_SAT = 0.25

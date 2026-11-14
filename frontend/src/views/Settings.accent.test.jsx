@@ -6,6 +6,7 @@ import Settings from './Settings.jsx'
 import { searchSettings } from './settings-pages.js'
 import { setRestAccent } from '../lib/rest-alert.js'
 import { readableIn } from '../lib/accent.js'
+import { lookLabel } from './Settings.jsx'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -78,6 +79,7 @@ const drag = value => act(() => {
 // The picker closing: 'change'.
 const release = () => act(() => { picker().dispatchEvent(new Event('change', { bubbles: true })) })
 const pick = value => { drag(value); release() }
+const accentRow = () => own().closest('.lrow').querySelector('.lrow-v').textContent
 
 describe('Settings: your own accent colour', () => {
   it('starts as a rainbow swatch that opens the colour picker', () => {
@@ -94,7 +96,7 @@ describe('Settings: your own accent colour', () => {
     expect(mocks.S.accentCustom).toBe('#ff00aa')
     expect(setRestAccent).toHaveBeenCalledWith('#ff00aa')
     mount()
-    expect(host.querySelector('.lrow-v').textContent).toBe('Your own color')
+    expect(accentRow()).toBe('Your own color')
     expect(own().classList.contains('on')).toBe(true)
     expect(own().style.background).toContain('#ff00aa')
   })
@@ -171,7 +173,7 @@ describe('Settings: your own accent colour', () => {
   it('ignores a value that is not a colour', () => {
     mocks.S.accent = 'custom'; mocks.S.accentCustom = 'red;}'
     mount()
-    expect(host.querySelector('.lrow-v').textContent).toBe('Green')
+    expect(accentRow()).toBe('Green')
     expect(own().classList.contains('unset')).toBe(true)
   })
 
@@ -179,5 +181,54 @@ describe('Settings: your own accent colour', () => {
     for (const q of ['custom color', 'own color', 'picker', 'hex']) {
       expect(searchSettings(q, {}).map(h => h.title), q).toContain('Accent color')
     }
+  })
+})
+
+describe('Settings: palettes (T41)', () => {
+  const chip = name => [...host.querySelectorAll('.palette-chip')].find(b => b.textContent === name)
+  const themeButtons = () => [...host.querySelectorAll('.seg button')].filter(b => ['Dark', 'Light', 'System'].includes(b.textContent))
+
+  it('shows one chip per palette, Classic chosen, and the Theme row in charge', () => {
+    mount()
+    expect([...host.querySelectorAll('.palette-chip')].map(b => b.textContent)).toEqual(['Classic', 'Navy', 'Graphite', 'Plum', 'Sand'])
+    expect(chip('Classic').getAttribute('aria-checked')).toBe('true')
+    expect(themeButtons().every(b => !b.disabled)).toBe(true)
+    expect(host.textContent).not.toContain('The palette sets dark or light.')
+  })
+
+  it('picking a palette picks its accent too, and locks the Theme row', () => {
+    mount()
+    act(() => chip('Navy').click())
+    expect(mocks.S.palette).toBe('navy')
+    expect(mocks.S.accent).toBe('orange')
+    expect(setRestAccent).toHaveBeenCalledWith('orange')
+    mount()
+    expect(chip('Navy').getAttribute('aria-checked')).toBe('true')
+    expect(themeButtons().every(b => b.disabled)).toBe(true)
+    expect(host.textContent).toContain('The palette sets dark or light. Pick Classic to choose.')
+    // the Accent row still changes the accent afterwards
+    act(() => host.querySelector('.swatch[aria-label="Blue"]').click())
+    expect(mocks.S.palette).toBe('navy')
+    expect(mocks.S.accent).toBe('sky')
+    act(() => chip('Sand').click())
+    expect(mocks.S.accent).toBe('teal')
+    // the locked row shows the side the palette forces, not the saved choice under it
+    mount()
+    expect(themeButtons().find(b => b.getAttribute('aria-pressed') === 'true')?.textContent).toBe('Light')
+    act(() => chip('Classic').click())
+    expect(mocks.S.palette).toBe('classic')
+    expect(mocks.S.accent).toBe('lime')
+  })
+
+  it('the Look & Home summary names the palette instead of the theme', () => {
+    expect(lookLabel({ theme: 'dark', accent: 'lime' }, 'Dark')).toBe('Dark · Green')
+    expect(lookLabel({ theme: 'dark', palette: 'classic', accent: 'lime' }, 'Dark')).toBe('Dark · Green')
+    expect(lookLabel({ theme: 'light', palette: 'sand', accent: 'teal' }, 'Light')).toBe('Sand · Teal')
+    expect(lookLabel({ theme: 'dark', palette: 'navy', accent: 'sky' }, 'Dark')).toBe('Navy · Blue')
+    expect(lookLabel({ theme: 'dark', palette: 'mauve', accent: 'lime' }, 'Dark')).toBe('Dark · Green')
+  })
+
+  it('the settings search finds it', () => {
+    for (const q of ['palette', 'navy', 'background']) expect(searchSettings(q, {}).map(h => h.title), q).toContain('Palette')
   })
 })
