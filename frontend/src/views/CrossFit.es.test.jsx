@@ -13,8 +13,9 @@ import { useUI } from '../store/useUI.js'
 import { _setLangState } from '../lib/i18n-core.js'
 import es from '../locales/es.js'
 import esNames from '../exercise-names/es.js'
-import CrossFit, { CrossFitBox, CrossFitEdit, CrossFitSettings, whichDaySheet } from './CrossFit.jsx'
+import CrossFit, { CrossFitBox, CrossFitEdit, CrossFitHistory, CrossFitSettings, whichDaySheet } from './CrossFit.jsx'
 import { _reset as resetBoxFeed, keepFeed, parseFeed } from '../lib/box-subscribe.js'
+import { _reset as resetArchive } from '../lib/box-archive.js'
 import CrossFitLog from './CrossFitLog.jsx'
 import { beginIntake, currentIntake, setIntakeImage } from '../lib/wod-intake.js'
 import Home from './Home.jsx'
@@ -110,6 +111,7 @@ async function mount(entry, el) {
       <Route path="/crossfit/edit/:date" element={<CrossFitEdit />} />
       <Route path="/crossfit/log/:date" element={<CrossFitLog />} />
       <Route path="/crossfit/box/:date" element={<CrossFitBox />} />
+      <Route path="/crossfit/history" element={<CrossFitHistory />} />
       <Route path="/settings" element={el} />
       <Route path="/home" element={<Home />} />
       <Route path="*" element={null} />
@@ -187,6 +189,19 @@ const subscribed = () => {
   keepFeed(FEED_URL, parseFeed({ v: 1, box: BOX, updatedAt: TODAY + 'T06:00:00Z', programs }))
   useStore.setState({ S: { ...useStore.getState().S, boxFeed: FEED_URL } })
 }
+// T40: the same feed naming its archive, whose index and old day GitHub answers (`dayImage` the day's photo).
+const OLD = '2026-09-15'
+const archived = ({ days = [OLD, '2026-08-30'], dayImage = OLD + '.jpg' } = {}) => {
+  const programs = [TODAY].map(date => ({ date, ...clone(PROGRAM) }))
+  keepFeed(FEED_URL, parseFeed({ v: 1, box: BOX, updatedAt: TODAY + 'T06:00:00Z', programs, archive: 'archive/index.json' }))
+  useStore.setState({ S: { ...useStore.getState().S, boxFeed: FEED_URL } })
+  const base = 'https://raw.githubusercontent.com/box/wods/main/archive/'
+  const answer = body => ({ ok: true, status: 200, url: base, headers: { get: () => null }, text: async () => JSON.stringify(body) })
+  fetch.mockImplementation(async url => url === base + 'index.json'
+    ? answer({ v: 1, box: BOX, updatedAt: TODAY, days: days.map((date, i) => ({ date, title: PROGRAM.title, tracks: [], image: i === 0 })) })
+    : url === base + OLD + '.json' ? answer({ date: OLD, ...clone(PROGRAM), image: dayImage }) : Promise.reject(new TypeError('offline')))
+}
+const settle = async () => { for (let i = 0; i < 10; i++) await act(async () => { await Promise.resolve() }) }
 const settings = () => <CrossFitSettings S={useStore.getState().S} update={fn => useStore.getState().update(fn)} />
 const subscribeWith = async (url, answer) => {
   if (answer) fetch.mockImplementation(async () => ({ ok: true, status: 200, url, headers: { get: () => null }, text: async () => JSON.stringify(answer) }))
@@ -395,6 +410,47 @@ const SCREENS = {
     expect(host.querySelector('details')).toBeTruthy()
   },
   'box program, read-only': async () => { subscribed(); await mount('/crossfit/box/' + TODAY) },
+  'program list, with the box history': async () => {
+    archived()
+    await mount('/crossfit')
+    shows(host, 'Box history')
+    shows(host, 'Every program your box has posted. Open one to see it or log it.')
+  },
+  'box history': async () => {
+    archived()
+    await mount('/crossfit/history')
+    await settle()
+    expect(host.querySelector(`[aria-label="${es['With a photo']}"]`)).toBeTruthy()
+    expect(host.querySelectorAll('h4')).toHaveLength(2)
+  },
+  'box history, empty': async () => { archived({ days: [] }); await mount('/crossfit/history'); await settle(); shows(host, 'No days in the box history yet.') },
+  'box history, could not load': async () => {
+    subscribed()
+    keepFeed(FEED_URL, parseFeed({ v: 1, box: BOX, programs: [], archive: 'archive/index.json' }))
+    await mount('/crossfit/history')
+    await settle()
+    shows(host, 'The box history could not be loaded. Check your connection.')
+  },
+  'box program from the archive, with its photo': async () => {
+    archived()
+    await mount('/crossfit/box/' + OLD)
+    await settle()
+    expect(host.querySelector('img')).toBeTruthy()
+  },
+  'box program from the archive, could not load': async () => {
+    archived()
+    fetch.mockImplementation(async () => { throw new TypeError('offline') })
+    await mount('/crossfit/box/' + OLD)
+    await settle()
+    shows(host, 'This day could not be loaded. Check your connection.')
+  },
+  'box program from the archive, the photo full-screen': async () => {
+    archived()
+    await mount('/crossfit/box/' + OLD)
+    await settle()
+    await click(host.querySelector(`[aria-label="${es['Open the photo full-screen']}"]`))
+    return sheet()
+  },
   'box program, the member has their own that day': async () => {
     subscribed()
     await mount('/crossfit/box/' + PAST)
@@ -438,7 +494,7 @@ beforeEach(() => {
   toasts = []
   unsub = useUI.subscribe(s => { if (s.toastMsg) toasts.push(s.toastMsg) })
   useUI.setState({ sheets: [], toastMsg: '' })
-  localStorage.clear(); resetBoxFeed()
+  localStorage.clear(); resetBoxFeed(); resetArchive()
   vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('no network in tests') }))
   useStore.setState({ S: { ...clone(DEF), wods: { [PAST]: { ...clone(PROGRAM), _ts: 1 }, [NEXT]: { ...clone(PROGRAM), _ts: 1 } } }, user: null, ready: true })
 })

@@ -30,6 +30,7 @@ import { fetchFor } from './node-fetch.js';
 import { privilegeRefusal, unprivilegedIds } from './adapters/spawn.js';
 import { cohortForPayload, invalidate as invalidateCohort } from './cohort.js';
 import { CONSENT_VERSION } from './core/categories.js';
+import { keepBoxImage } from '../box-feed-publish.js';
 
 // The prompt assembly, the plan fingerprint and the invoke→parse→validate→repair loop all
 // live in ./core now, where the phone can import them too. Re-exported so nothing that
@@ -281,7 +282,10 @@ export function enqueue(uid, opts) {
     activeId: opts.kind === 'adapt' && typeof opts.activeId === 'string' ? opts.activeId.slice(0, 64) : null,
     lang: payloadLib.langTag(opts.lang),              // the language the app was showing (#303)
     // parse-wod only. The image lives on this in-memory object and nowhere else: patchUser
-    // below copies id/kind/state/startedAt, so it never reaches the user's file.
+    // below copies id/kind/state/startedAt, so it never reaches the user's file. The one
+    // exception is the box feed's publishing account (BOX_FEED_UID, while publishing is on):
+    // executeParse keeps its image for the box archive (box-feed-publish.js keepBoxImage) and
+    // tags the program read from it with the image's sha256 (`photo`).
     date: opts.kind === 'parse-wod' ? opts.date : null,
     image: opts.kind === 'parse-wod' ? opts.image : null,
     state: 'queued',
@@ -437,6 +441,11 @@ async function executeParse(job, cfg, adapter) {
   if (!IMAGE_PROVIDERS.includes(cfg.provider)) return finish(job, { outcome: 'failed', errorClass: 'unsupported' });
   const payload = { task: 'parse-wod', date: job.date, lang: job.lang || null };
   const images = [job.image];
+  // Before the call, as the image is gone after it. A photo no saved program names is deleted
+  // after a week (box-feed-publish.js).
+  let photo = null;
+  try { photo = keepBoxImage({ dataDir: DATA, uid: job.uid, image: job.image }); }
+  catch (e) { console.error('box feed: cannot keep the image:', e?.message); }
   job.image = null;   // handed over; nothing here holds it past the call
   const attempt = await invokeProvider(job, cfg, adapter, payload, { images });
   if (!attempt.ok) return finish(job, { outcome: 'failed', errorClass: attempt.errorClass, detail: attempt.detail || whyUnusable(attempt.errors), resetsAt: attempt.resetsAt });
@@ -444,7 +453,8 @@ async function executeParse(job, cfg, adapter) {
   if (!attempt.result.program.tracks.some(t => t.blocks.length) && !VISION_VERIFIED.includes(cfg.provider)) {
     return finish(job, { outcome: 'failed', errorClass: 'novision', detail: `${cfgStore.modelFor(cfg) || 'the model'} answered an empty program; it probably cannot read images` });
   }
-  return finish(job, { outcome: 'ready', parsed: { jobId: job.id, date: job.date, program: attempt.result.program, at: Date.now() } });
+  const program = photo ? { ...attempt.result.program, photo } : attempt.result.program;
+  return finish(job, { outcome: 'ready', parsed: { jobId: job.id, date: job.date, program, at: Date.now() } });
 }
 
 /** The provider call every kind shares: job directory, credential, abort, pipeline, cleanup. */

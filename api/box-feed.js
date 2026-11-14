@@ -2,7 +2,7 @@
 // subscribe to. This half is pure and runs anywhere: the api builds the feed with it
 // (box-feed-publish.js), and the app imports it as frontend/src/lib/box-feed.js to read one.
 //
-//   { v: 1, box: 'Holy Program', updatedAt: ISO, programs: [{ date, title, tracks }] }
+//   { v: 1, box: 'Holy Program', updatedAt: ISO, programs: [{ date, title, tracks }], archive: 'archive/index.json' }
 //
 // The feed is public, so what goes in is an allowlist, all the way down: a field only travels if
 // it is named here. Logged scores, picks, notes, the include toggles and the editor's ids stay
@@ -88,18 +88,25 @@ export function feedProgram(program, merged) {
 
 const shift = (iso, days) => new Date(Date.parse(iso + 'T00:00:00Z') + days * 86400000).toISOString().slice(0, 10)
 
+const live = (wods, d) => ISO.test(d) && isMap(wods[d]) && Object.keys(wods[d]).some(k => k !== '_ts')
+
+/**
+ * Every program of `wods` (S.wods), oldest first, whatever its date: what the archive keeps (T40).
+ * A cleared date (`{ _ts }`) is not a program, so a deleted one leaves the archive too.
+ */
+export function archivePrograms(wods, merged) {
+  if (!isMap(wods)) return []
+  return Object.keys(wods).filter(d => live(wods, d)).sort().map(date => ({ date, ...feedProgram(wods[date], merged) }))
+}
+
 /**
  * The programs of `wods` (S.wods) a feed publishes, oldest first: every live one dated from
- * `today` (an ISO date) minus `days` onwards, future ones included. A cleared date (`{ _ts }`)
- * is not a program, so a deleted one leaves the feed.
+ * `today` (an ISO date) minus `days` onwards, future ones included.
  */
 export function feedPrograms(wods, { today, days = BOX_FEED_DAYS, merged } = {}) {
-  if (!isMap(wods) || !ISO.test(String(today || ''))) return []
+  if (!ISO.test(String(today || ''))) return []
   const from = shift(today, -Math.max(0, Math.floor(Number(days)) || 0))
-  return Object.keys(wods)
-    .filter(d => ISO.test(d) && d >= from && isMap(wods[d]) && Object.keys(wods[d]).some(k => k !== '_ts'))
-    .sort()
-    .map(date => ({ date, ...feedProgram(wods[date], merged) }))
+  return archivePrograms(wods, merged).filter(p => p.date >= from)
 }
 
 /** The whole feed.json document. `now` stamps `updatedAt`; `merged` is the owner's S.exMerged. */
@@ -108,7 +115,27 @@ export function buildFeed(wods, { name = '', today, days = BOX_FEED_DAYS, now = 
     v: BOX_FEED_VERSION,
     box: String(name || ''),
     updatedAt: new Date(now).toISOString(),
-    programs: feedPrograms(wods, { today, days, merged })
+    programs: feedPrograms(wods, { today, days, merged }),
+    archive: ARCHIVE_INDEX
+  }
+}
+
+// T40: the archive, every day the box has published, next to feed.json in the same repo.
+//   archive/index.json   { v: 1, box, updatedAt, days: [{ date, title, tracks: [label], image }] }, newest first
+//   archive/<date>.json    a feed program ({ date, title, tracks }), plus `image: '<sha256>.<ext>'` with a photo
+//   archive/<sha256>.<ext> the photo the program was read from, named by its content
+// Paths in it are relative: `archive` from feed.json, `image` from the index.
+export const ARCHIVE_INDEX = 'archive/index.json'
+
+/** archive/index.json from `programs` (archivePrograms), `images` the dates that have a photo. */
+export function archiveIndex(programs, { name = '', now = Date.now(), images = new Set() } = {}) {
+  return {
+    v: BOX_FEED_VERSION,
+    box: String(name || ''),
+    updatedAt: new Date(now).toISOString(),
+    days: [...programs].reverse().map(p => ({
+      date: p.date, title: p.title || '', tracks: p.tracks.map(tr => tr.label).filter(l => typeof l === 'string' && l), image: images.has(p.date)
+    }))
   }
 }
 

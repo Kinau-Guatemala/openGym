@@ -10,7 +10,8 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { _reset, cachedFeed, keepFeed, parseFeed } from '../lib/box-subscribe.js'
-import CrossFit, { CrossFitBox, CrossFitSettings } from './CrossFit.jsx'
+import { _reset as resetArchive, refreshArchive } from '../lib/box-archive.js'
+import CrossFit, { CrossFitBox, CrossFitHistory, CrossFitSettings } from './CrossFit.jsx'
 import { _setLangState } from '../lib/i18n-core.js'
 import es from '../locales/es.js'
 
@@ -41,6 +42,7 @@ async function mount(entry) {
     <Routes>
       <Route path="/crossfit" element={<CrossFit />} />
       <Route path="/crossfit/box/:date" element={<CrossFitBox />} />
+      <Route path="/crossfit/history" element={<CrossFitHistory />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="*" element={null} />
     </Routes>
@@ -65,12 +67,12 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(TODAY + 'T09:00:00'))
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
-  localStorage.clear(); _reset()
+  localStorage.clear(); _reset(); resetArchive()
   vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('no network in tests') }))
   toasts = []
   unsub = useUI.subscribe(s => { if (s.toastMsg) toasts.push(s.toastMsg) })
   useUI.setState({ sheets: [], toastMsg: '' })
-  useStore.setState({ S: clone(DEF), user: null, ready: true })
+  useStore.setState({ S: clone(DEF), user: null, ready: true, config: null })
   scan.code = null
   scan.fail = false
 })
@@ -245,5 +247,115 @@ describe('the box program', () => {
     expect(useStore.getState().S.wods[TODAY].title).toBe('Box today')
     keepFeed(URL1, parseFeed({ ...FEED, programs: [{ date: TODAY, ...published('Changed by the box') }] }))
     expect(useStore.getState().S.wods[TODAY].title).toBe('Box today')
+  })
+})
+
+describe('T40: the box history', () => {
+  const INDEX_URL = 'https://raw.githubusercontent.com/box/wods/main/archive/index.json'
+  const OLD = '2026-09-15'
+  const INDEX = { v: 1, box: 'Holy Program', updatedAt: TODAY + 'T06:00:00Z', days: [
+    { date: TODAY, title: 'Box today', tracks: ['Full'], image: false },
+    { date: OLD, title: 'Old one', tracks: ['Full', 'Evo'], image: true },
+    { date: '2026-08-30', title: 'August day', tracks: [], image: false },
+  ] }
+  // `photo` is the publisher's own tag: it never reaches a member's copy.
+  const day = (image = OLD + '.jpg') => ({ date: OLD, ...published('Old one'), image, photo: 'ab'.repeat(32) })
+  // The feed names its archive; GitHub answers the index and the old day, and nothing else.
+  const archived = (dayBody = day()) => {
+    keepFeed(URL1, parseFeed({ ...FEED, archive: 'archive/index.json' }))
+    useStore.setState({ S: { ...useStore.getState().S, boxFeed: URL1 } })
+    fetch.mockImplementation(async url => url === INDEX_URL ? ok(INDEX)
+      : url === 'https://raw.githubusercontent.com/box/wods/main/archive/' + OLD + '.json' ? ok(dayBody)
+        : { ok: false, status: 404, url, headers: { get: () => null }, text: async () => '' })
+  }
+
+  it('the list offers the box history in place of the folded earlier days', async () => {
+    archived()
+    await mount('/crossfit')
+    expect(host.querySelector('details')).toBe(null)
+    await click([...host.querySelectorAll('.item')].find(r => r.textContent.includes('Box history')))
+    expect(at).toBe('/crossfit/history')
+  })
+
+  it('the publishing account sees it too, without subscribing (its own public feed)', async () => {
+    useStore.setState({ config: { boxFeed: { url: URL1 } } })
+    await mount('/crossfit')
+    expect(host.textContent).toContain('Box history')
+  })
+
+  it('lists every archived day by month, newest first, with a mark on the days with a photo', async () => {
+    archived()
+    await mount('/crossfit/history')
+    await flush()
+    expect(fetch).toHaveBeenCalledWith(INDEX_URL, expect.anything())
+    expect([...host.querySelectorAll('h4')].map(h => h.textContent)).toEqual(['October 2026', 'September 2026', 'August 2026'])
+    const rows = [...host.querySelectorAll('.item')]
+    expect(rows.map(r => r.querySelector('.tt').textContent)).toEqual(['Box today', 'Old one', 'August day'])
+    expect(rows[1].textContent).toContain('Full · Evo')
+    expect(rows.map(r => !!r.querySelector('[aria-label="With a photo"]'))).toEqual([false, true, false])
+    await click(rows[1].querySelector('.tt'))
+    expect(at).toBe('/crossfit/box/' + OLD)
+  })
+
+  it('offline with nothing cached it says so, and Try again fetches again', async () => {
+    keepFeed(URL1, parseFeed({ ...FEED, archive: 'archive/index.json' }))
+    useStore.setState({ S: { ...useStore.getState().S, boxFeed: URL1 } })
+    await mount('/crossfit/history')
+    await flush()
+    expect(host.textContent).toContain('The box history could not be loaded. Check your connection.')
+    fetch.mockImplementation(async () => ok(INDEX))
+    await click(button(host, 'Try again'))
+    expect(host.textContent).toContain('Old one')
+  })
+
+  it('a day the feed no longer has comes from the archive, with its photo full-screen on a tap, and Log copies it', async () => {
+    archived()
+    await mount('/crossfit/box/' + OLD)
+    await flush()
+    expect(host.querySelector('h1').textContent).toBe('Old one')
+    expect(host.textContent).toContain('10 Burpees')
+    const img = host.querySelector('img')
+    expect(img.getAttribute('src')).toBe('https://raw.githubusercontent.com/box/wods/main/archive/' + OLD + '.jpg')
+    // A viewer sheet, so Escape and Android back close it like any sheet.
+    await click(host.querySelector('[aria-label="Open the photo full-screen"]'))
+    expect(useUI.getState().sheets.at(-1).kind).toBe('viewer')
+    const dialog = (await sheet()).querySelector('[role="dialog"]')
+    expect(dialog.querySelector('img').getAttribute('src')).toBe(img.getAttribute('src'))
+    await click(dialog)
+    expect(useUI.getState().sheets).toEqual([])
+    await click(button(host, 'Log'))
+    expect(at).toBe('/crossfit/log/' + OLD)
+    const own = useStore.getState().S.wods[OLD]
+    expect(own.title).toBe('Old one')
+    expect(own.tracks[0].blocks[0].movements[0].exId).toBe('1160')
+    expect('photo' in own).toBe(false)
+  })
+
+  it('an archive day that cannot be fetched says so, and Try again fetches it again', async () => {
+    archived()
+    const answer = fetch.getMockImplementation()
+    fetch.mockImplementation(async () => { throw new TypeError('offline') })
+    await mount('/crossfit/box/' + OLD)
+    await flush()
+    expect(host.textContent).toContain('This day could not be loaded. Check your connection.')
+    fetch.mockImplementation(answer)
+    await click(button(host, 'Try again'))
+    expect(host.querySelector('h1').textContent).toBe('Old one')
+  })
+
+  it('a photo that is not https on the archive’s host is not shown', async () => {
+    archived(day('http://evil.example/x.jpg'))
+    await mount('/crossfit/box/' + OLD)
+    await flush()
+    expect(host.textContent).toContain('10 Burpees')
+    expect(host.querySelector('img')).toBe(null)
+  })
+
+  it('a day in neither the feed nor the archive’s index goes back to the list', async () => {
+    archived()
+    await refreshArchive(INDEX_URL)
+    await mount('/crossfit/box/2026-01-01')
+    await flush()
+    expect(at).toBe('/crossfit')
   })
 })
