@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn, switchUnit } from './wod-log.js'
+import { wodToSession, eachSide, cardioMinutes, buildWodWorkout, wodStart, ladderOf, relogState, isCardioRow, scoreFor, loggedIn, switchUnit, keptScores } from './wod-log.js'
 import { fileBackfill } from './finish-workout.js'
 import { editCompletedSession, saveWorkoutEdit } from './session-edit.js'
 import { resolveSetRir, rirWeightFor, sessionEffSets } from './recovery.js'
@@ -11,7 +11,7 @@ import { sessionsFor } from './progression.js'
 import { backfillStart } from './backfill.js'
 import { prepareDraft } from './wod-draft.js'
 import { validateWod } from '../../../api/coach/core/validate.js'
-import { convertStateUnit } from './units.js'
+import { convertStateUnit, convertWeight } from './units.js'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
@@ -808,5 +808,121 @@ describe('loggedIn: the log screen in kg or lb (T30)', () => {
     const back = loggedIn(state.logged, state.unit, 'lb')
     expect(back.moves['full/b0/m0'].sets).toEqual([{ w: 220.5, r: 5 }])
     expect(back.blocks['full/b0'].score).toEqual({ type: 'load', w: 220.5, unit: 'lb' })
+  })
+})
+
+// T42: a re-opened log shows what was typed, in the unit it was typed in, and saving it again moves
+// nothing. The rows are still in the profile's unit.
+describe('a re-open keeps what was typed (T42)', () => {
+  const p = program([block('b0', 'strength', [mv('m0', DL, { reps: 5 })]), block('b1', 'fortime', [mv('m0', CJ, { reps: 10 })], { rounds: 1 })])
+  const NOW = Date.parse('2026-10-20T12:00:00Z')
+  const build = (S, logged) => buildWodWorkout(S, '2026-10-13', p, all, logged, NOW).w
+  // The log screen's save (CrossFitLog.jsx): the rows in the profile's unit, what was shown as shown.
+  const save = (S, st) => {
+    const back = st.unit === S.unit && st.back ? switchUnit(st, st.unit === 'kg' ? 'lb' : 'kg').logged.moves : null
+    return build(S, { ...switchUnit(st, S.unit).logged, typed: { moves: st.logged.moves, back, scores: keptScores(st) }, unit: st.unit })
+  }
+  const typedAt = (unit, v) => ({ tracks: ['full'], include: {}, unit, logged: {
+    moves: { 'full/b0/m0': { sets: [{ w: v, r: 5 }] }, 'full/b1/m0': { w: v } },
+    blocks: { 'full/b0': { score: { type: 'load', w: v, unit } } },
+  } })
+  const shown = st => [st.logged.moves['full/b0/m0'].sets[0].w, st.logged.moves['full/b1/m0'].w, st.logged.blocks['full/b0'].score.w]
+  const rows = w => w.entries.map(e => e.sets[0].w)
+  const score = w => w.wod.typed.scores['full/b0']
+
+  it('a kg profile: 105 lb saves as kg rows, re-opens as 105 lb, and saves again the same', () => {
+    const S = S0()
+    const w = save(S, typedAt('lb', 105))
+    expect(rows(w)).toEqual([47.75, 47.75])
+    expect(w.wod).toMatchObject({ unit: 'lb', moves: { 'full/b1/m0': { w: 47.75 } }, typed: { unit: 'lb', moves: { 'full/b1/m0': { w: 105 } } } })
+    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 47.75, unit: 'kg' })
+    expect(score(w)).toEqual({ type: 'load', w: 105, unit: 'lb' })
+    const st = relogState(p, w, 'kg', S)
+    expect(st.unit).toBe('lb')
+    expect(shown(st)).toEqual([105, 105, 105])
+    const again = save(S, st)
+    expect(rows(again)).toEqual(rows(w))
+    expect(again.wod).toEqual(w.wod)
+  })
+
+  it('an lb profile: 47.5 kg the same in reverse', () => {
+    const S = S0({ unit: 'lb' })
+    const w = save(S, typedAt('kg', 47.5))
+    expect(rows(w)).toEqual([104.5, 104.5])
+    const st = relogState(p, w, 'lb', S)
+    expect([st.unit, ...shown(st)]).toEqual(['kg', 47.5, 47.5, 47.5])
+    expect(save(S, st).wod).toEqual(w.wod)
+  })
+
+  it('every half pound on a kg profile, and every quarter kilo on an lb profile: save, re-open, save moves nothing', () => {
+    const moved = []
+    for (const [profile, unit, step, top] of [['kg', 'lb', 0.5, 600], ['lb', 'kg', 0.25, 300]]) {
+      const S = S0({ unit: profile })
+      for (let v = 1; v <= top; v += step) {
+        const w = save(S, typedAt(unit, v))
+        const st = relogState(p, w, profile, S)
+        const again = save(S, st)
+        if (shown(st).some(x => x !== v) || rows(again).some((x, i) => x !== rows(w)[i]) || JSON.stringify(again.wod) !== JSON.stringify(w.wod) || score(again).w !== v) moved.push(`${v} ${unit}`)
+      }
+    }
+    expect(moved).toEqual([])
+  })
+
+  it('typed in one unit and saved while the other is shown: the first save logs it as typed, and so does an untouched re-save', () => {
+    const moved = []
+    for (const [profile, unit, step, top] of [['lb', 'lb', 0.5, 600], ['kg', 'lb', 0.5, 600], ['kg', 'kg', 0.25, 300], ['lb', 'kg', 0.25, 300]]) {
+      const S = S0({ unit: profile }), flip = unit === 'kg' ? 'lb' : 'kg'
+      for (let v = 1; v <= top; v += step) {
+        const st0 = switchUnit(typedAt(unit, v), flip)
+        const w = save(S, st0)
+        const st = relogState(p, w, profile, S)
+        const again = save(S, st)
+        if (shown(st).some((x, i) => x !== shown(st0)[i]) || rows(again).some((x, i) => x !== rows(w)[i]) || JSON.stringify(again.wod) !== JSON.stringify(w.wod)
+          || (profile === unit && rows(w).some(x => x !== v)) || convertWeight(score(w).w, score(w).unit, unit) !== v) moved.push(`${v} ${unit} on ${profile}`)
+        // flipped back on the re-open, it shows what was typed
+        if (shown(switchUnit(st, unit)).some(x => x !== v)) moved.push(`${v} ${unit} on ${profile}, flipped back`)
+      }
+    }
+    expect(moved).toEqual([])
+  })
+
+  it('a weight edited on the re-open converts as usual', () => {
+    const S = S0({ unit: 'lb' })
+    const st = relogState(p, save(S, switchUnit(typedAt('lb', 105), 'kg')), 'lb', S)
+    st.logged.moves['full/b1/m0'].w = 40
+    st.logged.blocks['full/b0'].score.w = 40
+    const w = save(S, st)
+    expect(rows(w)).toEqual([105, 88])
+    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 88, unit: 'lb' })
+    expect(score(w)).toEqual({ type: 'load', w: 40, unit: 'kg' })
+  })
+
+  it('an older build reads it as the one before: wod.moves and the scores in the profile\'s unit, the rest as main saves it', () => {
+    for (const [profile, st, kept] of [['kg', typedAt('lb', 105), 47.75], ['kg', switchUnit(typedAt('lb', 105), 'kg'), 47.75], ['lb', switchUnit(typedAt('lb', 105), 'kg'), 105], ['lb', typedAt('kg', 47.5), 104.5]]) {
+      const S = S0({ unit: profile }), w = save(S, st)
+      // main's save: the same, without `typed`
+      const old = build(S, { ...switchUnit(st, profile).logged, unit: st.unit })
+      const { typed, ...rest } = w.wod
+      expect(typed).toBeTruthy()
+      expect(rest).toEqual(old.wod)
+      expect(w.entries).toEqual(old.entries)
+      // what an older build reads: the moves as they are (v1.4.1-kinau.1), or through relogState's
+      // path for a log without `typed` (main), on the profile's rows
+      expect([rest.moves['full/b0/m0'].sets[0].w, rest.moves['full/b1/m0'].w, rest.blocks[0].score]).toEqual([kept, kept, { type: 'load', w: kept, unit: profile }])
+      expect(rows(w)).toEqual([kept, kept])
+      expect(relogState(p, { ...w, wod: rest }, profile, S).logged).toEqual(relogState(p, old, profile, S).logged)
+    }
+  })
+
+  it('a Settings switch converts wod.moves as always and leaves what was typed as it is', () => {
+    const kg = S0()
+    const { active, w } = buildWodWorkout(kg, '2026-10-13', p, all, { ...switchUnit(typedAt('lb', 105), 'kg').logged, typed: { moves: typedAt('lb', 105).logged.moves, scores: keptScores(typedAt('lb', 105)) }, unit: 'lb' }, NOW)
+    fileBackfill(kg, active, w)
+    const lb = convertStateUnit(kg, 'lb')
+    expect(lb.workouts[0].wod.typed).toEqual(kg.workouts[0].wod.typed)
+    expect(lb.workouts[0].wod.moves['full/b1/m0'].w).toBe(105.5)
+    expect(lb.workouts[0].entries[0].sets[0].w).toBe(105.5)
+    const st = relogState(p, lb.workouts[0], 'lb', lb)
+    expect([st.unit, ...shown(st)]).toEqual(['lb', 105, 105, 105])
   })
 })

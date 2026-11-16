@@ -7,10 +7,16 @@
 //
 //   choice = { tracks: ['full', 'pump'], include: { 'full/b0': true } }   include overrides includeOf
 //   logged = { start, unit, moves: { '<track>/<block>/<movement>': { exId, w, r, cal, m, sec, min, sets } },
-//              blocks: { '<track>/<block>': { score, rx } } }
+//              blocks: { '<track>/<block>': { score, rx } }, typed: { moves, back, scores } }
 //
 // Weights in `logged` are in S.unit, as everything stored is; `unit` is the one the log screen
 // showed them in (kg or lb, picked there), kept as `w.wod.unit` so a re-open shows that one again.
+// `typed` is what the screen showed, kept as `w.wod.typed` with that unit, so a re-open shows it
+// exactly: the plate grids don't round-trip (105 lb is 47.75 kg, which is 105.5 lb). Its `moves`
+// are in `unit`; `back` is them in the other unit as a switch would bring them back, when that
+// is not the profile's (it is `moves` otherwise); `scores` are the load scores, each with its unit
+// (keptScores). `w.wod.moves` and the scores in `w.wod.blocks` stay in the profile's unit, which
+// is how an older build reads them.
 //
 // Rows per movement follow the block's format (crossfit-module-plan, training logic §1): metcon
 // blocks (EMOM, AMRAP, For time, intervals, ladders) give `noProg` entries, so they never seed a
@@ -290,15 +296,17 @@ export function buildWodWorkout(S, date, program, choice, logged, now = Date.now
   // has done work, so none was dropped and the order holds).
   w.entries.forEach((e, i) => { for (const k of KEEP) if (entries[i][k] != null) e[k] = entries[i][k] })
   w.src = 'wod'
-  w.wod = { date, ...wod, moves: movesOf(logged), ...(logged?.unit ? { unit: logged.unit } : {}) }
+  const typed = logged?.typed, scores = typed?.scores && Object.keys(typed.scores).length ? { scores: structuredClone(typed.scores) } : {}
+  w.wod = { date, ...wod, moves: movesOf(logged?.moves), ...(logged?.unit ? { unit: logged.unit } : {}),
+    ...(typed && logged?.unit ? { typed: { unit: logged.unit, moves: movesOf(typed.moves), ...(typed.back ? { back: movesOf(typed.back) } : {}), ...scores } } : {}) }
   return { active, w }
 }
 
 // What was typed per movement, as sent, so re-opening the day restores it exactly (relogState).
 const MOVE_KEYS = ['exId', 'w', 'r', 'cal', 'm', 'sec', 'min', 'sets', 'total']
-function movesOf(logged) {
+function movesOf(moves) {
   const out = {}
-  for (const [key, lm] of Object.entries(logged?.moves || {})) {
+  for (const [key, lm] of Object.entries(moves || {})) {
     if (!lm || typeof lm !== 'object') continue
     const kept = Object.fromEntries(MOVE_KEYS.filter(k => lm[k] != null).map(k => [k, structuredClone(lm[k])]))
     if (Object.keys(kept).length) out[key] = kept
@@ -351,12 +359,33 @@ export function switchUnit(st, to) {
 }
 
 /**
+ * The load scores the log screen keeps as typed, by block: each as shown, with its unit, except one
+ * still as the last switch showed it that doesn't convert back to what it was before that switch:
+ * that one was typed in the other unit and is kept as it was, with that unit, as switchUnit would
+ * bring it back. So 105 lb saved while 47.75 kg is shown is kept as 105 lb.
+ */
+export function keptScores(st) {
+  const b = st.back, out = {}
+  for (const [k, lb] of Object.entries(st.logged?.blocks || {})) {
+    const p = ['blocks', k, 'score', 'w'], was = b ? at(b.before, p) : null, w = lb?.score?.w
+    if (w == null) continue
+    const typedThere = was != null && w === at(b.after, p) && convertWeight(w, st.unit, b.unit) !== was
+    out[k] = typedThere ? { ...lb.score, w: was, unit: b.unit } : { ...lb.score, unit: st.unit }
+  }
+  return out
+}
+
+/**
  * The log screen's starting state for a day already logged as `w`, so saving again edits what
  * was logged rather than the program's printed doses: `{ tracks, include, logged, unit }`. A log
  * that kept what was typed (`w.wod.moves`) comes back as typed; an older one is read off its rows.
- * The weights come back in the unit the log was typed in (`w.wod.unit`, else `profileUnit`, the
- * one they are stored in), which is `unit`. A swap to an exercise merged away since comes back as
- * the one it went to (S.exMerged; `program` is already read through liveWod).
+ * The weights come back in the unit the log was typed in (`w.wod.unit`, else `profileUnit`), which
+ * is `unit`: what the screen showed (`w.wod.typed`, with its unit) as it is, else the kept moves,
+ * in `profileUnit`, converted. What was kept in the other unit (the moves and scores in the
+ * profile's when that is the other, `typed.back`, a score typed in it) seeds `back`, so a save or
+ * a switch with a weight untouched brings that back as it was rather than converting it twice. A
+ * swap to an exercise merged away since comes back as the one it went to (S.exMerged; `program`
+ * is already read through liveWod).
  */
 export function relogState(program, w, profileUnit, S) {
   const blocks = {}, include = {}
@@ -367,11 +396,26 @@ export function relogState(program, w, profileUnit, S) {
     if (!tracks.includes(tr.id)) continue
     for (const b of list(tr.blocks)) include[`${tr.id}/${b.id}`] = !!blocks[`${tr.id}/${b.id}`]
   }
-  const saved = w?.wod?.moves
+  const typed = w?.wod?.typed, kept = w?.wod?.moves
+  const asTyped = !!typed?.moves && typeof typed.moves === 'object' && ['kg', 'lb'].includes(typed.unit)
+  const stored = Object.fromEntries(Object.entries(blocks).map(([k, lb]) => [k, lb.score]))
+  if (asTyped) for (const [k, sc] of Object.entries(typed.scores || {})) if (blocks[k]?.score) blocks[k] = { ...blocks[k], score: sc }
+  const saved = asTyped ? typed.moves : kept
   const moves = saved && typeof saved === 'object' ? structuredClone(saved) : movesFromRows(program, w, tracks)
   for (const lm of Object.values(moves)) if (lm?.exId) lm.exId = mergedInto(S, lm.exId)
   const unit = w?.wod?.unit || profileUnit
-  return { tracks, include, logged: loggedIn({ moves, blocks }, profileUnit, unit), unit }
+  const logged = loggedIn({ moves, blocks }, asTyped ? typed.unit : profileUnit, unit)
+  const other = unit === 'kg' ? 'lb' : 'kg'
+  const was = (asTyped && typed.back) || (profileUnit === other && kept)
+  const before = {
+    moves: was && typeof was === 'object' ? structuredClone(was) : {},
+    blocks: Object.fromEntries(Object.keys(blocks).flatMap(k => {
+      const sc = [stored[k], blocks[k].score].find(x => x?.w != null && x.unit === other)
+      return sc ? [[k, { score: sc }]] : []
+    })),
+  }
+  const back = Object.keys(before.moves).length || Object.keys(before.blocks).length ? { back: { unit: other, before, after: structuredClone(logged) } } : {}
+  return { tracks, include, logged, unit, ...back }
 }
 
 // An older log, without the typed values: the exercise, weight, cardio minutes and strength rows

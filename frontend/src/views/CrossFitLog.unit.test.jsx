@@ -85,6 +85,8 @@ describe('kg / lb while logging a WOD (T30)', () => {
     expect(w.entries.find(e => e.id === DL).sets[0].w).toBe(61.25)
     expect(w.entries.find(e => e.id === CJ).sets[0].w).toBe(43)
     expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 61.25, unit: 'kg' })
+    // and as typed, with its unit (T42)
+    expect(w.wod.typed.scores['full/b0']).toEqual({ type: 'load', w: 135, unit: 'lb' })
     expect(w.wod.unit).toBe('lb')
     expect(useStore.getState().S.unit).toBe('kg')
 
@@ -201,6 +203,66 @@ describe('kg / lb beside each weight (T38)', () => {
     await tap(chip(0))
     await click('Log workout')
     expect(logged().entries.find(e => e.id === DL).sets[0].w).toBe(105)
+  })
+
+  it('a typed lb weight re-opens as typed on a kg profile, half-pound values included (T42)', async () => {
+    start('kg')
+    await mount()
+    await click('lb')
+    await type(field(0), '105')
+    await type(field(1), '78')
+    await type(field(2), '46')
+    await click('Log workout')
+    const rows = () => [logged().entries.find(e => e.id === DL).sets[0].w, logged().entries.find(e => e.id === CJ).sets[0].w]
+    expect(rows()).toEqual([47.75, 20.75])
+    const wod = clone(logged().wod)
+    unmount()
+    await mount()
+    expect([pressed(), ...values()]).toEqual(['lb', '105', '78', '46'])
+    await click('Save log')
+    expect(rows()).toEqual([47.75, 20.75])
+    expect(logged().wod).toEqual(wod)
+  })
+
+  it('an lb profile: 105 lb saved while kg is shown re-opens in kg, and saves and flips back as typed (T42)', async () => {
+    start('lb')
+    await mount()
+    await type(field(0), '105')
+    await type(field(1), '105')
+    await tap(chip(0))
+    await click('Log workout')
+    const dl = () => logged().entries.find(e => e.id === DL).sets[0].w
+    expect(dl()).toBe(105)
+    expect(logged().wod.blocks[0].score).toEqual({ type: 'load', w: 105, unit: 'lb' })
+    expect(logged().wod.typed.scores['full/b0']).toEqual({ type: 'load', w: 105, unit: 'lb' })
+    const wod = clone(logged().wod)
+    unmount()
+    await mount()
+    expect([pressed(), field(0).value, field(1).value]).toEqual(['kg', '47.75', '47.75'])
+    await click('Save log')
+    expect(dl()).toBe(105)
+    expect(logged().wod).toEqual(wod)
+    unmount()
+    await mount()
+    await tap(chip(0))
+    expect([field(0).value, field(1).value]).toEqual(['105', '105'])
+  })
+
+  it('a weight left at its Rx while the other unit is shown logs the profile\'s Rx, and so does an untouched re-save (T42)', async () => {
+    for (const [profile, other, rx] of [['kg', 'lb', 60], ['lb', 'kg', 135]]) {
+      start(profile)
+      await mount()
+      await click(other)
+      await type(field(0), '100')
+      await click('Log workout')
+      const cj = () => logged().entries.find(e => e.id === CJ).sets[0].w
+      expect(cj()).toBe(rx)
+      unmount()
+      await mount()
+      await click('Save log')
+      expect(cj()).toBe(rx)
+      unmount()
+    }
   })
 
   it('a reps field has no chip', async () => {
