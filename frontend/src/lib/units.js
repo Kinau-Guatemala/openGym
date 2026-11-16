@@ -152,10 +152,9 @@ export function convertStateUnit(S, to) {
     const out = { ...s, entries: (s.entries || []).map(convEntry) }
     if (out.bw != null) out.bw = bw(out.bw)
     if (Number.isFinite(out.vol)) out.vol = workoutVolume({ entries: out.entries.filter(e => Array.isArray(e?.sets)) })
-    // A logged WOD keeps what was typed, to re-open it with: in the unit it was typed in
-    // (`movesUnit`), which stays as it is, or on an older log in the profile's. Its load scores
-    // carry their own unit and stay as they are.
-    if (s.wod?.moves && typeof s.wod.moves === 'object' && !s.wod.movesUnit) out.wod = { ...s.wod, moves: convertMoves(s.wod.moves, from, to) }
+    // A logged WOD keeps what was typed, in the profile's unit, to re-open it with. Its load
+    // scores carry their own unit and stay as they are.
+    if (s.wod?.moves && typeof s.wod.moves === 'object') out.wod = { ...s.wod, moves: convertMoves(s.wod.moves, from, to) }
     return out
   }
   const out = { ...S, unit: to }

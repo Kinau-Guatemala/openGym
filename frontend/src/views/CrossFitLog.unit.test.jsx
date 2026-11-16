@@ -84,8 +84,9 @@ describe('kg / lb while logging a WOD (T30)', () => {
     const w = logged()
     expect(w.entries.find(e => e.id === DL).sets[0].w).toBe(61.25)
     expect(w.entries.find(e => e.id === CJ).sets[0].w).toBe(43)
-    // a load score is kept as typed, with its unit
-    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 135, unit: 'lb' })
+    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 61.25, unit: 'kg' })
+    // and as typed, with its unit (T42)
+    expect(w.wod.typed.scores['full/b0']).toEqual({ type: 'load', w: 135, unit: 'lb' })
     expect(w.wod.unit).toBe('lb')
     expect(useStore.getState().S.unit).toBe('kg')
 
@@ -96,7 +97,7 @@ describe('kg / lb while logging a WOD (T30)', () => {
     // saving the re-open again changes nothing
     await click('Save log')
     expect(logged().entries.find(e => e.id === CJ).sets[0].w).toBe(43)
-    expect(logged().wod.blocks[0].score).toEqual({ type: 'load', w: 135, unit: 'lb' })
+    expect(logged().wod.blocks[0].score.w).toBe(61.25)
   })
 
   it('an lb profile works the same in reverse; a new log starts at the profile unit', async () => {
@@ -111,7 +112,7 @@ describe('kg / lb while logging a WOD (T30)', () => {
     await click('Log workout')
     const w = logged()
     expect(w.entries.find(e => e.id === DL).sets[0].w).toBe(132.5)
-    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 100, unit: 'kg' })
+    expect(w.wod.blocks[0].score).toEqual({ type: 'load', w: 220.5, unit: 'lb' })
     // the C&J left at its Rx is logged as the profile's Rx, converted once
     expect(w.entries.find(e => e.id === CJ).sets[0].w).toBe(135)
 
@@ -233,6 +234,7 @@ describe('kg / lb beside each weight (T38)', () => {
     const dl = () => logged().entries.find(e => e.id === DL).sets[0].w
     expect(dl()).toBe(105)
     expect(logged().wod.blocks[0].score).toEqual({ type: 'load', w: 105, unit: 'lb' })
+    expect(logged().wod.typed.scores['full/b0']).toEqual({ type: 'load', w: 105, unit: 'lb' })
     const wod = clone(logged().wod)
     unmount()
     await mount()
